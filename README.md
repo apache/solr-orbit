@@ -1,67 +1,93 @@
-[![CI](https://github.com/opensearch-project/opensearch-benchmark/actions/workflows/main.yml/badge.svg)](https://github.com/opensearch-project/opensearch-benchmark/actions/workflows/main.yml)
-[![Integration](https://github.com/opensearch-project/opensearch-benchmark/actions/workflows/manual-integ.yml/badge.svg)](https://github.com/opensearch-project/opensearch-benchmark/actions/workflows/manual-integ.yml)
-[![Release](https://github.com/opensearch-project/opensearch-benchmark/actions/workflows/publish-release.yml/badge.svg)](https://github.com/opensearch-project/opensearch-benchmark/actions/workflows/publish-release.yml)
-[![Version](https://img.shields.io/pypi/v/opensearch-benchmark.svg?color=blue)](https://pypi.org/project/opensearch-benchmark/)
-![PyPI Downloads](https://static.pepy.tech/badge/opensearch-benchmark)
-[![Chat](https://img.shields.io/badge/chat-on%20forums-blue)](https://forum.opensearch.org/categories)
-![PRs welcome!](https://img.shields.io/badge/PRs-welcome!-success)
+# Apache Solr Benchmark
 
-<img src="https://github.com/opensearch-project/opensearch-benchmark/blob/main/opensearch_benchmark.png?raw=true"  height="64px" alt="OpenSearch Benchmark">
+Apache Solr Benchmark is a macrobenchmarking framework for [Apache Solr](https://solr.apache.org/).
 
-OpenSearch Benchmark is the macrobenchmarking framework for OpenSearch.
+It is a fork/port of [Rally](https://github.com/elastic/rally)/[Opensearch Benchmark](https://github.com/opensearch-project/opensearch-benchmark), ported to work with Apache Solr.
 
-What is OpenSearch Benchmark?
------------------------------
+## Documentation
 
-If you are looking to performance test OpenSearch, then OpenSearch Benchmark is for you. It can help you with the following tasks:
+Full documentation is available in [`docs/`](docs/) folder of this repository. Build the docs with jekyll.
+A public documentation site is available at [https://janhoy.github.io/solr-benchmark/](https://janhoy.github.io/solr-benchmark/).
+
+**This is a Work in Progress**
+
+## What is Apache Solr Benchmark?
+
+If you are looking to performance test Apache Solr, this tool can help you with:
 
 * Running performance benchmarks and recording results
-* Setting up and tearing down OpenSearch clusters for benchmarking
-* Managing benchmark data and specifications across OpenSearch versions
-* Discovering performance problems by attaching so-called telemetry devices
-* Comparing performance results
-* Creating customized workloads
+* Setting up and tearing down Solr clusters for benchmarking (local distribution, build-from-source or Docker, including nightly builds)
+* Managing benchmark workloads (collections, configsets, search operations)
+* Run same workload against multiple Solr versions or multiple cluster-configurations (heap size, GC settings, etc.)
+* Collecting JVM, node, and collection metrics via telemetry devices
+* Output results for each run in JSON format, suitable for analysis and dashboarding
+* Assist in converting existing OpenSearch Benchmark workloads to Solr format
 
-We have also put considerable effort into OpenSearch Benchmark to ensure that benchmarking data are reproducible.
+## Quick Start
 
-Documentation
--------------
+### Install
 
-Official documentation for OpenSearch Benchmark is [available online](https://opensearch.org/docs/latest/benchmark/index/).
+**NOTE**: We do not offer the tool as a python package yet
 
-Quick Start
------------
+```bash
+pip install -e .
+```
 
-Want to get started with OpenSearch Benchmark quickly? See [OpenSearch Benchmark's Quick Start guide in the documentation](https://opensearch.org/docs/latest/benchmark/index/).
+### Run a benchmark against a Solr version in Docker
 
-Getting help
-------------
+```bash
+solr-benchmark run \
+  --pipeline=docker \
+  --distribution-version=9.10.1 \
+  --workload=nyc_taxis \
+  --test-mode
+```
 
-* Quick help: ``opensearch-benchmark --help``
-* Want to contribute? Look at [OpenSearch Benchmark's Developer Guide](<https://github.com/opensearch-project/OpenSearch-Benchmark/blob/main/DEVELOPER_GUIDE.md>) for more information
-* For any questions or answers, visit our [community forum](<https://discuss.opendistrocommunity.dev/>) and Slack community channel [#performance-benchmarking](https://opensearch.slack.com/archives/C082PLA3VPW).
-* File improvements or bug reports in our [Github repo](<https://github.com/opensearch-project/OpenSearch-Benchmark/issues>).
+**Note**: Defaults to cloud mode (SolrCloud with embedded ZooKeeper).
 
-How to Contribute
------------------
+### Provision Solr locally, then benchmark
 
-See all details in the [contributor guidelines](<https://github.com/opensearch-project/OpenSearch-Benchmark/blob/main/CONTRIBUTING.md>).
+```bash
+solr-benchmark run \
+  --pipeline=from-distribution \
+  --distribution-version=9.10.1 \
+  --workload=nyc_taxis \
+  --test-mode
+```
 
-License
--------
+**Note**: Always uses cloud mode (SolrCloud with embedded ZooKeeper).
 
-This software is licensed under the Apache License, version 2 ("ALv2"), quoted below.
+### Provision Solr from source, then benchmark
 
-Copyright 2015-2022 OpenSearch <https://opensearch.org/>
+```bash
+solr-benchmark run \
+  --pipeline=from-sources \
+  --distribution-version=9.10.1 \
+  --workload=nyc_taxis \
+  --test-mode
+```
 
-Licensed under the Apache License, Version 2.0 (the "License"); you may not
-use this file except in compliance with the License. You may obtain a copy of
-the License at
+## Workload format
 
-    http://www.apache.org/licenses/LICENSE-2.0
+See [Workload Reference](https://janhoy.github.io/solr-benchmark/reference/workloads/) in the documentation for the full `workload.json` format, including `collections`, `corpora`, `operations`, and `test-procedures`.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-License for the specific language governing permissions and limitations under
-the License.
+Pre-built workloads are available at [https://github.com/janhoy/solr-benchmark-workloads](https://github.com/janhoy/solr-benchmark-workloads). Feel free to
+contribute your own with a pull request!
+
+## Result output
+
+Each test-run outputs a **test_run.json**, a complete canonical record of the benchmark run including:
+  - Benchmark metadata (version, environment, pipeline, user tags)
+  - Workload and test procedure information
+  - Cluster configuration specification (heap size, GC settings, all variables)
+  - Detailed operation metrics (throughput, latency, error rates)
+  - System metrics (GC times, merge times, segment counts, etc.)
+
+This output can be used for further analysis, comparison and dashboarding.
+
+## License
+
+Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text.
+
+This product includes software developed by the OpenSearch Contributors, and
+prior to that by Elasticsearch (Rally). Full attribution is in [NOTICE](NOTICE).
