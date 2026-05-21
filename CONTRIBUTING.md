@@ -1,54 +1,51 @@
-- [Contributing to OpenSearch Benchmark](#contributing-to-opensearch-benchmark)
-  - [First Things First](#first-things-first)
-  - [Ways to Contribute](#ways-to-contribute)
-    - [Bug Reports](#bug-reports)
-    - [Feature Requests](#feature-requests)
-    - [Documentation Changes](#documentation-changes)
-    - [Contributing Code](#contributing-code)
-  - [Developer Certificate of Origin](#developer-certificate-of-origin)
-  - [Review Process](#review-process)
+# Contributing to Apache Solr Benchmark
 
-# Contributing to OpenSearch Benchmark
-
-OpenSearch Benchmark is a community project that is built and maintained by people just like **you**. We're glad you're interested in helping out. There are several different ways you can do it, but before we talk about that, let's talk about how to get started.
+Apache Solr Benchmark is a community project built by people like **you**.
+We're glad you're interested in contributing.
 
 ## First Things First
 
-1. **When in doubt, open an issue** - For almost any type of contribution, the first step is opening an issue. Even if you think you already know what the solution is, writing down a description of the problem you're trying to solve will help everyone get context when they review your pull request. If it's truly a trivial change (e.g. spelling error), you can skip this step -- but as the subject says, when it doubt, [open an issue](https://github.com/opensearch-project/OpenSearch-Benchmark/issues).
+1. **When in doubt, open an issue** — before making changes, open an issue to
+   describe the problem or feature. This avoids duplicated effort and lets the
+   community agree on the right direction before you invest time in a PR.
 
-2. **Only submit your own work**  (or work you have sufficient rights to submit) - Please make sure that any code or documentation you submit is your work or you have the rights to submit. We respect the intellectual property rights of others, and as part of contributing, we'll ask you to sign your contribution with a "Developer Certificate of Origin" (DCO) that states you have the rights to submit this work and you understand we'll use your contribution. There's more information about this topic in the [DCO section](#developer-certificate-of-origin).
+2. **Only submit your own work** — ensure any code or documentation you submit
+   is yours or you have the right to submit it. See the
+   [DCO section](#developer-certificate-of-origin) below.
 
 ## Ways to Contribute
 
-**Please note:** OpenSearch Benchmark is a fork of [Rally](https://github.com/elastic/rally), and is a work in progress. If you do find references to Rally (outside of attributions and copyrights!) please [open an issue](https://github.com/opensearch-project/OpenSearch-Benchmark/issues).
+### Bug Reports
 
-### Bug Reports <REVIEW FROM HERE>
-
-Ugh! Bugs!
-
-A bug is when software behaves in a way that you didn't expect and the developer didn't intend. To help us understand what's going on, we first want to make sure you're working from the latest version. Please make sure you're testing against the [latest version](https://github.com/opensearch-project/OpenSearch-Benchmark).
-
-Once you've confirmed that the bug still exists in the latest version, you'll want to check to make sure it's not something we already know about on the [open issues GitHub page](https://github.com/opensearch-project/OpenSearch-Benchmark/issues).
-
-Provide as much information as you can. You may think that the problem lies with your query, when actually it depends on how your data is indexed. The easier it is for us to recreate your problem, the faster it is likely to be fixed.
+Please confirm you are on the latest code, then open an issue with:
+- Steps to reproduce
+- Expected vs. actual behaviour
+- Solr version and benchmark configuration
 
 ### Feature Requests
 
-If you've thought of a way that OpenSearch Benchmark could be better, we want to hear about it. We track feature requests using GitHub, so please feel free to open an issue which describes the feature you would like to see, why you need it, and how it should work.
+Open an issue describing the feature, the motivation, and a rough design sketch.
 
 ### Contributing Code
 
-As with other types of contributions, the first step is to [**open an issue on GitHub**](https://github.com/opensearch-project/OpenSearch-Benchmark/issues/new/choose). Opening an issue before you make changes makes sure that someone else isn't already working on that particular problem. It also lets us all work together to find the right approach before you spend a bunch of time on a PR. So again, when in doubt, open an issue.
-
-Once you've opened an issue, check out our [Developer Guide](./DEVELOPER_GUIDE.md) for instructions on how to get started.
+1. Open an issue first (see above).
+2. Read the [Developer Guide](./DEVELOPER_GUIDE.md).
+3. Fork the repository, create a branch, make your changes, and open a PR.
+4. Sign each commit with a DCO `Signed-off-by` line.
 
 ## Developer Certificate of Origin
 
-OpenSearch Benchmark is an open source product released under the Apache 2.0 license (see either [the Apache site](https://www.apache.org/licenses/LICENSE-2.0) or the [LICENSE file](./LICENSE)). The Apache 2.0 license allows you to freely use, modify, distribute, and sell your own products that include Apache 2.0 licensed software.
+Apache Solr Benchmark is released under the Apache 2.0 license. We use a
+Developer Certificate of Origin (DCO) to ensure all contributions are properly
+attributed.
 
-We respect intellectual property rights of others and we want to make sure all incoming contributions are correctly attributed and licensed. A Developer Certificate of Origin (DCO) is a lightweight mechanism to do that.
+Each commit must include:
 
-The DCO is a declaration attached to every contribution made by every developer. In the commit message of the contribution, the developer simply adds a `Signed-off-by` statement and thereby agrees to the DCO, which you can find below or at [DeveloperCertificate.org](http://developercertificate.org/).
+```
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+Add it automatically with `git commit -s`. The full DCO text:
 
 ```
 Developer's Certificate of Origin 1.1
@@ -59,45 +56,28 @@ By making a contribution to this project, I certify that:
     have the right to submit it under the open source license
     indicated in the file; or
 
-(b) The contribution is based upon previous work that, to the
-    best of my knowledge, is covered under an appropriate open
-    source license and I have the right under that license to
-    submit that work with modifications, whether created in whole
-    or in part by me, under the same open source license (unless
-    I am permitted to submit under a different license), as
-    Indicated in the file; or
+(b) The contribution is based upon previous work that, to the best
+    of my knowledge, is covered under an appropriate open source
+    license and I have the right under that license to submit that
+    work with modifications, whether created in whole or in part by
+    me, under the same open source license (unless I am permitted to
+    submit under a different license), as indicated in the file; or
 
-(c) The contribution was provided directly to me by some other
-    person who certified (a), (b) or (c) and I have not modified
-    it.
+(c) The contribution was provided directly to me by some other person
+    who certified (a), (b) or (c) and I have not modified it.
 
-(d) I understand and agree that this project and the contribution
-    are public and that a record of the contribution (including
-    all personal information I submit with it, including my
-    sign-off) is maintained indefinitely and may be redistributed
-    consistent with this project or the open source license(s)
-    involved.
- ```
-
-We require that every contribution to OpenSearch Benchmark is signed with a Developer Certificate of Origin. Additionally, please use your real name. We do not accept anonymous contributors nor those utilizing pseudonyms.
-
-Each commit must include a DCO which looks like this
-
+(d) I understand and agree that this project and the contribution are
+    public and that a record of the contribution (including all personal
+    information I submit with it, including my sign-off) is maintained
+    indefinitely and may be redistributed consistent with this project
+    or the open source license(s) involved.
 ```
-Signed-off-by: Jane Smith <jane.smith@email.com>
-```
-You may type this line on your own when writing your commit messages. However, if your user.name and user.email are set in your git configs, you can use `-s` or `--signoff` to add the `Signed-off-by` line to the end of the commit message.
 
 ## Review Process
 
-We deeply appreciate everyone who takes the time to make a contribution. We aim to review all contributions promptly but cannot guarantee quick turnaround times. It can take time for appropriate analysis, verification and testing, to understand the implications and ramifications of the proposed change, and for discussion with other maintainers and developers. Furthermore, it is essential that contributions remain accessible for an adequate duration to allow healthy engagement by community members, other than maintainers.
+We aim to review contributions promptly. To smooth the process:
 
-Please note that there is a code freeze imposed starting a week before every release to ensure stability of the codebase and a smooth release process. If you are interested in getting a change into the next release, please submit your change well in advance, so that it is approved and merged in prior to the deadline for the freeze. We are in the process of implementing snapshot releases, so if your change does not make a particular release, the appropriate snapshot release can be used until the next official release is cut.
-
-As a reminder, [opening an issue](https://github.com/opensearch-project/OpenSearch-Benchmark/issues/new/choose) discussing your change before you make it is the best way to smooth the PR process. This will prevent a rejection because someone else is already working on the problem, or because the solution is incompatible with the architectural direction.
-
-During the PR process, expect that there will be some back-and-forth. Please try to respond to comments in a timely fashion, and if you don't wish to continue with the PR, let us know. If a PR takes too many iterations for its complexity or size, we may reject it. Additionally, if you stop responding we may close the PR as abandoned. In either case, if you feel this was done in error, please add a comment on the PR.
-
-If we accept the PR, a [maintainer](MAINTAINERS.md) will merge your change and usually take care of backporting it to appropriate branches ourselves.
-
-If we reject the PR, we will close the pull request with a comment explaining why. This decision isn't always final: if you feel we have misunderstood your intended change or otherwise think that we should reconsider then please continue the conversation with a comment on the PR and we'll do our best to address any further points you raise.
+- Reference the related issue in your PR description.
+- Keep PRs focused; a narrow PR is easier to review than a large one.
+- Respond to review comments in a timely manner.
+- If you stop working on a PR, let us know so we can close or reassign it.
