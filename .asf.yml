@@ -1,0 +1,42 @@
+# Apache Software Foundation repository configuration
+# See https://github.com/apache/infrastructure-asfyaml/blob/main/README.md
+
+github:
+  # Repository metadata
+  description: "Apache Solr Orbit macrobenchmarking framework"
+  homepage: https://apache.github.io/solr-orbit/
+
+  # Enable GitHub Issues; disable unused features
+  features:
+    issues: true
+    wiki: false
+    projects: false
+    discussions: false
+
+  # Allow squash merges only (keeps a linear, clean history)
+  enabled_merge_buttons:
+    squash: true
+    merge: false
+    rebase: false
+
+  # Auto-delete head branch after a PR is merged
+  delete_branch_on_merge: true
+
+  # Branch protection for the default branch
+  protected_branches:
+    main:
+      required_pull_request_reviews:
+        dismiss_stale_reviews: true
+        require_last_push_approval: true
+        required_approving_review_count: 1
+      # Enforce linear history (no merge commits)
+      required_linear_history: true
+      # All PR comments must be resolved before merge
+      required_conversation_resolution: true
+
+notifications:
+  commits: commits@solr.apache.org
+  issues: issues@solr.apache.org
+  pullrequests: issues@solr.apache.org
+  pullrequests_status: dev@solr.apache.org
+  pullrequests_comment: issues@solr.apache.org
