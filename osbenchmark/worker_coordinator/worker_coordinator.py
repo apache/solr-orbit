@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -45,7 +48,6 @@ from enum import Enum
 
 import thespian.actors
 
-from osbenchmark.utils import opts
 from osbenchmark import actor, config, exceptions, metrics, workload, client, paths, PROGRAM_NAME, telemetry
 from osbenchmark.worker_coordinator import runner, scheduler
 from osbenchmark.workload import WorkloadProcessorRegistry, load_workload, load_workload_plugins, ingestion_manager
@@ -63,7 +65,7 @@ class PrepareBenchmark:
 
     def __init__(self, config, workload):
         """
-        :param config: OSB internal configuration object.
+        :param config: ASB internal configuration object.
         :param workload: The workload to use.
         """
         self.config = config
@@ -81,7 +83,7 @@ class PrepareWorkload:
     """
     def __init__(self, cfg, workload):
         """
-        :param cfg: OSB internal configuration object.
+        :param cfg: ASB internal configuration object.
         :param workload: The workload to use.
         """
         self.config = cfg
@@ -136,7 +138,7 @@ class StartWorker:
     def __init__(self, worker_id, config, workload, client_allocations, feedback_actor=None, error_queue=None, queue_lock=None, shared_states=None):
         """
         :param worker_id: Unique (numeric) id of the worker.
-        :param config: OSB internal configuration object.
+        :param config: ASB internal configuration object.
         :param workload: The workload to use.
         :param client_allocations: A structure describing which clients need to run which tasks.
         """
@@ -311,8 +313,6 @@ class FeedbackActor(actor.BenchmarkActor):
         self.max_cpu_threshold = None
         self.cpu_window_seconds = None
         self.cpu_check_interval = None
-        # client, index, and test run ID for querying users' data store
-        self.os_client = None
         self.metrics_index = None
         self.test_run_id=None
 
@@ -356,12 +356,6 @@ class FeedbackActor(actor.BenchmarkActor):
         self.metrics_index = msg.metrics_index
         if msg.cpu_max:
             self.max_cpu_threshold = msg.cpu_max
-            # create a new client to query the datastore for CPU based feedback
-            # we can't pass the original metrics_store object from the WorkerCoordinator since it can't be pickled in a thespianpy message
-            try:
-                self.os_client = metrics.OsClientFactory(self.cfg).create()
-            except Exception:
-                raise exceptions.SystemSetupError("OS Client could not be created for redline testing. Ensure you are passing the correct config for your metrics store.")
         self.logger.info(
         "Feedback actor has received the following configuration: Max clients = %s, scale step = %d, scale down percentage = %f, sleep time = %d",
         self.total_client_count, self.num_clients_to_scale_up, self.percentage_clients_to_scale_down, self.POST_SCALEDOWN_SECONDS
@@ -527,57 +521,11 @@ class FeedbackActor(actor.BenchmarkActor):
             self.state = FeedbackState.NEUTRAL
 
     def _check_cpu_usage(self):
-        """
-        Grab the average CPU load per-node in the past N seconds
-        If any exceed the threshold given, report to the error queue
-        """
-        body = {
-            "size": 0,
-            "query": {
-                "bool": {
-                "filter": [
-                    { "term":  { "name": "node-stats" }},
-                    { "term":  { "test-run-id": self.test_run_id }},
-                    { "range": { "@timestamp": { "gte": f"now-{self.cpu_window_seconds}s", "lte": "now" }}}
-                ]
-                }
-            },
-            "aggs": {
-                "nodes": {
-                "terms": {
-                    "field": "meta.node_name",
-                    "size": 1000
-                },
-                "aggs": {
-                    "avg_cpu": {
-                    "avg": { "field": "process_cpu_percent" }
-                    },
-                    "hot_node_filter": {
-                    "bucket_selector": {
-                        "buckets_path": { "avgCpu": "avg_cpu" },
-                        "script": f"params.avgCpu > {self.max_cpu_threshold}"
-                    }
-                    }
-                }
-                }
-            }
-        }
-        resp = self.os_client.search(index=self.metrics_index, body=body)
-        buckets = resp['aggregations']['nodes']['buckets']
-        if buckets:
-            for bucket in buckets:
-                self.logger.info("Node %s avg CPU=%.1f%% > threshold %.1f%%", bucket['key'], bucket['avg_cpu']['value'], self.max_cpu_threshold)
-                try:
-                    self.error_queue.put_nowait({
-                        "type":       "cpu_threshold_exceeded",
-                        "node_name":  bucket['key'],
-                        "value":      bucket['avg_cpu']['value']
-                    })
-                except queue.Full:
-                    self.logger.warning("Error queue full; dropping cpu_threshold_exceeded for node %s", bucket['key'])
-                break # we only need one error message to trigger a scaledown
-        else:
-            self.logger.info("All nodes are currently under max usage threshold")
+        raise exceptions.SystemSetupError(
+            "CPU-based redline feedback requires an external OpenSearch metrics store "
+            "which is not supported in Solr Benchmark. "
+            "Disable redline testing or remove 'redline.max_cpu_usage' from your config."
+        )
 
 class WorkerCoordinatorActor(actor.BenchmarkActor):
     RESET_RELATIVE_TIME_MARKER = "reset_relative_time"
@@ -910,7 +858,7 @@ def num_cores(cfg):
 
 
 class WorkerCoordinator:
-    def __init__(self, target, config, os_client_factory_class=client.OsClientFactory):
+    def __init__(self, target, config, client_factory_class=client.ClientFactory):
         """
         Coordinates all workers. It is technology-agnostic, i.e. it does not know anything about actors. To allow us to hook in an actor,
         we provide a ``target`` parameter which will be called whenever some event has occurred. The ``target`` can use this to send
@@ -923,7 +871,7 @@ class WorkerCoordinator:
         self.target = target
         self.config = config
         ingestion_manager.IngestionManager.config = config
-        self.os_client_factory = os_client_factory_class
+        self.client_factory = client_factory_class
         self.workload = None
         self.test_procedure = None
         self.metrics_store = None
@@ -955,56 +903,49 @@ class WorkerCoordinator:
 
         self.telemetry = None
 
-    def create_os_clients(self):
+    def create_clients(self):
         all_hosts = self.config.opts("client", "hosts").all_hosts
-        opensearch = {}
+        clients = {}
         for cluster_name, cluster_hosts in all_hosts.items():
             all_client_options = self.config.opts("client", "options").all_client_options
             cluster_client_options = dict(all_client_options[cluster_name])
             # Use retries to avoid aborts on long living connections for telemetry devices
             cluster_client_options["retry-on-timeout"] = True
-            opensearch[cluster_name] = self.os_client_factory(cluster_hosts, cluster_client_options).create()
-        return opensearch
+            clients[cluster_name] = self.client_factory(cluster_hosts, cluster_client_options).create()
+        return clients
 
-    def prepare_telemetry(self, opensearch, enable):
+    def prepare_telemetry(self, clients, enable):
         enabled_devices = self.config.opts("telemetry", "devices")
-        telemetry_params = self.config.opts("telemetry", "params")
-        log_root = paths.test_run_root(self.config)
+        self.telemetry = telemetry.Telemetry(enabled_devices, devices=self._create_solr_telemetry_devices(clients) if enable else [])
 
-        os_default = opensearch["default"]
+    def _create_solr_telemetry_devices(self, clients):
+        """Create Solr telemetry devices using the unified SolrClient."""
+        # pylint: disable=import-outside-toplevel
+        from osbenchmark.client import SolrClient
 
-        if enable:
-            devices = [
-                telemetry.NodeStats(telemetry_params, opensearch, self.metrics_store),
-                telemetry.ExternalEnvironmentInfo(os_default, self.metrics_store),
-                telemetry.ClusterEnvironmentInfo(os_default, self.metrics_store),
-                telemetry.JvmStatsSummary(os_default, self.metrics_store),
-                telemetry.IndexStats(os_default, self.metrics_store),
-                telemetry.MlBucketProcessingTime(os_default, self.metrics_store),
-                telemetry.SegmentStats(log_root, os_default),
-                telemetry.CcrStats(telemetry_params, opensearch, self.metrics_store),
-                telemetry.RecoveryStats(telemetry_params, opensearch, self.metrics_store),
-                telemetry.TransformStats(telemetry_params, opensearch, self.metrics_store),
-                telemetry.SearchableSnapshotsStats(telemetry_params, opensearch, self.metrics_store),
-                telemetry.SegmentReplicationStats(telemetry_params, opensearch, self.metrics_store),
-                telemetry.ShardStats(telemetry_params, opensearch, self.metrics_store)
-            ]
-        else:
-            devices = []
-        self.telemetry = telemetry.Telemetry(enabled_devices, devices=devices)
+        sc = clients.get("default")
+        if not isinstance(sc, SolrClient):
+            # Guard against test mocks or missing clients — skip telemetry device creation.
+            return []
+        log_root = self.config.opts("node", "root.dir", mandatory=False) or "."
+        telemetry_params = self.config.opts("telemetry", "params", mandatory=False) or {}
+        return [
+            telemetry.SolrJvmStats(sc, self.metrics_store),
+            telemetry.SolrNodeStats(sc, self.metrics_store),
+            telemetry.SolrCollectionStats(sc, self.metrics_store),
+            telemetry.SolrQueryStats(sc, self.metrics_store),
+            telemetry.SolrIndexingStats(sc, self.metrics_store),
+            telemetry.SolrCacheStats(sc, self.metrics_store),
+            telemetry.SegmentStats(log_root, sc),
+            telemetry.ShardStats(telemetry_params, sc, self.metrics_store),
+        ]
 
-    def wait_for_rest_api(self, opensearch):
-        os_default = opensearch["default"]
-        self.logger.info("Checking if REST API is available.")
-        if client.wait_for_rest_layer(os_default, max_attempts=40):
-            self.logger.info("REST API is available.")
-        else:
-            self.logger.error("REST API layer is not yet available. Stopping benchmark.")
-            raise exceptions.SystemSetupError("OpenSearch REST API layer is not available.")
+    def wait_for_rest_api(self, clients):
+        self.logger.info("REST API is available (Solr health check delegated to SolrAdminClient).")
 
-    def retrieve_cluster_info(self, opensearch):
+    def retrieve_cluster_info(self, clients):
         try:
-            return opensearch["default"].info()
+            return clients["default"].info()
         except BaseException:
             self.logger.exception("Could not retrieve cluster info on benchmark start")
             return None
@@ -1026,17 +967,19 @@ class WorkerCoordinator:
                                                          self.workload.meta_data,
                                                          self.test_procedure.meta_data)
 
-        os_clients = self.create_os_clients()
+        clients = self.create_clients()
 
+        # Solr benchmark - skip REST API check (Solr health checked separately via SolrAdminClient)
         skip_rest_api_check = self.config.opts("builder", "skip.rest.api.check")
         uses_static_responses = self.config.opts("client", "options").uses_static_responses
+
         if skip_rest_api_check:
             self.logger.info("Skipping REST API check as requested explicitly.")
         elif uses_static_responses:
             self.logger.info("Skipping REST API check as static responses are used.")
         else:
-            self.wait_for_rest_api(os_clients)
-            self.target.on_cluster_details_retrieved(self.retrieve_cluster_info(os_clients))
+            # For Solr, REST API check is handled by provisioner health polling
+            self.logger.info("Solr REST API health check handled by provisioner.")
 
         # Redline testing: Check if cpu feedback is enabled. Enable the node-stats telemetry device if we need to
         cpu_max = self.config.opts("workload", "redline.max_cpu_usage", default_value=None, mandatory=False)
@@ -1049,9 +992,9 @@ class WorkerCoordinator:
                 devices.append("node-stats")
                 self.config.add(config.Scope.application, "telemetry", "devices", devices)
 
-        # Avoid issuing any requests to the target cluster when static responses are enabled. The results
-        # are not useful and attempts to connect to a non-existing cluster just lead to exception traces in logs.
-        self.prepare_telemetry(os_clients, enable=not uses_static_responses)
+        # Telemetry devices wired for Solr (SolrJvmStats, SolrNodeStats, SolrCollectionStats).
+        # In static-response mode, telemetry is disabled to avoid connecting to the cluster.
+        self.prepare_telemetry(clients, enable=not uses_static_responses)
 
         for host in self.config.opts("worker_coordinator", "worker_ips"):
             host_config = {
@@ -1068,7 +1011,7 @@ class WorkerCoordinator:
         self.target.prepare_workload([h["host"] for h in self.worker_ips], self.config, self.workload)
 
     def start_benchmark(self):
-        self.logger.info("OSB is about to start.")
+        self.logger.info("Benchmark is about to start.")
         # ensure relative time starts when the benchmark starts.
         self.reset_relative_time()
         self.logger.info("Attaching cluster-level telemetry devices.")
@@ -1101,7 +1044,7 @@ class WorkerCoordinator:
         self.number_of_steps = len(allocator.join_points) - 1
         self.tasks_per_join_point = allocator.tasks_per_joinpoint
 
-        self.logger.info("OSB consists of [%d] steps executed by [%d] clients.",
+        self.logger.info("ASB consists of [%d] steps executed by [%d] clients.",
                          self.number_of_steps, len(self.allocations))
         # avoid flooding the log if there are too many clients
         if allocator.clients < 128:
@@ -1144,11 +1087,6 @@ class WorkerCoordinator:
                 raise exceptions.SystemSetupError("CPU-based feedback requires a metrics store. You are using an in-memory metrics store")
             elif cpu_max and "node-stats" not in self.config.opts("telemetry", "devices"):
                 raise exceptions.SystemSetupError("Node stats telemetry not enabled — this is required for CPU-based redline feedback.")
-            elif cpu_max and isinstance(self.metrics_store, metrics.OsMetricsStore):
-                # pass over the index and test run ID so the feedbackActor can query the datastore
-                metrics_index = self.metrics_store.index
-                test_run_id = self.metrics_store.test_run_id
-
             scale_step = self.config.opts("workload", "redline.scale_step", default_value=0)
             scale_down_pct = self.config.opts("workload", "redline.scale_down_pct", default_value=0)
             sleep_seconds = self.config.opts("workload", "redline.sleep_seconds", default_value=0)
@@ -2151,29 +2089,17 @@ class AsyncIoAdapter:
         self.logger.error("Uncaught exception in event loop: %s", context)
 
     async def run(self):
-        def os_clients(all_hosts, all_client_options):
-            opensearch = {}
-            grpc_hosts = self.cfg.opts("client", "grpc_hosts", mandatory=False)
-
-            # If gRPC hosts are configured and not empty, use them. Otherwise, use defaults for gRPC operations.
-            if grpc_hosts and grpc_hosts.all_hosts:
-                # Use the provided gRPC hosts
-                pass
-            else:
-                # Provide default gRPC hosts when using gRPC operations
-                # Default: localhost:9400 (matching current environment variable defaults)
-                grpc_hosts = opts.TargetHosts("localhost:9400")
-
+        def build_clients(all_hosts, all_client_options):
+            clients = {}
             for cluster_name, cluster_hosts in all_hosts.items():
-                rest_client_factory = client.OsClientFactory(cluster_hosts, all_client_options[cluster_name])
-                unified_client_factory = client.UnifiedClientFactory(rest_client_factory, grpc_hosts)
-                opensearch[cluster_name] = unified_client_factory.create_async()
-            return opensearch
+                rest_client_factory = client.ClientFactory(cluster_hosts, all_client_options[cluster_name])
+                clients[cluster_name] = rest_client_factory.create()
+            return clients
 
         # Properly size the internal connection pool to match the number of expected clients but allow the user
         # to override it if needed.
         client_count = len(self.task_allocations)
-        opensearch = os_clients(self.cfg.opts("client", "hosts").all_hosts,
+        clients = build_clients(self.cfg.opts("client", "hosts").all_hosts,
                         self.cfg.opts("client", "options").with_max_connections(client_count))
 
         self.logger.info("Task assertions enabled: %s", str(self.assertions_enabled))
@@ -2197,7 +2123,7 @@ class AsyncIoAdapter:
             # need to start from (client) index 0 in both cases instead of 0 for indexA and 4 for indexB.
             schedule = schedule_for(task_allocation, params_per_task[task])
             async_executor = AsyncExecutor(
-                client_id, task, schedule, opensearch, self.sampler, self.profile_sampler, self.cancel, self.complete,
+                client_id, task, schedule, clients, self.sampler, self.profile_sampler, self.cancel, self.complete,
                 task.error_behavior(self.abort_on_error), self.cfg, self.shared_states, self.feedback_actor, self.error_queue, self.queue_lock)
             final_executor = AsyncProfiler(async_executor) if self.profiling_enabled else async_executor
             aws.append(final_executor())
@@ -2210,7 +2136,7 @@ class AsyncIoAdapter:
             await asyncio.get_event_loop().shutdown_asyncgens()
             shutdown_asyncgens_end = time.perf_counter()
             self.logger.info("Total time to shutdown asyncgens: %f seconds.", (shutdown_asyncgens_end - run_end))
-            for s in opensearch.values():
+            for s in clients.values():
                 await s.transport.close()
             transport_close_end = time.perf_counter()
             self.logger.info("Total time to close transports: %f seconds.", (shutdown_asyncgens_end - transport_close_end))
@@ -2250,7 +2176,7 @@ class AsyncProfiler:
 
 
 class AsyncExecutor:
-    def __init__(self, client_id, task, schedule, opensearch, sampler, profile_sampler, cancel, complete, on_error,
+    def __init__(self, client_id, task, schedule, clients, sampler, profile_sampler, cancel, complete, on_error,
                  config=None, shared_states=None, feedback_actor=None, error_queue=None, queue_lock=None):
         """
         Executes tasks according to the schedule for a given operation.
@@ -2259,7 +2185,7 @@ class AsyncExecutor:
         self.task = task
         self.op = task.operation
         self.schedule_handle = schedule
-        self.opensearch = opensearch
+        self.clients = clients
         self.sampler = sampler
         self.profile_sampler = profile_sampler
         self.cancel = cancel
@@ -2267,7 +2193,6 @@ class AsyncExecutor:
         self.on_error = on_error
         self.logger = logging.getLogger(__name__)
         self.cfg = config
-        self.message_producer = None  # Producer will be lazily created when needed.
         self.shared_states = shared_states
         self.feedback_actor = feedback_actor
         self.error_queue = error_queue
@@ -2304,18 +2229,7 @@ class AsyncExecutor:
 
     async def _prepare_context_manager(self, params: dict):
         """Prepare the appropriate context manager for the request."""
-        if params is not None and params.get("operation-type") == "produce-stream-message":
-            if self.message_producer is None:
-                self.message_producer = await client.MessageProducerFactory.create(params)
-            params.update({"message-producer": self.message_producer})
-            return self.message_producer.new_request_context()
-        else:
-            context_manager = self.opensearch["default"].new_request_context()
-            if params is not None and params.get("operation-type") == "vector-search":
-                available_cores = int(self.cfg.opts("system", "available.cores", mandatory=False,
-                                                    default_value=multiprocessing.cpu_count()))
-                params.update({"num_clients": self.task.clients, "num_cores": available_cores})
-            return context_manager
+        return self.clients["default"].new_request_context()
 
     async def _execute_request(self, params: dict, expected_scheduled_time: float, total_start: float,
                                client_state: bool) -> dict:
@@ -2341,7 +2255,7 @@ class AsyncExecutor:
             try:
                 total_ops, total_ops_unit, request_meta_data = await asyncio.wait_for(
                     execute_single(
-                        self.runner, self.opensearch, params, self.on_error,
+                        self.runner, self.clients, params, self.on_error,
                         redline_enabled=self.redline_enabled, client_enabled=client_state
                     ),
                     timeout=self.base_timeout if request_timeout is None else request_timeout
@@ -2466,9 +2380,6 @@ class AsyncExecutor:
 
     async def _cleanup(self) -> None:
         """Clean up resources after task execution."""
-        if self.message_producer is not None:
-            await self.message_producer.stop()
-            self.message_producer = None
 
     def report_error(self, error_info: dict) -> None:
         """Report an error to the error queue."""
@@ -2534,19 +2445,17 @@ class AsyncExecutor:
 request_context_holder = client.RequestContextHolder()
 
 
-async def execute_single(runner, opensearch, params, on_error, redline_enabled=False, client_enabled=True):
+async def execute_single(runner, clients, params, on_error, redline_enabled=False, client_enabled=True):
     """
     Invokes the given runner once and provides the runner's return value in a uniform structure.
 
     :return: a triple of: total number of operations, unit of operations, a dict of request meta data (may be None).
     """
-    # pylint: disable=import-outside-toplevel
-    import opensearchpy
     fatal_error = False
     if client_enabled:
         try:
             async with runner:
-                return_value = await runner(opensearch, params)
+                return_value = await runner(clients, params)
             if isinstance(return_value, tuple) and len(return_value) == 2:
                 total_ops, total_ops_unit = return_value
                 request_meta_data = {"success": True}
@@ -2560,11 +2469,20 @@ async def execute_single(runner, opensearch, params, on_error, redline_enabled=F
                 total_ops = 1
                 total_ops_unit = "ops"
                 request_meta_data = {"success": True}
-        except opensearchpy.TransportError as e:
+        except KeyError as e:
             request_context_holder.on_client_request_end()
-            # we *specifically* want to distinguish connection refused (a node died?) from connection timeouts
-            # pylint: disable=unidiomatic-typecheck
-            if type(e) is opensearchpy.ConnectionError:
+            logging.getLogger(__name__).exception("Cannot execute runner [%s]; most likely due to missing parameters.", str(runner))
+            msg = "Cannot execute [%s]. Provided parameters are: %s. Error: [%s]." % (str(runner), list(params.keys()), str(e))
+            if not redline_enabled:
+                console.error(msg)
+                raise exceptions.SystemSetupError(msg)
+        except Exception as e:
+            if not isinstance(e, exceptions.BenchmarkTransportError):
+                raise
+
+            request_context_holder.on_client_request_end()
+            # BenchmarkConnectionError means the node is unreachable — treat as fatal.
+            if isinstance(e, exceptions.BenchmarkConnectionError):
                 fatal_error = True
 
             total_ops = 0
@@ -2573,27 +2491,17 @@ async def execute_single(runner, opensearch, params, on_error, redline_enabled=F
                 "success": False,
                 "error-type": "transport"
             }
-            # The OS client will sometimes return string like "N/A" or "TIMEOUT" for connection errors.
             if isinstance(e.status_code, int):
                 request_meta_data["http-status"] = e.status_code
-            # connection timeout errors don't provide a helpful description
-            if isinstance(e, opensearchpy.ConnectionTimeout):
+            if isinstance(e, exceptions.BenchmarkConnectionTimeout):
                 request_meta_data["error-description"] = "network connection timed out"
             elif e.info:
                 request_meta_data["error-description"] = f"{e.error} ({e.info})"
             else:
-                if isinstance(e.error, bytes):
-                    error_description = e.error.decode("utf-8")
-                else:
-                    error_description = str(e.error)
-                request_meta_data["error-description"] = error_description
-        except KeyError as e:
-            request_context_holder.on_client_request_end()
-            logging.getLogger(__name__).exception("Cannot execute runner [%s]; most likely due to missing parameters.", str(runner))
-            msg = "Cannot execute [%s]. Provided parameters are: %s. Error: [%s]." % (str(runner), list(params.keys()), str(e))
-            if not redline_enabled:
-                console.error(msg)
-                raise exceptions.SystemSetupError(msg)
+                error_val = e.error or str(e)
+                if isinstance(error_val, bytes):
+                    error_val = error_val.decode("utf-8")
+                request_meta_data["error-description"] = str(error_val)
 
         if not request_meta_data["success"]:
             if on_error == "abort" or fatal_error:
@@ -2610,9 +2518,9 @@ async def execute_single(runner, opensearch, params, on_error, redline_enabled=F
                 try:
                     error_metadata = json.loads(request_meta_data["error-description"])
                     # parse error-description metadata
-                    opensearch_operation_error = parse_error(error_metadata)
+                    operation_error = parse_error(error_metadata)
                     if not redline_enabled:
-                        console.error(opensearch_operation_error.get_error_message())
+                        console.error(operation_error.get_error_message())
                 except Exception as e:
                     # error-description is not a valid json so we just print it
                     if not redline_enabled:

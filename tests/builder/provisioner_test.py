@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -28,14 +31,13 @@ import tempfile
 import unittest.mock as mock
 from unittest import TestCase
 
-from osbenchmark import exceptions
 from osbenchmark.builder import provisioner, cluster_config
 
 HOME_DIR = os.path.expanduser("~")
 
 
 class BareProvisionerTests(TestCase):
-    @mock.patch("glob.glob", lambda p: ["/opt/opensearch-1.0.0"])
+    @mock.patch("glob.glob", lambda p: ["/opt/solr-9.0.0"])
     @mock.patch("osbenchmark.utils.io.decompress")
     @mock.patch("osbenchmark.utils.io.ensure_dir")
     @mock.patch("shutil.rmtree")
@@ -45,7 +47,7 @@ class BareProvisionerTests(TestCase):
         def null_apply_config(source_root_path, target_root_path, config_vars):
             apply_config_calls.append((source_root_path, target_root_path, config_vars))
 
-        installer = provisioner.OpenSearchInstaller(cluster_config=
+        installer = provisioner.NodeInstaller(cluster_config=
         cluster_config.ClusterConfigInstance(
             names="unit-test-cluster-config-instance",
             root_path=None,
@@ -57,22 +59,21 @@ class BareProvisionerTests(TestCase):
             all_node_ips=["10.17.22.22", "10.17.22.23"],
             all_node_names=["benchmark-node-0", "benchmark-node-1"],
             ip="10.17.22.23",
-            http_port=9200)
+            http_port=8983)
 
         p = provisioner.BareProvisioner(os_installer=installer,
-                                        plugin_installers=[],
                                         apply_config=null_apply_config)
 
-        node_config = p.prepare({"opensearch": "/opt/opensearch-1.0.0.tar.gz"})
+        node_config = p.prepare({"solr": "/opt/solr-9.0.0.tar.gz"})
         self.assertEqual("8", node_config.cluster_config_runtime_jdks)
-        self.assertEqual("/opt/opensearch-1.0.0", node_config.binary_path)
-        self.assertEqual(["/opt/opensearch-1.0.0/data"], node_config.data_paths)
+        self.assertEqual("/opt/solr-9.0.0", node_config.binary_path)
+        self.assertEqual(["/opt/solr-9.0.0/data"], node_config.data_paths)
 
         self.assertEqual(1, len(apply_config_calls))
         source_root_path, target_root_path, config_vars = apply_config_calls[0]
 
         self.assertEqual(HOME_DIR + "/.benchmark/benchmarks/cluster_configs/default/my-cluster-config-instance", source_root_path)
-        self.assertEqual("/opt/opensearch-1.0.0", target_root_path)
+        self.assertEqual("/opt/solr-9.0.0", target_root_path)
         self.assertEqual({
             "cluster_settings": {
             },
@@ -81,17 +82,17 @@ class BareProvisionerTests(TestCase):
             "runtime.jdk.bundled": "true",
             "cluster_name": "benchmark-provisioned-cluster",
             "node_name": "benchmark-node-0",
-            "data_paths": ["/opt/opensearch-1.0.0/data"],
+            "data_paths": ["/opt/solr-9.0.0/data"],
             "log_path": HOME_DIR + "/.benchmark/benchmarks/test_runs/unittest/logs/server",
             "heap_dump_path": HOME_DIR + "/.benchmark/benchmarks/test_runs/unittest/heapdump",
             "node_ip": "10.17.22.23",
             "network_host": "10.17.22.23",
-            "http_port": "9200",
-            "transport_port": "9300",
+            "http_port": "8983",
+            "zookeeper_port": "9983",
             "all_node_ips": "[\"10.17.22.22\",\"10.17.22.23\"]",
             "all_node_names": "[\"benchmark-node-0\",\"benchmark-node-1\"]",
             "minimum_master_nodes": 2,
-            "install_root_path": "/opt/opensearch-1.0.0"
+            "install_root_path": "/opt/solr-9.0.0"
         }, config_vars)
 
     class NoopHookHandler:
@@ -122,13 +123,13 @@ class NoopHookHandler:
         }
 
 
-class OpenSearchInstallerTests(TestCase):
-    @mock.patch("glob.glob", lambda p: ["/install/opensearch-5.0.0-SNAPSHOT"])
+class NodeInstallerTests(TestCase):
+    @mock.patch("glob.glob", lambda p: ["/install/solr-9.0.0"])
     @mock.patch("osbenchmark.utils.io.decompress")
     @mock.patch("osbenchmark.utils.io.ensure_dir")
     @mock.patch("shutil.rmtree")
     def test_prepare_default_data_paths(self, mock_rm, mock_ensure_dir, mock_decompress):
-        installer = provisioner.OpenSearchInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
+        installer = provisioner.NodeInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
                                                                     root_path=None,
                                                                     config_paths="/tmp"),
                                                        java_home="/usr/local/javas/java8",
@@ -140,32 +141,32 @@ class OpenSearchInstallerTests(TestCase):
                                                        node_root_dir=HOME_DIR + "/.benchmark/benchmarks/test_runs/unittest")
 
         installer.install("/data/builds/distributions")
-        self.assertEqual(installer.os_home_path, "/install/opensearch-5.0.0-SNAPSHOT")
+        self.assertEqual(installer.os_home_path, "/install/solr-9.0.0")
 
         self.assertEqual({
             "cluster_name": "benchmark-provisioned-cluster",
             "node_name": "benchmark-node-0",
-            "data_paths": ["/install/opensearch-5.0.0-SNAPSHOT/data"],
+            "data_paths": ["/install/solr-9.0.0/data"],
             "log_path": HOME_DIR + "/.benchmark/benchmarks/test_runs/unittest/logs/server",
             "heap_dump_path": HOME_DIR + "/.benchmark/benchmarks/test_runs/unittest/heapdump",
             "node_ip": "10.17.22.23",
             "network_host": "10.17.22.23",
             "http_port": "9200",
-            "transport_port": "9300",
+            "zookeeper_port": "10200",
             "all_node_ips": "[\"10.17.22.22\",\"10.17.22.23\"]",
             "all_node_names": "[\"benchmark-node-0\",\"benchmark-node-1\"]",
             "minimum_master_nodes": 2,
-            "install_root_path": "/install/opensearch-5.0.0-SNAPSHOT"
+            "install_root_path": "/install/solr-9.0.0"
         }, installer.variables)
 
-        self.assertEqual(installer.data_paths, ["/install/opensearch-5.0.0-SNAPSHOT/data"])
+        self.assertEqual(installer.data_paths, ["/install/solr-9.0.0/data"])
 
-    @mock.patch("glob.glob", lambda p: ["/install/opensearch-5.0.0-SNAPSHOT"])
+    @mock.patch("glob.glob", lambda p: ["/install/solr-9.0.0"])
     @mock.patch("osbenchmark.utils.io.decompress")
     @mock.patch("osbenchmark.utils.io.ensure_dir")
     @mock.patch("shutil.rmtree")
     def test_prepare_user_provided_data_path(self, mock_rm, mock_ensure_dir, mock_decompress):
-        installer = provisioner.OpenSearchInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
+        installer = provisioner.NodeInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
                                                                     root_path=None,
                                                                     config_paths="/tmp",
                                                                     variables={"data_paths": "/tmp/some/data-path-dir"}),
@@ -178,7 +179,7 @@ class OpenSearchInstallerTests(TestCase):
                                                        node_root_dir="~/.benchmark/benchmarks/test_runs/unittest")
 
         installer.install("/data/builds/distributions")
-        self.assertEqual(installer.os_home_path, "/install/opensearch-5.0.0-SNAPSHOT")
+        self.assertEqual(installer.os_home_path, "/install/solr-9.0.0")
 
         self.assertEqual({
             "cluster_name": "benchmark-provisioned-cluster",
@@ -189,17 +190,17 @@ class OpenSearchInstallerTests(TestCase):
             "node_ip": "10.17.22.23",
             "network_host": "10.17.22.23",
             "http_port": "9200",
-            "transport_port": "9300",
+            "zookeeper_port": "10200",
             "all_node_ips": "[\"10.17.22.22\",\"10.17.22.23\"]",
             "all_node_names": "[\"benchmark-node-0\",\"benchmark-node-1\"]",
             "minimum_master_nodes": 2,
-            "install_root_path": "/install/opensearch-5.0.0-SNAPSHOT"
+            "install_root_path": "/install/solr-9.0.0"
         }, installer.variables)
 
         self.assertEqual(installer.data_paths, ["/tmp/some/data-path-dir"])
 
     def test_invokes_hook_with_java_home(self):
-        installer = provisioner.OpenSearchInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
+        installer = provisioner.NodeInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
                                                                     root_path="/tmp",
                                                                     config_paths="/tmp/templates",
                                                                     variables={"data_paths": "/tmp/some/data-path-dir"}),
@@ -220,7 +221,7 @@ class OpenSearchInstallerTests(TestCase):
                          installer.hook_handler.hook_calls["post_install"]["kwargs"])
 
     def test_invokes_hook_no_java_home(self):
-        installer = provisioner.OpenSearchInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
+        installer = provisioner.NodeInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
                                                                     root_path="/tmp",
                                                                     config_paths="/tmp/templates",
                                                                     variables={"data_paths": "/tmp/some/data-path-dir"}),
@@ -232,138 +233,6 @@ class OpenSearchInstallerTests(TestCase):
                                                        http_port=9200,
                                                        node_root_dir="~/.benchmark/benchmarks/test_runs/unittest",
                                                        hook_handler_class=NoopHookHandler)
-
-        self.assertEqual(0, len(installer.hook_handler.hook_calls))
-        installer.invoke_install_hook(cluster_config.BootstrapPhase.post_install, {"foo": "bar"})
-        self.assertEqual(1, len(installer.hook_handler.hook_calls))
-        self.assertEqual({"foo": "bar"}, installer.hook_handler.hook_calls["post_install"]["variables"])
-        self.assertEqual({"env": {}}, installer.hook_handler.hook_calls["post_install"]["kwargs"])
-
-
-class PluginInstallerTests(TestCase):
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
-    def test_install_plugin_successfully(self, installer_subprocess):
-        installer_subprocess.return_value = "output", 0
-
-        plugin = cluster_config.PluginDescriptor(name="unit-test-plugin", config="default", variables={"active": True})
-        installer = provisioner.PluginInstaller(plugin,
-                                                java_home="/usr/local/javas/java8",
-                                                hook_handler_class=NoopHookHandler)
-
-        installer.install(os_home_path="/opt/opensearch")
-
-        installer_subprocess.assert_called_with(
-            '/opt/opensearch/bin/opensearch-plugin install --batch "unit-test-plugin"',
-            env={"JAVA_HOME": "/usr/local/javas/java8"}, capture_output=True)
-
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
-    def test_install_plugin_with_bundled_jdk(self, installer_subprocess):
-        installer_subprocess.return_value = "output", 0
-
-        plugin = cluster_config.PluginDescriptor(name="unit-test-plugin", config="default", variables={"active": True})
-        installer = provisioner.PluginInstaller(plugin,
-                                                # bundled JDK
-                                                java_home=None,
-                                                hook_handler_class=NoopHookHandler)
-
-        installer.install(os_home_path="/opt/opensearch")
-
-        installer_subprocess.assert_called_with(
-            '/opt/opensearch/bin/opensearch-plugin install --batch "unit-test-plugin"',
-            env={}, capture_output=True)
-
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
-    def test_install_unknown_plugin(self, installer_subprocess):
-        # unknown plugin
-        installer_subprocess.return_value = "output", 64
-
-        plugin = cluster_config.PluginDescriptor(name="unknown")
-        installer = provisioner.PluginInstaller(plugin,
-                                                java_home="/usr/local/javas/java8",
-                                                hook_handler_class=NoopHookHandler)
-
-        with self.assertRaises(exceptions.SystemSetupError) as ctx:
-            installer.install(os_home_path="/opt/opensearch")
-        self.assertEqual("Unknown plugin [unknown]", ctx.exception.args[0])
-
-        installer_subprocess.assert_called_with(
-            '/opt/opensearch/bin/opensearch-plugin install --batch "unknown"',
-            env={"JAVA_HOME": "/usr/local/javas/java8"}, capture_output=True)
-
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
-    def test_install_plugin_with_io_error(self, installer_subprocess):
-        # I/O error
-        installer_subprocess.return_value = "output", 74
-
-        plugin = cluster_config.PluginDescriptor(name="simple")
-        installer = provisioner.PluginInstaller(plugin,
-                                                java_home="/usr/local/javas/java8",
-                                                hook_handler_class=NoopHookHandler)
-
-        with self.assertRaises(exceptions.SupplyError) as ctx:
-            installer.install(os_home_path="/opt/opensearch")
-        self.assertEqual("I/O error while trying to install [simple]", ctx.exception.args[0])
-
-        installer_subprocess.assert_called_with(
-            '/opt/opensearch/bin/opensearch-plugin install --batch "simple"',
-            env={"JAVA_HOME": "/usr/local/javas/java8"}, capture_output=True)
-
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
-    def test_install_plugin_with_unknown_error(self, installer_subprocess):
-        # some other error
-        installer_subprocess.return_value = "output", 12987
-
-        plugin = cluster_config.PluginDescriptor(name="simple")
-        installer = provisioner.PluginInstaller(plugin,
-                                                java_home="/usr/local/javas/java8",
-                                                hook_handler_class=NoopHookHandler)
-
-        with self.assertRaises(exceptions.BenchmarkError) as ctx:
-            installer.install(os_home_path="/opt/opensearch")
-        self.assertEqual("Unknown error 'output' while trying to install [simple] (installer return code [12987]). Please check the logs.",
-                         ctx.exception.args[0])
-
-        installer_subprocess.assert_called_with(
-            '/opt/opensearch/bin/opensearch-plugin install --batch "simple"',
-            env={"JAVA_HOME": "/usr/local/javas/java8"}, capture_output=True)
-
-    def test_pass_plugin_properties(self):
-        plugin = cluster_config.PluginDescriptor(name="unit-test-plugin",
-                                       config="default",
-                                       config_paths=["/etc/plugin"],
-                                       variables={"active": True})
-        installer = provisioner.PluginInstaller(plugin,
-                                                java_home="/usr/local/javas/java8",
-                                                hook_handler_class=NoopHookHandler)
-
-        self.assertEqual("unit-test-plugin", installer.plugin_name)
-        self.assertEqual({"active": True}, installer.variables)
-        self.assertEqual(["/etc/plugin"], installer.config_source_paths)
-
-    def test_invokes_hook_with_java_home(self):
-        plugin = cluster_config.PluginDescriptor(name="unit-test-plugin",
-                                       config="default",
-                                       config_paths=["/etc/plugin"],
-                                       variables={"active": True})
-        installer = provisioner.PluginInstaller(plugin,
-                                                java_home="/usr/local/javas/java8",
-                                                hook_handler_class=NoopHookHandler)
-
-        self.assertEqual(0, len(installer.hook_handler.hook_calls))
-        installer.invoke_install_hook(cluster_config.BootstrapPhase.post_install, {"foo": "bar"})
-        self.assertEqual(1, len(installer.hook_handler.hook_calls))
-        self.assertEqual({"foo": "bar"}, installer.hook_handler.hook_calls["post_install"]["variables"])
-        self.assertEqual({"env": {"JAVA_HOME": "/usr/local/javas/java8"}},
-                         installer.hook_handler.hook_calls["post_install"]["kwargs"])
-
-    def test_invokes_hook_no_java_home(self):
-        plugin = cluster_config.PluginDescriptor(name="unit-test-plugin",
-                                       config="default",
-                                       config_paths=["/etc/plugin"],
-                                       variables={"active": True})
-        installer = provisioner.PluginInstaller(plugin,
-                                                java_home=None,
-                                                hook_handler_class=NoopHookHandler)
 
         self.assertEqual(0, len(installer.hook_handler.hook_calls))
         installer.invoke_install_hook(cluster_config.BootstrapPhase.post_install, {"foo": "bar"})
@@ -385,13 +254,13 @@ class DockerProvisionerTests(TestCase):
         benchmark_root = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, "osbenchmark"))
 
         c = cluster_config.ClusterConfigInstance("unit-test-cluster-config-instance", None, "/tmp", variables={
-            "docker_image": "opensearchproject/opensearch"
+            "docker_image": "solr"
         })
 
         docker = provisioner.DockerProvisioner(cluster_config=c,
                                                node_name="benchmark-node-0",
                                                ip="10.17.22.33",
-                                               http_port=39200,
+                                               http_port=38983,
                                                node_root_dir=node_root_dir,
                                                distribution_version="1.1.0",
                                                benchmark_root=benchmark_root)
@@ -399,26 +268,26 @@ class DockerProvisionerTests(TestCase):
         self.assertDictEqual({
             "cluster_name": "benchmark-provisioned-cluster",
             "node_name": "benchmark-node-0",
-            "install_root_path": "/usr/share/opensearch",
-            "data_paths": ["/usr/share/opensearch/data"],
-            "log_path": "/var/log/opensearch",
-            "heap_dump_path": "/usr/share/opensearch/heapdump",
+            "install_root_path": "/var/solr",
+            "data_paths": ["/var/solr/data"],
+            "log_path": "/var/solr/logs",
+            "heap_dump_path": "/var/solr/heapdump",
             "discovery_type": "single-node",
             "network_host": "0.0.0.0",
-            "http_port": "39200",
-            "transport_port": "39300",
+            "http_port": "38983",
+            "zookeeper_port": "39983",
             "cluster_settings": {
             },
-            "docker_image": "opensearchproject/opensearch"
+            "docker_image": "solr"
         }, docker.config_vars)
 
         self.assertDictEqual({
-            "os_data_dir": data_dir,
-            "os_log_dir": log_dir,
-            "os_heap_dump_dir": heap_dump_dir,
-            "os_version": "1.1.0",
-            "docker_image": "opensearchproject/opensearch",
-            "http_port": 39200,
+            "solr_data_dir": data_dir,
+            "solr_log_dir": log_dir,
+            "solr_heap_dump_dir": heap_dump_dir,
+            "solr_version": "1.1.0",
+            "docker_image": "solr",
+            "http_port": 38983,
             "mounts": {}
         }, docker.docker_vars(mounts={}))
 
@@ -427,45 +296,35 @@ class DockerProvisionerTests(TestCase):
         self.assertEqual(
 """version: '3'
 services:
-  opensearch-node1:
-    image: opensearchproject/opensearch:1.1.0
-    container_name: opensearch-node1
+  solr-node1:
+    image: solr:1.1.0
+    container_name: solr-node1
     labels:
-      io.benchmark.description: "opensearch-benchmark"
+      io.benchmark.description: "solr-benchmark"
     environment:
-      - cluster.name=opensearch-cluster
-      - node.name=opensearch-node1
-      - discovery.seed_hosts=opensearch-node1
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "SOLR_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
-      memlock:
-        soft: -1
-        hard: -1
       nofile:
         soft: 65536
         hard: 65536
     volumes:
-      - %s:/usr/share/opensearch/data
-      - %s:/var/log/opensearch
-      - %s:/usr/share/opensearch/heapdump
+      - %s:/var/solr/data
+      - %s:/var/solr/logs
+      - %s:/var/solr/heapdump
     ports:
-      - 39200:39200
-      - 9200:9200
-      - 9600:9600
+      - 38983:8983
     networks:
-      - opensearch-net
+      - solr-net
     healthcheck:
-          test: curl -f http://localhost:39200 -u admin:admin --insecure
+          test: curl -f http://localhost:8983/solr/admin/ping
           interval: 5s
           timeout: 2s
           retries: 10
 
 volumes:
-  opensearch-data1:
+  solr-data1:
 networks:
-  opensearch-net:""" % (data_dir, log_dir, heap_dump_dir), docker_cfg)
+  solr-net:""" % (data_dir, log_dir, heap_dump_dir), docker_cfg)
 
     @mock.patch("uuid.uuid4")
     def test_provisioning_with_variables(self, uuid4):
@@ -478,7 +337,7 @@ networks:
         benchmark_root = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, "osbenchmark"))
 
         c = cluster_config.ClusterConfigInstance("unit-test-cluster-config-instance", None, "/tmp", variables={
-            "docker_image": "opensearchproject/opensearch",
+            "docker_image": "solr",
             "docker_mem_limit": "256m",
             "docker_cpu_count": 2
         })
@@ -486,7 +345,7 @@ networks:
         docker = provisioner.DockerProvisioner(cluster_config=c,
                                                node_name="benchmark-node-0",
                                                ip="10.17.22.33",
-                                               http_port=39200,
+                                               http_port=38983,
                                                node_root_dir=node_root_dir,
                                                distribution_version="1.1.0",
                                                benchmark_root=benchmark_root)
@@ -496,47 +355,37 @@ networks:
         self.assertEqual(
 """version: '3'
 services:
-  opensearch-node1:
-    image: opensearchproject/opensearch:1.1.0
-    container_name: opensearch-node1
+  solr-node1:
+    image: solr:1.1.0
+    container_name: solr-node1
     labels:
-      io.benchmark.description: "opensearch-benchmark"
+      io.benchmark.description: "solr-benchmark"
     cpu_count: 2
     mem_limit: 256m
     environment:
-      - cluster.name=opensearch-cluster
-      - node.name=opensearch-node1
-      - discovery.seed_hosts=opensearch-node1
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "SOLR_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
-      memlock:
-        soft: -1
-        hard: -1
       nofile:
         soft: 65536
         hard: 65536
     volumes:
-      - %s:/usr/share/opensearch/data
-      - %s:/var/log/opensearch
-      - %s:/usr/share/opensearch/heapdump
+      - %s:/var/solr/data
+      - %s:/var/solr/logs
+      - %s:/var/solr/heapdump
     ports:
-      - 39200:39200
-      - 9200:9200
-      - 9600:9600
+      - 38983:8983
     networks:
-      - opensearch-net
+      - solr-net
     healthcheck:
-          test: curl -f http://localhost:39200 -u admin:admin --insecure
+          test: curl -f http://localhost:8983/solr/admin/ping
           interval: 5s
           timeout: 2s
           retries: 10
 
 volumes:
-  opensearch-data1:
+  solr-data1:
 networks:
-  opensearch-net:""" % (data_dir, log_dir, heap_dump_dir), docker_cfg)
+  solr-net:""" % (data_dir, log_dir, heap_dump_dir), docker_cfg)
 
 
 class CleanupTests(TestCase):

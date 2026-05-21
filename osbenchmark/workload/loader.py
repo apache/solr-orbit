@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -40,7 +43,6 @@ from jinja2 import meta, select_autoescape
 
 from osbenchmark import exceptions, time, PROGRAM_NAME, config, version
 from osbenchmark.workload import params, workload
-from osbenchmark.workload.workload import Parallel
 from osbenchmark.utils import io, collections, convert, net, console, modules, opts, repo
 
 
@@ -53,7 +55,7 @@ class WorkloadSyntaxError(exceptions.InvalidSyntax):
 class WorkloadProcessor:
     def on_after_load_workload(self, input_workload, **kwargs):
         """
-        This method is called by OSB after a workload has been loaded. Implementations are expected to modify the
+        This method is called by ASB after a workload has been loaded. Implementations are expected to modify the
         provided workload object in place.
 
         :param workload: The current workload.
@@ -61,7 +63,7 @@ class WorkloadProcessor:
 
     def on_prepare_workload(self, workload, data_root_dir):
         """
-        This method is called by OSB after the "after_load_workload" phase. Here, any data that is necessary for
+        This method is called by ASB after the "after_load_workload" phase. Here, any data that is necessary for
         benchmark run should be prepared, e.g. by downloading data or generating it. Implementations should
         be aware that this method might be called on a different machine than "on_after_load_workload" and they cannot
         share any state in between phases.
@@ -77,7 +79,7 @@ class WorkloadProcessor:
 
 class WorkloadProcessorRegistry:
     def __init__(self, cfg):
-        self.required_processors = [TaskFilterWorkloadProcessor(cfg), TestModeWorkloadProcessor(cfg), QueryRandomizerWorkloadProcessor(cfg), ServerlessFilterWorkloadProcessor(cfg)]
+        self.required_processors = [TaskFilterWorkloadProcessor(cfg), TestModeWorkloadProcessor(cfg), QueryRandomizerWorkloadProcessor(cfg)]
         self.workload_processors = []
         self.offline = cfg.opts("system", "offline.mode")
         self.test_mode = cfg.opts("workload", "test.mode.enabled", mandatory=False, default_value=False)
@@ -886,48 +888,6 @@ class TaskFilterWorkloadProcessor(WorkloadProcessor):
         return input_workload
 
 
-class ServerlessFilterWorkloadProcessor(WorkloadProcessor):
-    def __init__(self, cfg):
-        self.logger = logging.getLogger(__name__)
-        self.serverless_mode = convert.to_bool(cfg.opts("worker_coordinator", "serverless.mode", mandatory=False, default_value=False))
-        self.serverless_operator = convert.to_bool(cfg.opts("worker_coordinator", "serverless.operator", mandatory=False, default_value=False))
-
-    def _is_filtered_task(self, operation):
-        if operation.run_on_serverless is not None:
-            return not operation.run_on_serverless
-
-        if operation.type == "raw-request":
-            self.logger.info("Treating raw-request operation for operation [%s] as public.", operation.name)
-
-        try:
-            op = workload.OperationType.from_hyphenated_string(operation.type)
-            if self.serverless_mode:
-                return op.serverless_status < workload.ServerlessStatus.Public
-        except KeyError:
-            self.logger.info("Treating user-provided operation type [%s] for operation [%s] as public.", operation.type, operation.name)
-            return False
-
-    def on_after_load_workload(self, input_workload, **kwargs):
-        if not self.serverless_mode:
-            return input_workload
-
-        for test_procedure in input_workload.test_procedures:
-            tasks_to_remove = []
-            for task in test_procedure.schedule:
-                if isinstance(task, Parallel):
-                    test_procedure.serverless_info.append(f"Treating parallel task in test-procedure [{test_procedure}] as public.")
-                elif self._is_filtered_task(task.operation):
-                    tasks_to_remove.append(task)
-
-            for task in tasks_to_remove:
-                test_procedure.remove_task(task)
-
-            if tasks_to_remove:
-                task_str = ", ".join(f"[{task}]" for task in tasks_to_remove)
-                test_procedure.serverless_info.append(f"Excluding {task_str} as test-procedure [{test_procedure}] is run on serverless.")
-        return input_workload
-
-
 class TestModeWorkloadProcessor(WorkloadProcessor):
     def __init__(self, cfg):
         self.test_mode_enabled = cfg.opts("workload", "test.mode.enabled", mandatory=False, default_value=False)
@@ -1093,7 +1053,7 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
         return curr
 
     def extract_fields_helper(self, root, current_path, query_randomization_info):
-        # Recursively called to find the location of ranges in an OpenSearch range query.
+        # Recursively called to find the location of ranges in a range query.
         # Return the field and the current path if we're currently scanning the field name in a range query, otherwise return an empty list.
         fields = [] # pairs of (field, path_to_field)
         curr = self.get_dict_from_previous_path(root, current_path)
@@ -1287,7 +1247,7 @@ class WorkloadFileReader:
 
         self.logger.info("Reading workload specification file [%s].", workload_spec_file)
         # render the workload to a temporary file instead of dumping it into the logs. It is easier to check for error messages
-        # involving lines numbers and it also does not bloat OSB's log file so much.
+        # involving lines numbers and it also does not bloat ASB's log file so much.
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
         try:
             rendered = render_template_from_file(
@@ -1354,11 +1314,11 @@ class WorkloadFileReader:
                 workload_name, str(raw_version)))
         if WorkloadFileReader.MINIMUM_SUPPORTED_TRACK_VERSION > workload_version:
             raise exceptions.BenchmarkError("Workload {} is on version {} but needs to be updated at least to version {} to work with the "
-                                        "current version of OSB.".format(workload_name, workload_version,
+                                        "current version of ASB.".format(workload_name, workload_version,
                                                                            WorkloadFileReader.MINIMUM_SUPPORTED_TRACK_VERSION))
         if WorkloadFileReader.MAXIMUM_SUPPORTED_TRACK_VERSION < workload_version:
-            raise exceptions.BenchmarkError("Workload {} requires a newer version of OSB. "
-                        "Please upgrade OSB (supported workload version: {}, "
+            raise exceptions.BenchmarkError("Workload {} requires a newer version of ASB. "
+                        "Please upgrade ASB (supported workload version: {}, "
                                         "required workload version: {}).".format(
                                             workload_name,
                                             WorkloadFileReader.MAXIMUM_SUPPORTED_TRACK_VERSION,
@@ -1475,28 +1435,15 @@ class WorkloadSpecificationReader:
         description = self._r(workload_specification, "description", mandatory=False, default_value="")
 
         meta_data = self._r(workload_specification, "meta", mandatory=False)
-        indices = [self._create_index(idx, mapping_dir)
-                   for idx in self._r(workload_specification, "indices", mandatory=False, default_value=[])]
-        data_streams = [self._create_data_stream(idx)
-                        for idx in self._r(workload_specification, "data-streams", mandatory=False, default_value=[])]
-        if len(indices) > 0 and len(data_streams) > 0:
-            # we guard against this early and support either or
-            raise WorkloadSyntaxError("indices and data-streams cannot both be specified")
-        templates = [self._create_index_template(tpl, mapping_dir)
-                     for tpl in self._r(workload_specification, "templates", mandatory=False, default_value=[])]
-        composable_templates = [self._create_index_template(tpl, mapping_dir)
-                     for tpl in self._r(workload_specification, "composable-templates", mandatory=False, default_value=[])]
-        component_templates = [self._create_component_template(tpl, mapping_dir)
-                     for tpl in self._r(workload_specification, "component-templates", mandatory=False, default_value=[])]
+        collections = [self._create_collection(col, mapping_dir)
+                       for col in self._r(workload_specification, "collections", mandatory=False, default_value=[])]
         corpora = self._create_corpora(self._r(workload_specification, "corpora", mandatory=False, default_value=[]),
-                                       indices, data_streams)
+                                       collections=collections)
         test_procedures = self._create_test_procedures(workload_specification)
         # at this point, *all* workload params must have been referenced in the templates
         return workload.Workload(name=self.name, meta_data=meta_data,
-        description=description, test_procedures=test_procedures,
-        indices=indices,
-                           data_streams=data_streams, templates=templates, composable_templates=composable_templates,
-                           component_templates=component_templates, corpora=corpora)
+                                 description=description, test_procedures=test_procedures,
+                                 corpora=corpora, collections=collections)
 
     def _error(self, msg):
         raise WorkloadSyntaxError("Workload '%s' is invalid. %s" % (self.name, msg))
@@ -1519,49 +1466,27 @@ class WorkloadSpecificationReader:
             else:
                 return default_value
 
-    def _create_index(self, index_spec, mapping_dir):
-        index_name = self._r(index_spec, "name")
-        body_file = self._r(index_spec, "body", mandatory=False)
-        if body_file:
-            idx_body_tmpl_src = TemplateSource(mapping_dir, body_file, self.source)
-            with self.source(os.path.join(mapping_dir, body_file), "rt") as f:
-                idx_body_tmpl_src.load_template_from_string(f.read())
-                body = self._load_template(
-                    idx_body_tmpl_src.assembled_source,
-                    "definition for index {} in {}".format(index_name, body_file))
-        else:
-            body = None
-
-        return workload.Index(name=index_name, body=body, types=self._r(index_spec, "types", mandatory=False, default_value=[]))
-
-    def _create_data_stream(self, data_stream_spec):
-        return workload.DataStream(name=self._r(data_stream_spec, "name"))
-
-    def _create_component_template(self, tpl_spec, mapping_dir):
-        name = self._r(tpl_spec, "name")
-        template_file = self._r(tpl_spec, "template")
-        template_file = os.path.join(mapping_dir, template_file)
-        idx_tmpl_src = TemplateSource(mapping_dir, template_file, self.source)
-        with self.source(template_file, "rt") as f:
-            idx_tmpl_src.load_template_from_string(f.read())
-            template_content = self._load_template(
-                idx_tmpl_src.assembled_source,
-                f"definition for component template {name} in {template_file}")
-        return workload.ComponentTemplate(name, template_content)
-
-    def _create_index_template(self, tpl_spec, mapping_dir):
-        name = self._r(tpl_spec, "name")
-        template_file = self._r(tpl_spec, "template")
-        index_pattern = self._r(tpl_spec, "index-pattern")
-        delete_matching_indices = self._r(tpl_spec, "delete-matching-indices", mandatory=False, default_value=True)
-        template_file = os.path.join(mapping_dir, template_file)
-        idx_tmpl_src = TemplateSource(mapping_dir, template_file, self.source)
-        with self.source(template_file, "rt") as f:
-            idx_tmpl_src.load_template_from_string(f.read())
-            template_content = self._load_template(
-                idx_tmpl_src.assembled_source,
-                "definition for index template {} in {}".format(name, template_file))
-        return workload.IndexTemplate(name, index_pattern, template_content, delete_matching_indices)
+    def _create_collection(self, col_spec, mapping_dir=None):
+        """Create a Solr Collection from a workload spec dict."""
+        name = self._r(col_spec, "name")
+        configset = self._r(col_spec, "configset", mandatory=False, default_value=name)
+        configset_path = self._r(col_spec, "configset-path", mandatory=False, default_value=None)
+        # Resolve relative configset_path against mapping_dir (the workload directory)
+        if configset_path and mapping_dir and not os.path.isabs(configset_path):
+            configset_path = os.path.join(mapping_dir, configset_path)
+        num_shards = int(self._r(col_spec, "num-shards", mandatory=False, default_value=1))
+        replication_factor = int(self._r(col_spec, "replication-factor", mandatory=False, default_value=1))
+        pull_replicas = int(self._r(col_spec, "pull-replicas", mandatory=False, default_value=0))
+        tlog_replicas = int(self._r(col_spec, "tlog-replicas", mandatory=False, default_value=0))
+        return workload.Collection(
+            name=name,
+            configset=configset,
+            configset_path=configset_path,
+            num_shards=num_shards,
+            replication_factor=replication_factor,
+            pull_replicas=pull_replicas,
+            tlog_replicas=tlog_replicas,
+        )
 
     def _load_template(self, contents, description):
         self.logger.info("Loading template [%s].", description)
@@ -1574,9 +1499,8 @@ class WorkloadSpecificationReader:
             self.logger.exception("Could not load file template for %s.", description)
             raise WorkloadSyntaxError("Could not load file template for '%s'" % description, str(e))
 
-    def _create_corpora(self, corpora_specs, indices, data_streams):
-        if len(indices) > 0 and len(data_streams) > 0:
-            raise WorkloadSyntaxError("indices and data-streams cannot both be specified")
+    def _create_corpora(self, corpora_specs, collections=None):
+        collections = collections or []
         document_corpora = []
         known_corpora_names = set()
         for corpus_spec in corpora_specs:
@@ -1597,25 +1521,11 @@ class WorkloadSpecificationReader:
             default_action_and_meta_data = self._r(corpus_spec, "includes-action-and-meta-data", mandatory=False,
                                                    default_value=False)
             corpus_target_idx = None
-            corpus_target_ds = None
-            corpus_target_type = None
 
-            if len(indices) == 1:
-                corpus_target_idx = self._r(corpus_spec, "target-index", mandatory=False, default_value=indices[0].name)
-            elif len(indices) > 0:
-                corpus_target_idx = self._r(corpus_spec, "target-index", mandatory=False)
-
-            if len(data_streams) == 1:
-                corpus_target_ds = self._r(corpus_spec, "target-data-stream", mandatory=False,
-                                           default_value=data_streams[0].name)
-            elif len(data_streams) > 0:
-                corpus_target_ds = self._r(corpus_spec, "target-data-stream", mandatory=False)
-
-            if len(indices) == 1 and len(indices[0].types) == 1:
-                corpus_target_type = self._r(corpus_spec, "target-type", mandatory=False,
-                                             default_value=indices[0].types[0])
-            elif len(indices) > 0:
-                corpus_target_type = self._r(corpus_spec, "target-type", mandatory=False)
+            if len(collections) == 1:
+                corpus_target_idx = self._r(corpus_spec, "target-collection", mandatory=False, default_value=collections[0].name)
+            elif len(collections) > 1:
+                corpus_target_idx = self._r(corpus_spec, "target-collection", mandatory=False)
 
             for doc_spec in self._r(corpus_spec, "documents"):
                 base_url = self._r(doc_spec, "base-url", mandatory=False, default_value=default_base_url)
@@ -1626,7 +1536,7 @@ class WorkloadSpecificationReader:
                     docs = self._r(doc_spec, "source-file")
                     document_file_parts = list()
                     for parts in self._r(doc_spec, "source-file-parts", mandatory=False, default_value=[]):
-                        document_file_parts.append( { "name": self._r(parts, "name"), "size": self._r(parts, "size") } )
+                        document_file_parts.append({"name": self._r(parts, "name"), "size": self._r(parts, "size")})
                     if io.is_archive(docs):
                         document_archive = docs
                         document_file = io.splitext(docs)[0]
@@ -1643,49 +1553,25 @@ class WorkloadSpecificationReader:
                     if includes_action_and_meta_data:
                         target_idx = None
                         target_type = None
-                        target_ds = None
                     else:
-                        target_type = self._r(doc_spec, "target-type", mandatory=False,
-                                              default_value=corpus_target_type, error_ctx=docs)
-
-                        # require to be specified if we're using data streams and we have no default
-                        target_ds = self._r(doc_spec, "target-data-stream",
-                                            mandatory=len(data_streams) > 0 and corpus_target_ds is None,
-                                            default_value=corpus_target_ds,
-                                            error_ctx=docs)
-                        if target_ds and len(indices) > 0:
-                            # if indices are in use we error
-                            raise WorkloadSyntaxError("target-data-stream cannot be used when using indices")
-                        elif target_ds and target_type:
-                            raise WorkloadSyntaxError("target-type cannot be used when using data-streams")
-
-                        # need an index if we're using indices and no meta-data are present and we don't have a default
-                        target_idx = self._r(doc_spec, "target-index",
-                                             mandatory=len(indices) > 0 and corpus_target_idx is None,
+                        target_type = None
+                        target_idx = self._r(doc_spec, "target-collection",
+                                             mandatory=len(collections) > 0 and corpus_target_idx is None,
                                              default_value=corpus_target_idx,
                                              error_ctx=docs)
-                        # either target_idx or target_ds
-                        if target_idx and len(data_streams) > 0:
-                            # if data streams are in use we error
-                            raise WorkloadSyntaxError("target-index cannot be used when using data-streams")
-
-                        # we need one or the other
-                        if target_idx is None and target_ds is None:
-                            raise WorkloadSyntaxError(f"a {'target-index' if len(indices) > 0 else 'target-data-stream'} "
-                                                   f"is required for {docs}" )
 
                     docs = workload.Documents(source_format=source_format,
-                                           document_file=document_file,
-                                           document_file_parts=document_file_parts,
-                                           document_archive=document_archive,
-                                           base_url=base_url,
-                                           source_url=source_url,
-                                           includes_action_and_meta_data=includes_action_and_meta_data,
-                                           number_of_documents=num_docs,
-                                           compressed_size_in_bytes=compressed_bytes,
-                                           uncompressed_size_in_bytes=uncompressed_bytes,
-                                           target_index=target_idx, target_type=target_type,
-                                           target_data_stream=target_ds, meta_data=doc_meta_data)
+                                             document_file=document_file,
+                                             document_file_parts=document_file_parts,
+                                             document_archive=document_archive,
+                                             base_url=base_url,
+                                             source_url=source_url,
+                                             includes_action_and_meta_data=includes_action_and_meta_data,
+                                             number_of_documents=num_docs,
+                                             compressed_size_in_bytes=compressed_bytes,
+                                             uncompressed_size_in_bytes=uncompressed_bytes,
+                                             target_collection=target_idx, target_type=target_type,
+                                             meta_data=doc_meta_data)
                     corpus.documents.append(docs)
                 else:
                     self._error("Unknown source-format [%s] in document corpus [%s]." % (source_format, name))

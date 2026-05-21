@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -22,4 +25,4 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Empty placeholder. We just need this file to verify that OSB will recognize it as an install hook entry point.
+# Empty placeholder. We just need this file to verify that solr-benchmark will recognize it as an install hook entry point.

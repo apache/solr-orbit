@@ -15,7 +15,7 @@ class DockerProvisionerTests(TestCase):
         self.binaries = None
         self.node_name = "9dbc682e-d32a-4669-8fbe-56fb77120dd4"
         self.cluster_name = "my-cluster"
-        self.port = "39200"
+        self.port = "38983"
         self.test_run_root = tempfile.gettempdir()
         self.node_root_dir = os.path.join(self.test_run_root, self.node_name)
         self.node_data_dir = os.path.join(self.node_root_dir, "data", self.node_name)
@@ -38,7 +38,7 @@ class DockerProvisionerTests(TestCase):
                         "version": "1.1.0"
                     },
                     "docker": {
-                        "docker_image": "opensearchproject/opensearch"
+                        "docker_image": "solr"
                     }
                 }
             }
@@ -59,27 +59,27 @@ class DockerProvisionerTests(TestCase):
         self.assertDictEqual({
             "cluster_name": self.cluster_name,
             "node_name": self.node_name,
-            "install_root_path": "/usr/share/opensearch",
-            "data_paths": ["/usr/share/opensearch/data"],
-            "log_path": "/var/log/opensearch",
-            "heap_dump_path": "/usr/share/opensearch/heapdump",
+            "install_root_path": "/var/solr",
+            "data_paths": ["/var/solr/data"],
+            "log_path": "/var/solr/logs",
+            "heap_dump_path": "/var/solr/heapdump",
             "discovery_type": "single-node",
             "network_host": "0.0.0.0",
             "http_port": self.port,
-            "transport_port": str(int(self.port) + 100),
+            "zookeeper_port": str(int(self.port) + 1000),
             "cluster_settings": {
             },
-            "docker_image": "opensearchproject/opensearch"
+            "docker_image": "solr"
         }, self.installer._get_config_vars(node))
 
         docker_vars = self.installer._get_docker_vars(node, mounts={})
         self.assertDictEqual({
-            "os_data_dir": self.node_data_dir,
-            "os_log_dir": self.node_log_dir,
-            "os_heap_dump_dir": self.node_heap_dump_dir,
-            "os_version": "1.1.0",
-            "docker_image": "opensearchproject/opensearch",
-            "http_port": 39200,
+            "solr_data_dir": self.node_data_dir,
+            "solr_log_dir": self.node_log_dir,
+            "solr_heap_dump_dir": self.node_heap_dump_dir,
+            "solr_version": "1.1.0",
+            "docker_image": "solr",
+            "http_port": 38983,
             "mounts": {}
         }, docker_vars)
 
@@ -88,45 +88,35 @@ class DockerProvisionerTests(TestCase):
         self.assertEqual(
 """version: '3'
 services:
-  opensearch-node1:
-    image: opensearchproject/opensearch:1.1.0
-    container_name: opensearch-node1
+  solr-node1:
+    image: solr:1.1.0
+    container_name: solr-node1
     labels:
-      io.benchmark.description: "opensearch-benchmark"
+      io.benchmark.description: "solr-benchmark"
     environment:
-      - cluster.name=opensearch-cluster
-      - node.name=opensearch-node1
-      - discovery.seed_hosts=opensearch-node1
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "SOLR_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
-      memlock:
-        soft: -1
-        hard: -1
       nofile:
         soft: 65536
         hard: 65536
     volumes:
-      - %s:/usr/share/opensearch/data
-      - %s:/var/log/opensearch
-      - %s:/usr/share/opensearch/heapdump
+      - %s:/var/solr/data
+      - %s:/var/solr/logs
+      - %s:/var/solr/heapdump
     ports:
-      - 39200:39200
-      - 9200:9200
-      - 9600:9600
+      - 38983:8983
     networks:
-      - opensearch-net
+      - solr-net
     healthcheck:
-          test: curl -f http://localhost:39200 -u admin:admin --insecure
+          test: curl -f http://localhost:8983/solr/admin/ping
           interval: 5s
           timeout: 2s
           retries: 10
 
 volumes:
-  opensearch-data1:
+  solr-data1:
 networks:
-  opensearch-net:
+  solr-net:
 """ % (self.node_data_dir, self.node_log_dir, self.node_heap_dump_dir), docker_cfg)
 
     @mock.patch("uuid.uuid4")
@@ -147,45 +137,35 @@ networks:
         self.assertEqual(
 """version: '3'
 services:
-  opensearch-node1:
-    image: opensearchproject/opensearch:1.1.0
-    container_name: opensearch-node1
+  solr-node1:
+    image: solr:1.1.0
+    container_name: solr-node1
     labels:
-      io.benchmark.description: "opensearch-benchmark"
+      io.benchmark.description: "solr-benchmark"
     cpu_count: 2
     mem_limit: 256m
     environment:
-      - cluster.name=opensearch-cluster
-      - node.name=opensearch-node1
-      - discovery.seed_hosts=opensearch-node1
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "SOLR_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
-      memlock:
-        soft: -1
-        hard: -1
       nofile:
         soft: 65536
         hard: 65536
     volumes:
-      - %s:/usr/share/opensearch/data
-      - %s:/var/log/opensearch
-      - %s:/usr/share/opensearch/heapdump
+      - %s:/var/solr/data
+      - %s:/var/solr/logs
+      - %s:/var/solr/heapdump
     ports:
-      - 39200:39200
-      - 9200:9200
-      - 9600:9600
+      - 38983:8983
     networks:
-      - opensearch-net
+      - solr-net
     healthcheck:
-          test: curl -f http://localhost:39200 -u admin:admin --insecure
+          test: curl -f http://localhost:8983/solr/admin/ping
           interval: 5s
           timeout: 2s
           retries: 10
 
 volumes:
-  opensearch-data1:
+  solr-data1:
 networks:
-  opensearch-net:
+  solr-net:
 """ % (self.node_data_dir, self.node_log_dir, self.node_heap_dump_dir), docker_cfg)

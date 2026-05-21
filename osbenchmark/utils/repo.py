@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -32,7 +35,7 @@ from osbenchmark.utils import io, git, console, versions
 
 class BenchmarkRepository:
     """
-    Manages OSB resources (e.g. cluster_configs or workloads).
+    Manages ASB resources (e.g. cluster_configs or workloads).
     """
 
     default = "default-cluster-config"
@@ -154,7 +157,7 @@ class BenchmarkRepository:
                 if convert(distribution_version) >= convert(branch):
                     return branch
 
-            raise Exception("Distribution version is less than available ES or OpenSearch versions for cluster-configs.")
+            raise Exception("Distribution version is less than available Solr versions for cluster-configs.")
 
         # Distribution version is Nonetype if not specified in command line
         return "main"

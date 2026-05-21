@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -33,7 +36,7 @@ from osbenchmark.utils import git
 class GitTests(TestCase):
     def test_is_git_working_copy(self):
         test_dir = os.path.dirname(os.path.dirname(__file__))
-        # this test is assuming that nobody stripped the git repo info in their OSB working copy
+        # this test is assuming that nobody stripped the git repo info in their working copy
         self.assertFalse(git.is_working_copy(test_dir))
         self.assertTrue(git.is_working_copy(os.path.dirname(test_dir)))
 
@@ -42,7 +45,7 @@ class GitTests(TestCase):
         run_subprocess_with_out_and_err.return_value = ("git version 1.4.0", None, 0)
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             git.head_revision("/src")
-        self.assertEqual("OpenSearch Benchmark requires at least version 2 of git.  You have git version 1.4.0.  Please update git.",
+        self.assertEqual("solr-benchmark requires at least version 2 of git.  You have git version 1.4.0.  Please update git.",
                          ctx.exception.args[0])
         run_subprocess_with_out_and_err.assert_called_with("git --version")
 

@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -99,7 +102,7 @@ def init(quiet=False, assume_tty=True):
     """
     Initialize console out.
 
-    :param quiet: Flag indicating whether OSB should not print anything except when forced explicitly. Default: False.
+    :param quiet: Flag indicating whether ASB should not print anything except when forced explicitly. Default: False.
     :param assume_tty: Flag indicating whether to assume a tty is attached without checking. Default: True.
     """
     global QUIET, ASSUME_TTY, BENCHMARK_RUNNING_IN_DOCKER, PLAIN, format
@@ -129,8 +132,8 @@ def init(quiet=False, assume_tty=True):
 
 def set_assume_tty(assume_tty):
     """
-    Change whether OSB should assume a tty. If ``True`` is provided, output will be printed. If ``False`` is provided,
-    OSB will explicitly check whether it is attached to a tty before attempting to print anything.
+    Change whether ASB should assume a tty. If ``True`` is provided, output will be printed. If ``False`` is provided,
+    ASB will explicitly check whether it is attached to a tty before attempting to print anything.
 
     :param assume_tty: Flag indicating whether to assume a tty is attached without checking.
     """

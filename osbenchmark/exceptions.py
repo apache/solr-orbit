@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -25,7 +28,7 @@
 
 class BenchmarkError(Exception):
     """
-    Base class for all OSB exceptions
+    Base class for all ASB exceptions
     """
 
     def __init__(self, message, cause=None):
@@ -135,8 +138,46 @@ class DataStreamingError(BenchmarkError):
 
 
 class MappingsError(BenchmarkError):
-    """Exception raised for errors in OpenSearch mappings provided.
+    """Exception raised for errors in index mappings / schema provided.
 
     Attributes:
         message -- explanation of the error
     """
+
+
+# ---------------------------------------------------------------------------
+# Abstract network / transport exceptions
+#
+# Backend-agnostic transport error hierarchy. All benchmark runners should
+# raise these so that worker_coordinator can record uniform error metadata.
+# ---------------------------------------------------------------------------
+
+class BenchmarkTransportError(BenchmarkError):
+    """HTTP/transport-level error from any benchmark target.
+
+    Attributes:
+        status_code -- integer HTTP status code, or None
+        error       -- short error string / type
+        info        -- additional detail (response body, exception message, …)
+    """
+
+    def __init__(self, message="", cause=None, status_code=None, error=None, info=None):
+        super().__init__(message, cause)
+        self.status_code = status_code
+        self.error = error
+        self.info = info
+
+
+class BenchmarkConnectionError(BenchmarkTransportError):
+    """Connection refused or target unreachable (fatal — node may be down)."""
+
+
+class BenchmarkConnectionTimeout(BenchmarkTransportError):
+    """Connection or request timed out."""
+
+
+class BenchmarkNotFoundError(BenchmarkTransportError):
+    """The requested resource was not found (HTTP 404)."""
+
+    def __init__(self, message="", cause=None):
+        super().__init__(message, cause=cause, status_code=404)

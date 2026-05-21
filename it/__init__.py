@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -36,10 +39,10 @@ import pytest
 from osbenchmark import client, config, version, paths
 from osbenchmark.utils import process
 
-CONFIG_NAMES = ["in-memory-it", "os-it"]
-DISTRIBUTIONS = ["1.3.9", "2.17.1"]
-WORKLOADS = ["geonames", "nyc_taxis", "http_logs", "nested"]
-BASE_COMMANDS = ["opensearch-benchmark", "osb"]
+CONFIG_NAMES = ["in-memory-it"]
+DISTRIBUTIONS = ["9.10.1", "10.1.0"]
+WORKLOADS = ["geonames", "nyc_taxis"]
+BASE_COMMANDS = ["solr-benchmark"]
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
@@ -89,7 +92,7 @@ def osbenchmark(cfg, command_line):
     These commands may have different CLI options than test_run.
     """
     cmd = osbenchmark_command_line_for(cfg, command_line)
-    print(f'\n{datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")} Invoking OSB: {cmd}')
+    print(f'\n{datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")} Invoking solr-benchmark: {cmd}')
     err, retcode = process.run_subprocess_with_stderr(cmd)
     if retcode != 0:
         print(err)
@@ -171,7 +174,7 @@ class TestCluster:
         transport_port = http_port + 100
         try:
             err, retcode = process.run_subprocess_with_stderr(
-                "opensearch-benchmark install --configuration-name={cfg} --distribution-version={dist} --build-type=tar "
+                "solr-benchmark install --configuration-name={cfg} --distribution-version={dist} --build-type=tar "
                 "--http-port={http_port} --node={node_name} --master-nodes="
                 "{node_name} --cluster-config={cluster_config} "
                 "--seed-hosts=\"127.0.0.1:{transport_port}\"".format(cfg=self.cfg,
@@ -181,35 +184,35 @@ class TestCluster:
                                                                      cluster_config=cluster_config,
                                                                      transport_port=transport_port))
             if retcode != 0:
-                raise AssertionError("Failed to install OpenSearch {}.".format(distribution_version), err)
+                raise AssertionError("Failed to install node {}.".format(distribution_version), err)
             self.installation_id = json.loads(err)["installation-id"]
         except BaseException as e:
-            raise AssertionError("Failed to install OpenSearch {}.".format(distribution_version), e)
+            raise AssertionError("Failed to install node {}.".format(distribution_version), e)
 
     def start(self, test_run_id):
         cmd = "start --runtime-jdk=\"bundled\" --installation-id={} --test-run-id={}".format(self.installation_id, test_run_id)
         if osbenchmark(self.cfg, cmd) != 0:
-            raise AssertionError("Failed to start OpenSearch test cluster.")
-        opensearch = client.OsClientFactory(hosts=[{"host": "127.0.0.1", "port": self.http_port}], client_options={}).create()
-        client.wait_for_rest_layer(opensearch)
+            raise AssertionError("Failed to start test cluster.")
+        solr_client = client.ClientFactory(hosts=[{"host": "127.0.0.1", "port": self.http_port}], client_options={}).create()
+        client.wait_for_rest_layer(solr_client)
 
     def stop(self):
         if self.installation_id:
             if osbenchmark(self.cfg, "stop --installation-id={}".format(self.installation_id)) != 0:
-                raise AssertionError("Failed to stop OpenSearch test cluster.")
+                raise AssertionError("Failed to stop test cluster.")
 
     def __str__(self):
         return f"TestCluster[installation-id={self.installation_id}]"
 
 
-class OsMetricsStore:
+class MetricsStore:
     VERSION = "1.3.9"
 
     def __init__(self):
         self.cluster = TestCluster("in-memory-it")
 
     def start(self):
-        self.cluster.install(distribution_version=OsMetricsStore.VERSION,
+        self.cluster.install(distribution_version=MetricsStore.VERSION,
                              node_name="metrics-store",
                              cluster_config="defaults",
                              http_port=10200)
@@ -234,7 +237,7 @@ def remove_integration_test_config():
         os.remove(config.ConfigFile(config_name).location)
 
 
-OS_METRICS_STORE = OsMetricsStore()
+METRICS_STORE = MetricsStore()
 
 
 def get_license():
@@ -249,7 +252,7 @@ def build_docker_image():
     env_variables['BENCHMARK_VERSION'] = benchmark_version
     env_variables['BENCHMARK_LICENSE'] = get_license()
 
-    command = f"docker build -t opensearchproject/benchmark:{benchmark_version}" \
+    command = f"docker build -t apache/solr-benchmark:{benchmark_version}" \
         f" --build-arg BENCHMARK_VERSION --build-arg BENCHMARK_LICENSE " \
               f"-f {ROOT_DIR}/docker/Dockerfiles/Dockerfile-dev {ROOT_DIR}"
 
@@ -260,9 +263,9 @@ def build_docker_image():
 def setup_module():
     check_prerequisites()
     install_integration_test_config()
-    OS_METRICS_STORE.start()
+    METRICS_STORE.start()
 
 
 def teardown_module():
-    OS_METRICS_STORE.stop()
+    METRICS_STORE.stop()
     remove_integration_test_config()

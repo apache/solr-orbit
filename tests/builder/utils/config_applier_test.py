@@ -27,7 +27,7 @@ class ConfigApplierTest(TestCase):
         mounts = self.config_applier.apply_configs(self.host, self.node, self.config_paths, self.config_vars)
 
         self.assertEqual(mounts, {
-            "/fake_binary_path/sub_fake_config_path/fake_file": "/usr/share/opensearch/sub_fake_config_path/fake_file"
+            "/fake_binary_path/sub_fake_config_path/fake_file": "/var/solr/sub_fake_config_path/fake_file"
         })
         self.path_manager.create_path.assert_has_calls([
             mock.call(self.host, "/fake_binary_path/sub_fake_config_path")
@@ -47,7 +47,7 @@ class ConfigApplierTest(TestCase):
             mounts = self.config_applier.apply_configs(self.host, self.node, self.config_paths, self.config_vars)
 
             self.assertEqual(mounts, {
-                "/fake_binary_path/sub_fake_config_path/fake_file": "/usr/share/opensearch/sub_fake_config_path/fake_file"
+                "/fake_binary_path/sub_fake_config_path/fake_file": "/var/solr/sub_fake_config_path/fake_file"
             })
             self.path_manager.create_path.assert_has_calls([
                 mock.call(self.host, "/fake_binary_path/sub_fake_config_path")

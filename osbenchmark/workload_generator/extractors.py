@@ -13,8 +13,6 @@ import os
 from abc import ABC, abstractmethod
 
 from tqdm import tqdm
-import opensearchpy.exceptions
-
 from osbenchmark import exceptions
 from osbenchmark.utils import console
 from osbenchmark.workload_generator.config import CustomWorkload
@@ -22,20 +20,42 @@ from osbenchmark.workload_generator.config import CustomWorkload
 DOCS_COMPRESSOR = bz2.BZ2Compressor
 COMP_EXT = ".bz2"
 
+
+_SOLR_INTERNAL_FIELDS = {"_version_"}
+
+
+def _cursor_scan(client, collection, batch_size=1000):
+    """Iterate all documents in a Solr collection using CursorMark deep-pagination.
+
+    Requires the collection's sort field to include a uniqueKey field (``id asc``).
+    Each yielded document is a plain dict with Solr internal fields (``_version_``) removed.
+    """
+    cursor = "*"
+    session = client._get_session()  # pylint: disable=protected-access
+    url = f"{client.base_url}/solr/{collection}/select"
+    while True:
+        resp = session.get(
+            url,
+            params={"q": "*:*", "rows": batch_size, "sort": "id asc",
+                    "cursorMark": cursor, "wt": "json"},
+            timeout=client.timeout,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        docs = data["response"]["docs"]
+        if not docs:
+            break
+        for doc in docs:
+            yield {k: v for k, v in doc.items() if k not in _SOLR_INTERNAL_FIELDS}
+        next_cursor = data.get("nextCursorMark", cursor)
+        if next_cursor == cursor:
+            break
+        cursor = next_cursor
+
 class IndexExtractor:
     def __init__(self, custom_workload, client):
         self.custom_workload: CustomWorkload = custom_workload
         self.client = client
-
-        self.INDEX_SETTINGS_EPHEMERAL_KEYS = ["uuid",
-                                        "creation_date",
-                                        "version",
-                                        "provided_name",
-                                        "store"]
-        self.INDEX_SETTINGS_PARAMETERS = {
-            "number_of_replicas": "{{{{number_of_replicas | default({orig})}}}}",
-            "number_of_shards": "{{{{number_of_shards | default({orig})}}}}"
-        }
         self.logger = logging.getLogger(__name__)
 
     def extract_indices(self, workload_path):
@@ -43,94 +63,56 @@ class IndexExtractor:
         try:
             for index in self.custom_workload.indices:
                 extracted_indices += self.extract(workload_path, index.name)
-        except opensearchpy.exceptions.NotFoundError:
-            raise exceptions.SystemSetupError(f"Index [{index.name}] does not exist.")
-        except opensearchpy.OpenSearchException:
-            self.logger.error("Failed at extracting index [%s]", index)
+        except exceptions.BenchmarkNotFoundError:
+            raise exceptions.SystemSetupError(f"Collection [{index.name}] does not exist.")
+        except Exception:  # pylint: disable=broad-except
+            self.logger.error("Failed at extracting collection [%s]", index)
             failed_indices += index
 
         return extracted_indices, failed_indices
 
-    def extract(self, outdir, index_pattern):
+    def extract(self, outdir, collection):
         """
-        Extracts and writes index settings and
-        mappings to "<index_name>.json" in a workload
+        Extracts and writes the Solr schema of a collection to
+        "<collection>.json" in the workload directory.
+
         :param outdir: destination directory
-        :param index_pattern: name of index or index pattern
-        :return: Dictionary of template variables corresponding to the
-        specified index / indices
+        :param collection: name of the Solr collection
+        :return: list of dicts with metadata for the extracted collection
         """
         results = []
-
-        index_obj = self.extract_index_mapping_and_settings(index_pattern)
-        for index, details in index_obj.items():
-            filename = f"{index}.json"
+        schema_obj = self.extract_collection_schema(collection)
+        for name, schema in schema_obj.items():
+            filename = f"{name}.json"
             outpath = os.path.join(outdir, filename)
             with open(outpath, "w") as outfile:
-                json.dump(details, outfile, indent=4, sort_keys=True)
+                json.dump(schema, outfile, indent=4, sort_keys=True)
                 outfile.write("\n")
-            results.append({
-                "name": index,
-                "path": outpath,
-                "filename": filename,
-            })
+            results.append({"name": name, "path": outpath, "filename": filename})
         return results
 
-    def extract_index_mapping_and_settings(self, index_pattern):
+    def extract_collection_schema(self, collection):
         """
-        Uses client to retrieve mapping + settings, filtering settings
-        related to index / indices. They will be used to re-create
-        index / indices
-        :param index_pattern: name of index or index pattern
-        :return: dictionary of index / indices mappings and settings
+        Retrieve the Solr schema for *collection* and return it as a dict
+        keyed by collection name.
+
+        :param collection: name of the Solr collection
+        :return: ``{collection_name: schema_dict}``
         """
         results = {}
-        logger = logging.getLogger(__name__)
-        # the response might contain multiple indices if a wildcard was provided
-        response = self.client.indices.get(index_pattern)
-        for index, details in response.items():
-            valid, reason = self.is_valid_index(index)
-            if valid:
-                mappings = details["mappings"]
-                index_settings = self.filter_ephemeral_index_settings(details["settings"]["index"])
-                self.update_index_setting_parameters(index_settings)
-                results[index] = {
-                    "mappings": mappings,
-                    "settings": {
-                        "index": index_settings
-                    }
-                }
-            else:
-                logger.info("Skipping index [%s] (reason: %s).", index, reason)
-
+        valid, reason = self.is_valid_collection(collection)
+        if valid:
+            schema = self.client.get_schema(collection)
+            results[collection] = schema
+        else:
+            self.logger.info("Skipping collection [%s] (reason: %s).", collection, reason)
         return results
 
-    def filter_ephemeral_index_settings(self, settings):
-        """
-        Some of the 'settings' (like uuid, creation-date, etc.)
-        published by OpenSearch for an index are
-        ephemeral values, not useful for re-creating the index.
-        :param settings: Index settings published by index.get()
-        :return: settings with ephemeral keys removed
-        """
-        filtered = dict(settings)
-        for s in self.INDEX_SETTINGS_EPHEMERAL_KEYS:
-            filtered.pop(s, None)
-        return filtered
-
-
-    def update_index_setting_parameters(self, settings):
-        for s, param in self.INDEX_SETTINGS_PARAMETERS.items():
-            if s in settings:
-                orig_value = settings[s]
-                settings[s] = param.format(orig=orig_value)
-
-
-    def is_valid_index(self, index_name):
-        if len(index_name) == 0:
-            return False, "Index name is empty"
-        if index_name.startswith("."):
-            return False, f"Index [{index_name}] is hidden"
+    def is_valid_collection(self, name):
+        if len(name) == 0:
+            return False, "Collection name is empty"
+        if name.startswith("."):
+            return False, f"Collection [{name}] is hidden"
         return True, None
 
 
@@ -167,16 +149,17 @@ class SequentialCorpusExtractor(CorpusExtractor):
 
     def extract_documents(self, index, documents_limit=None, sample_frequency=None):
         """
-        Scroll an index with a match-all query, dumping document source to ``outdir/documents.json``.
+        Scan a Solr collection with CursorMark pagination, dumping documents to
+        ``outdir/documents.json``.
 
-        :param index: Name of index to dump
-        :param documents_limit: The number of documents to extract. Must be equal
+        :param index: Name of the Solr collection to dump
+        :param documents_limit: Maximum number of documents to extract
         :param sample_frequency: frequency with which to sample documents
 
         :return: dict of properties describing the corpus for templates
         """
 
-        total_documents = self.client.count(index=index)["count"]
+        total_documents = self.client.count_documents(index)
 
         documents_to_extract = total_documents if not documents_limit else min(total_documents, documents_limit)
 
@@ -249,9 +232,6 @@ class SequentialCorpusExtractor(CorpusExtractor):
 
         progress_message = f"Extracting documents for index [{index}] with sample_frequency of {sample_frequency}"
 
-        # pylint: disable=import-outside-toplevel
-        from opensearchpy import helpers
-
         self.logger.info("Number of docs in index: [%s], number of docs to fetch: [%s]", number_of_docs_in_index, number_of_docs_to_fetch)
 
         self.logger.info("sample_frequency: [%s]", sample_frequency)
@@ -262,11 +242,9 @@ class SequentialCorpusExtractor(CorpusExtractor):
         with open(docs_path, "wb") as outfile:
             with open(comp_outpath, "wb") as comp_outfile:
                 self.logger.info("Dumping corpus for index [%s] to [%s].", index, docs_path)
-                query = {"query": {"match_all": {}}}
-
                 progress_bar = tqdm(range(number_of_docs_to_fetch), desc=progress_message, ascii=' >=', bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')
 
-                for n, doc in enumerate(helpers.scan(self.client, query=query, index=index), start=1):
+                for n, doc in enumerate(_cursor_scan(self.client, collection=index), start=1):
                     if (n % sample_frequency) != 0:
                         continue
 
@@ -275,7 +253,7 @@ class SequentialCorpusExtractor(CorpusExtractor):
 
                     number_of_docs_left -= 1
 
-                    data = (json.dumps(doc["_source"], separators=(",", ":")) + "\n").encode("utf-8")
+                    data = (json.dumps(doc, separators=(",", ":")) + "\n").encode("utf-8")
 
                     outfile.write(data)
                     comp_outfile.write(compressor.compress(data))
@@ -284,9 +262,6 @@ class SequentialCorpusExtractor(CorpusExtractor):
                 comp_outfile.write(compressor.flush())
 
     def dump_documents(self, client, index, docs_path, number_of_docs, progress_message_suffix=""):
-        # pylint: disable=import-outside-toplevel
-        from opensearchpy import helpers
-
         logger = logging.getLogger(__name__)
         freq = max(1, number_of_docs // 1000)
 
@@ -296,11 +271,10 @@ class SequentialCorpusExtractor(CorpusExtractor):
         with open(docs_path, "wb") as outfile:
             with open(comp_outpath, "wb") as comp_outfile:
                 logger.info("Dumping corpus for index [%s] to [%s].", index, docs_path)
-                query = {"query": {"match_all": {}}}
-                for i, doc in enumerate(helpers.scan(client, query=query, index=index)):
+                for i, doc in enumerate(_cursor_scan(client, collection=index)):
                     if i >= number_of_docs:
                         break
-                    data = (json.dumps(doc["_source"], separators=(",", ":")) + "\n").encode("utf-8")
+                    data = (json.dumps(doc, separators=(",", ":")) + "\n").encode("utf-8")
 
                     outfile.write(data)
                     comp_outfile.write(compressor.compress(data))

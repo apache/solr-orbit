@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -34,8 +37,8 @@ from osbenchmark.utils import io
 class ComponentLoader:
     """
     Loads a dynamically defined component. A component in this terminology
-    is any piece of code that is not part of the OSB core code base
-    but extends it. Examples include custom runners or parameter sources for workloads or install hooks for OpenSearch plugins.
+    is any piece of code that is not part of the ASB core code base
+    but extends it. Examples include custom runners or parameter sources for workloads or install hooks for plugins.
 
     A component has always a well-defined entry point. This is the
     "main" Python file (e.g. ``workload.py`` for workloads or ``plugin.py`` for

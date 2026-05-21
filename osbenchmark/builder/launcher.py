@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -147,8 +150,7 @@ class ProcessLauncher:
         node_telemetry_dir = os.path.join(node_configuration.node_root_path, "telemetry")
 
         java_major_version, java_home = java_resolver.java_home(node_configuration.cluster_config_runtime_jdks,
-                                                                self.cfg.opts("builder", "runtime.jdk"),
-                                                                node_configuration.cluster_config_provides_bundled_jdk)
+                                                                self.cfg.opts("builder", "runtime.jdk"))
         self.logger.info("Java major version: %s", java_major_version)
         self.logger.info("Java home: %s", java_home)
 
@@ -169,7 +171,9 @@ class ProcessLauncher:
         t = telemetry.Telemetry(enabled_devices, devices=node_telemetry)
         env = self._prepare_env(node_name, java_home, t)
         t.on_pre_node_start(node_name)
-        node_pid = self._start_process(binary_path, env)
+        # Get Solr version for version-specific startup command
+        distribution_version = self.cfg.opts("builder", "distribution.version", mandatory=False)
+        node_pid = self._start_process(binary_path, env, distribution_version)
         self.logger.info("Successfully started node [%s] with PID [%s].", node_name, node_pid)
         node = cluster.Node(node_pid, binary_path, host_name, node_name, t)
 
@@ -182,17 +186,15 @@ class ProcessLauncher:
         env = {k: v for k, v in os.environ.items() if k in self.pass_env_vars}
         if java_home:
             self._set_env(env, "PATH", os.path.join(java_home, "bin"), separator=os.pathsep, prepend=True)
-            # This property is the higher priority starting in ES 7.12.0, and is the only supported java home in >=8.0
-            env["OPENSEARCH_JAVA_HOME"] = java_home
-            # TODO remove this when ES <8.0 becomes unsupported by OSB
+            env["SOLR_JAVA_HOME"] = java_home
             env["JAVA_HOME"] = java_home
             self.logger.info("JAVA HOME: %s", env["JAVA_HOME"])
-        if not env.get("OPENSEARCH_JAVA_OPTS"):
-            env["OPENSEARCH_JAVA_OPTS"] = "-XX:+ExitOnOutOfMemoryError"
+        if not env.get("SOLR_JAVA_OPTS"):
+            env["SOLR_JAVA_OPTS"] = "-XX:+ExitOnOutOfMemoryError"
 
         # we just blindly trust telemetry here...
         for v in t.instrument_candidate_java_opts():
-            self._set_env(env, "OPENSEARCH_JAVA_OPTS", v)
+            self._set_env(env, "SOLR_JAVA_OPTS", v)
 
         self.logger.debug("env for [%s]: %s", node_name, str(env))
         return env
@@ -221,19 +223,47 @@ class ProcessLauncher:
         return command_line_process.returncode
 
     @staticmethod
-    def _start_process(binary_path, env):
+    def _start_process(binary_path, env, distribution_version=None):
         if os.name == "posix" and os.geteuid() == 0:
-            raise exceptions.LaunchError("Cannot launch OpenSearch as root. Please run OSB as a non-root user.")
+            raise exceptions.LaunchError("Cannot launch Solr as root. Please run as a non-root user.")
         os.chdir(binary_path)
-        cmd = [io.escape_path(os.path.join(".", "bin", "opensearch"))]
-        cmd.extend(["-d", "-p", "pid"])
+        # Solr uses bin/solr instead of bin/opensearch
+        cmd = [io.escape_path(os.path.join(".", "bin", "solr"))]
+
+        # Solr startup command varies by version:
+        # - Solr 9.x: requires --cloud flag for SolrCloud mode
+        # - Solr 10.x+: just "start" enables SolrCloud mode with embedded ZooKeeper by default
+        # The bin/solr script handles daemonization and PID file creation
+        cmd.append("start")
+
+        # Determine if we need --cloud flag based on version
+        if distribution_version:
+            # Extract major version (handle formats like "9.10.1", "10.0.0-SNAPSHOT", "11.0.0-SNAPSHOT")
+            version_parts = distribution_version.split("-")[0].split(".")
+            if version_parts:
+                try:
+                    major_version = int(version_parts[0])
+                    if major_version < 10:
+                        # Solr 9.x and earlier require --cloud flag
+                        cmd.append("--cloud")
+                        logging.info("Using --cloud flag for Solr %s", distribution_version)
+                    else:
+                        logging.info("Solr %s uses embedded cloud mode by default", distribution_version)
+                except (ValueError, IndexError):
+                    # If we can't parse version, assume newer Solr (no flag)
+                    logging.warning("Could not parse Solr version from '%s', assuming 10.x+ (no --cloud flag)",
+                                  distribution_version)
+
         ret = ProcessLauncher._run_subprocess(command_line=" ".join(cmd), env=env)
         if ret != 0:
             msg = "Daemon startup failed with exit code [{}]".format(ret)
             logging.error(msg)
             raise exceptions.LaunchError(msg)
 
-        return wait_for_pidfile(io.escape_path(os.path.join(".", "pid")))
+        # Solr creates PID file at solr-<port>.pid in the bin directory
+        port = env.get("SOLR_PORT", "8983")
+        pid_file = os.path.join(binary_path, "bin", f"solr-{port}.pid")
+        return wait_for_pidfile(pid_file)
 
     def stop(self, nodes, metrics_store):
         self.logger.info("Shutting down [%d] nodes on this host.", len(nodes))
@@ -243,29 +273,29 @@ class ProcessLauncher:
             if metrics_store:
                 telemetry.add_metadata_for_node(metrics_store, node_name, node.host_name)
             try:
-                opensearch = psutil.Process(pid=node.pid)
+                node_process = psutil.Process(pid=node.pid)
                 node.telemetry.detach_from_node(node, running=True)
             except psutil.NoSuchProcess:
                 self.logger.warning("No process found with PID [%s] for node [%s].", node.pid, node_name)
-                opensearch = None
+                node_process = None
 
-            if opensearch:
+            if node_process:
                 stop_watch = self._clock.stop_watch()
                 stop_watch.start()
                 try:
-                    opensearch.terminate()
-                    opensearch.wait(10.0)
+                    node_process.terminate()
+                    node_process.wait(10.0)
                     stopped_nodes.append(node)
                 except psutil.NoSuchProcess:
-                    self.logger.warning("No process found with PID [%s] for node [%s].", opensearch.pid, node_name)
+                    self.logger.warning("No process found with PID [%s] for node [%s].", node_process.pid, node_name)
                 except psutil.TimeoutExpired:
                     self.logger.info("kill -KILL node [%s]", node_name)
                     try:
                         # kill -9
-                        opensearch.kill()
+                        node_process.kill()
                         stopped_nodes.append(node)
                     except psutil.NoSuchProcess:
-                        self.logger.warning("No process found with PID [%s] for node [%s].", opensearch.pid, node_name)
+                        self.logger.warning("No process found with PID [%s] for node [%s].", node_process.pid, node_name)
                 self.logger.info("Done shutting down node [%s] in [%.1f] s.", node_name, stop_watch.split_time())
 
                 node.telemetry.detach_from_node(node, running=False)

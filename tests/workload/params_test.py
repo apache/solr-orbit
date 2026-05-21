@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -24,21 +27,11 @@
 # pylint: disable=protected-access
 
 import random
-import shutil
-import tempfile
 from unittest import TestCase
-
-import numpy as np
 
 from osbenchmark import exceptions
 from osbenchmark.utils import io
-from osbenchmark.utils.dataset import Context, HDF5DataSet
-from osbenchmark.utils.parse import ConfigurationError
 from osbenchmark.workload import params, workload, loader
-from osbenchmark.workload.params import VectorDataSetPartitionParamSource, VectorSearchPartitionParamSource, \
-    BulkVectorsFromDataSetParamSource
-from tests.utils.dataset_helper import create_data_set, create_attributes_data_set, create_parent_data_set
-from tests.utils.dataset_test import DEFAULT_NUM_VECTORS
 
 
 class StaticBulkReader:
@@ -746,7 +739,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -760,13 +753,13 @@ class BulkIndexParamSourceTests(TestCase):
             params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={})
 
         self.assertEqual("There is no document corpus definition for workload unit-test. "
-                         "You must add at least one before making bulk requests to OpenSearch.", ctx.exception.args[0])
+                         "You must add at least one before making bulk requests to the target cluster.", ctx.exception.args[0])
 
     def test_create_with_non_numeric_bulk_size(self):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -781,7 +774,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -796,7 +789,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -812,7 +805,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -871,7 +864,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -887,7 +880,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -903,7 +896,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -919,7 +912,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -936,14 +929,14 @@ class BulkIndexParamSourceTests(TestCase):
             workload.DocumentCorpus(name="default", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=10,
-                                target_index="test-idx",
+                                target_collection="test-idx",
                                 target_type="test-type"
                                 )
             ]),
             workload.DocumentCorpus(name="special", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=100,
-                                target_index="test-idx2",
+                                target_collection="test-idx2",
                                 target_type="type"
                                 )
             ]),
@@ -966,14 +959,14 @@ class BulkIndexParamSourceTests(TestCase):
             workload.DocumentCorpus(name="default", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=10,
-                                target_index="test-idx",
+                                target_collection="test-idx",
                                 target_type="test-type"
                                 )
             ]),
             workload.DocumentCorpus(name="special", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=100,
-                                target_index="test-idx2",
+                                target_collection="test-idx2",
                                 target_type="type"
                                 )
             ]),
@@ -992,46 +985,11 @@ class BulkIndexParamSourceTests(TestCase):
         partition = source.partition(0, 1)
         self.assertEqual(partition.corpora, [corpora[1]])
 
-    def test_filters_corpora_by_data_stream(self):
-        corpora = [
-            workload.DocumentCorpus(name="default", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=10,
-                                target_data_stream="test-data-stream-1"
-                                )
-            ]),
-            workload.DocumentCorpus(name="special", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=100,
-                                target_index="test-idx2",
-                                target_type="type"
-                                )
-            ]),
-            workload.DocumentCorpus(name="special-2", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=10,
-                                target_data_stream="test-data-stream-2"
-                                )
-            ])
-        ]
-
-        source = params.BulkIndexParamSource(
-            workload=workload.Workload(name="unit-test", corpora=corpora),
-            params={
-                "data-streams": ["test-data-stream-1", "test-data-stream-2"],
-                "bulk-size": 5000,
-                "batch-size": 20000,
-                "pipeline": "test-pipeline"
-            })
-
-        partition = source.partition(0, 1)
-        self.assertEqual(partition.corpora, [corpora[0], corpora[2]])
-
     def test_raises_exception_if_no_corpus_matches(self):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -1053,14 +1011,14 @@ class BulkIndexParamSourceTests(TestCase):
             workload.DocumentCorpus(name="default", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=300000,
-                                target_index="test-idx",
+                                target_collection="test-idx",
                                 target_type="test-type"
                                 )
             ]),
             workload.DocumentCorpus(name="special", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=700000,
-                                target_index="test-idx2",
+                                target_collection="test-idx2",
                                 target_type="type"
                                 )
             ]),
@@ -1103,14 +1061,14 @@ class BulkIndexParamSourceTests(TestCase):
             workload.DocumentCorpus(name="default", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=300000,
-                                target_index="test-idx",
+                                target_collection="test-idx",
                                 target_type="test-type"
                                 )
             ]),
             workload.DocumentCorpus(name="special", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=700000,
-                                target_index="test-idx2",
+                                target_collection="test-idx2",
                                 target_type="type"
                                 )
             ]),
@@ -1134,7 +1092,7 @@ class BulkIndexParamSourceTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )])
 
@@ -1191,7 +1149,7 @@ class BulkIndexParamSourceTests(TestCase):
                     workload.Documents(
                         source_format=workload.Documents.SOURCE_FORMAT_BULK,
                         number_of_documents=2,
-                        target_index="test-idx",
+                        target_collection="test-idx",
                         target_type="test-type",
                     )
                 ],
@@ -1222,7 +1180,7 @@ class BulkDataGeneratorTests(TestCase):
     @classmethod
     def create_test_reader(cls, batches):
         def inner_create_test_reader(corpus, docs, *args):
-            return StaticBulkReader(docs.target_index, docs.target_type, batches)
+            return StaticBulkReader(docs.target_collection, docs.target_type, batches)
 
         return inner_create_test_reader
 
@@ -1230,7 +1188,7 @@ class BulkDataGeneratorTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=10,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )
         ])
@@ -1273,12 +1231,12 @@ class BulkDataGeneratorTests(TestCase):
             workload.DocumentCorpus(name="default", documents=[
                         workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                         number_of_documents=5,
-                                        target_index="logs-2018-01",
+                                        target_collection="logs-2018-01",
                                         target_type="docs"
                                         ),
                         workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                         number_of_documents=5,
-                                        target_index="logs-2018-02",
+                                        target_collection="logs-2018-02",
                                         target_type="docs"
                                         ),
 
@@ -1286,7 +1244,7 @@ class BulkDataGeneratorTests(TestCase):
             workload.DocumentCorpus(name="special", documents=[
                 workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                                 number_of_documents=5,
-                                target_index="logs-2017-01",
+                                target_collection="logs-2017-01",
                                 target_type="docs"
                                 )
             ])
@@ -1341,7 +1299,7 @@ class BulkDataGeneratorTests(TestCase):
         corpus = workload.DocumentCorpus(name="default", documents=[
             workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
                             number_of_documents=3,
-                            target_index="test-idx",
+                            target_collection="test-idx",
                             target_type="test-type"
                             )
         ])
@@ -1564,786 +1522,12 @@ class SleepParamSourceTests(TestCase):
         self.assertDictEqual({"duration": 3.4, "additional": True}, p.params())
 
 
-class CreateIndexParamSourceTests(TestCase):
-    def test_create_index_inline_with_body(self):
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test"), params={
-            "index": "test",
-            "body": {
-                "settings": {
-                    "index.number_of_replicas": 0
-                },
-                "mappings": {
-                    "doc": {
-                        "properties": {
-                            "name": {
-                                "type": "keyword",
-                            }
-                        }
-                    }
-                }
-            }
-        })
-
-        p = source.params()
-        self.assertEqual(1, len(p["indices"]))
-        index, body = p["indices"][0]
-        self.assertEqual("test", index)
-        self.assertTrue(len(body) > 0)
-        self.assertEqual({}, p["request-params"])
-
-    def test_create_index_inline_without_body(self):
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test"), params={
-            "index": "test",
-            "request-params": {
-                "wait_for_active_shards": True
-            }
-        })
-
-        p = source.params()
-        self.assertEqual(1, len(p["indices"]))
-        index, body = p["indices"][0]
-        self.assertEqual("test", index)
-        self.assertIsNone(body)
-        self.assertDictEqual({
-            "wait_for_active_shards": True
-        }, p["request-params"])
-
-    def test_create_index_from_workload_with_settings(self):
-        index1 = workload.Index(name="index1", types=["type1"])
-        index2 = workload.Index(name="index2", types=["type1"], body={
-            "settings": {
-                "index.number_of_replicas": 0,
-                "index.number_of_shards": 3
-            },
-            "mappings": {
-                "type1": {
-                    "properties": {
-                        "name": {
-                            "type": "keyword",
-                        }
-                    }
-                }
-            }
-        })
-
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test", indices=[index1, index2]), params={
-            "settings": {
-                "index.number_of_replicas": 1
-            }
-        })
-
-        p = source.params()
-        self.assertEqual(2, len(p["indices"]))
-
-        index, body = p["indices"][0]
-        self.assertEqual("index1", index)
-        # index did not specify any body
-        self.assertDictEqual({
-            "settings": {
-                "index.number_of_replicas": 1
-            }
-        }, body)
-
-        index, body = p["indices"][1]
-        self.assertEqual("index2", index)
-        # index specified a body + we need to merge settings
-        self.assertDictEqual({
-            "settings": {
-                # we have properly merged (overridden) an existing setting
-                "index.number_of_replicas": 1,
-                # and we have preserved one that was specified in the original index body
-                "index.number_of_shards": 3
-            },
-            "mappings": {
-                "type1": {
-                    "properties": {
-                        "name": {
-                            "type": "keyword",
-                        }
-                    }
-                }
-            }
-        }, body)
-
-    def test_create_index_from_workload_without_settings(self):
-        index1 = workload.Index(name="index1", types=["type1"])
-        index2 = workload.Index(name="index2", types=["type1"], body={
-            "settings": {
-                "index.number_of_replicas": 0,
-                "index.number_of_shards": 3
-            },
-            "mappings": {
-                "type1": {
-                    "properties": {
-                        "name": {
-                            "type": "keyword",
-                        }
-                    }
-                }
-            }
-        })
-
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test", indices=[index1, index2]), params={})
-
-        p = source.params()
-        self.assertEqual(2, len(p["indices"]))
-
-        index, body = p["indices"][0]
-        self.assertEqual("index1", index)
-        # index did not specify any body
-        self.assertDictEqual({}, body)
-
-        index, body = p["indices"][1]
-        self.assertEqual("index2", index)
-        # index specified a body
-        self.assertDictEqual({
-            "settings": {
-                "index.number_of_replicas": 0,
-                "index.number_of_shards": 3
-            },
-            "mappings": {
-                "type1": {
-                    "properties": {
-                        "name": {
-                            "type": "keyword",
-                        }
-                    }
-                }
-            }
-        }, body)
-
-    def test_filter_index(self):
-        index1 = workload.Index(name="index1", types=["type1"])
-        index2 = workload.Index(name="index2", types=["type1"])
-        index3 = workload.Index(name="index3", types=["type1"])
-
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test", indices=[index1, index2, index3]), params={
-            "index": "index2"
-        })
-
-        p = source.params()
-        self.assertEqual(1, len(p["indices"]))
-
-        index, _ = p["indices"][0]
-        self.assertEqual("index2", index)
-
-    def test_create_index_with_default_codec(self):
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test"), params={
-            "index": "test",
-            "body": {
-                "settings": {
-                    "index.number_of_replicas": 0,
-                    "index.codec": "default"
-                },
-                "mappings": {
-                    "doc": {
-                        "properties": {
-                            "name": {
-                                "type": "keyword",
-                            }
-                        }
-                    }
-                }
-            }
-        })
-
-        p = source.params()
-        self.assertEqual(1, len(p["indices"]))
-        index, body = p["indices"][0]
-        self.assertEqual("test", index)
-        self.assertTrue(len(body) > 0)
-        self.assertEqual({}, p["request-params"])
-        self.assertEqual("default", body["settings"]["index.codec"])
-
-    def test_create_index_with_best_compression_codec(self):
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test"), params={
-            "index": "test",
-            "body": {
-                "settings": {
-                    "index.number_of_replicas": 0,
-                    "index.codec": "best_compression"
-                },
-                "mappings": {
-                    "doc": {
-                        "properties": {
-                            "name": {
-                                "type": "keyword",
-                            }
-                        }
-                    }
-                }
-            }
-        })
-
-        p = source.params()
-        self.assertEqual(1, len(p["indices"]))
-        index, body = p["indices"][0]
-        self.assertEqual("test", index)
-        self.assertTrue(len(body) > 0)
-        self.assertEqual({}, p["request-params"])
-        self.assertEqual("best_compression", body["settings"]["index.codec"])
-
-    def test_create_index_with_zstd_codec(self):
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test"), params={
-            "index": "test",
-            "body": {
-                "settings": {
-                    "index.number_of_replicas": 0,
-                    "index.codec": "zstd"
-                },
-                "mappings": {
-                    "doc": {
-                        "properties": {
-                            "name": {
-                                "type": "keyword",
-                            }
-                        }
-                    }
-                }
-            }
-        })
-
-        p = source.params()
-        self.assertEqual(1, len(p["indices"]))
-        index, body = p["indices"][0]
-        self.assertEqual("test", index)
-        self.assertTrue(len(body) > 0)
-        self.assertEqual({}, p["request-params"])
-        self.assertEqual("zstd", body["settings"]["index.codec"])
-
-    def test_create_index_with_zstdnodict_codec(self):
-        source = params.CreateIndexParamSource(workload.Workload(name="unit-test"), params={
-            "index": "test",
-            "body": {
-                "settings": {
-                    "index.number_of_replicas": 0,
-                    "index.codec": "zstd_no_dict"
-                },
-                "mappings": {
-                    "doc": {
-                        "properties": {
-                            "name": {
-                                "type": "keyword",
-                            }
-                        }
-                    }
-                }
-            }
-        })
-
-        p = source.params()
-        self.assertEqual(1, len(p["indices"]))
-        index, body = p["indices"][0]
-        self.assertEqual("test", index)
-        self.assertTrue(len(body) > 0)
-        self.assertEqual({}, p["request-params"])
-        self.assertEqual("zstd_no_dict", body["settings"]["index.codec"])
-
-    def test_create_index_with_invalid_codec(self):
-        with self.assertRaises(exceptions.InvalidSyntax) as context:
-            params.CreateIndexParamSource(workload.Workload(name="unit-test"), params={
-                "index": "test",
-                "body": {
-                    "settings": {
-                        "index.number_of_replicas": 0,
-                        "index.codec": "invalid_codec"
-                    },
-                    "mappings": {
-                        "doc": {
-                            "properties": {
-                                "name": {
-                                    "type": "keyword",
-                                }
-                            }
-                        }
-                    }
-                }
-            })
-
-        self.assertEqual(str(context.exception),
-                         "Please set the value properly for the create-index operation. Invalid index.codec value " +
-                         "'invalid_codec'. Choose from available codecs: ['default', 'best_compression', 'zstd', 'zstd_no_dict', 'qat_deflate', 'qat_lz4']")
-
-class CreateDataStreamParamSourceTests(TestCase):
-    def test_create_data_stream(self):
-        source = params.CreateDataStreamParamSource(workload.Workload(name="unit-test"), params={
-            "data-stream": "test-data-stream"
-        })
-        p = source.params()
-        self.assertEqual(1, len(p["data-streams"]))
-        ds = p["data-streams"][0]
-        self.assertEqual("test-data-stream", ds)
-        self.assertEqual({}, p["request-params"])
-
-    def test_create_data_stream_inline_without_body(self):
-        source = params.CreateDataStreamParamSource(workload.Workload(name="unit-test"), params={
-            "data-stream": "test-data-stream",
-            "request-params": {
-                "wait_for_active_shards": True
-            }
-        })
-
-        p = source.params()
-        self.assertEqual(1, len(p["data-streams"]))
-        ds = p["data-streams"][0]
-        self.assertEqual("test-data-stream", ds)
-        self.assertDictEqual({
-            "wait_for_active_shards": True
-        }, p["request-params"])
-
-    def test_filter_data_stream(self):
-        source = params.CreateDataStreamParamSource(
-            workload.Workload(name="unit-test", data_streams=[workload.DataStream(name="data-stream-1"),
-                                                        workload.DataStream(name="data-stream-2"),
-                                                        workload.DataStream(name="data-stream-3")]),
-            params={"data-stream": "data-stream-2"})
-
-        p = source.params()
-        self.assertEqual(1, len(p["data-streams"]))
-
-        ds = p["data-streams"][0]
-        self.assertEqual("data-stream-2", ds)
-
-
-class DeleteIndexParamSourceTests(TestCase):
-    def test_delete_index_from_workload(self):
-        source = params.DeleteIndexParamSource(workload.Workload(name="unit-test", indices=[
-            workload.Index(name="index1"),
-            workload.Index(name="index2"),
-            workload.Index(name="index3")
-        ]), params={})
-
-        p = source.params()
-
-        self.assertEqual(["index1", "index2", "index3"], p["indices"])
-        self.assertDictEqual({}, p["request-params"])
-        self.assertTrue(p["only-if-exists"])
-
-    def test_filter_index_from_workload(self):
-        source = params.DeleteIndexParamSource(workload.Workload(name="unit-test", indices=[
-            workload.Index(name="index1"),
-            workload.Index(name="index2"),
-            workload.Index(name="index3")
-        ]), params={"index": "index2", "only-if-exists": False, "request-params": {"allow_no_indices": True}})
-
-        p = source.params()
-
-        self.assertEqual(["index2"], p["indices"])
-        self.assertDictEqual({"allow_no_indices": True}, p["request-params"])
-        self.assertFalse(p["only-if-exists"])
-
-    def test_delete_index_by_name(self):
-        source = params.DeleteIndexParamSource(workload.Workload(name="unit-test"), params={"index": "index2"})
-
-        p = source.params()
-
-        self.assertEqual(["index2"], p["indices"])
-
-    def test_delete_no_index(self):
-        with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.DeleteIndexParamSource(workload.Workload(name="unit-test"), params={})
-        self.assertEqual("delete-index operation targets no index", ctx.exception.args[0])
-
-
-class DeleteDataStreamParamSourceTests(TestCase):
-    def test_delete_data_stream_from_workload(self):
-        source = params.DeleteDataStreamParamSource(workload.Workload(name="unit-test", data_streams=[
-            workload.DataStream(name="data-stream-1"),
-            workload.DataStream(name="data-stream-2"),
-            workload.DataStream(name="data-stream-3")
-        ]), params={})
-
-        p = source.params()
-
-        self.assertEqual(["data-stream-1", "data-stream-2", "data-stream-3"], p["data-streams"])
-        self.assertDictEqual({}, p["request-params"])
-        self.assertTrue(p["only-if-exists"])
-
-    def test_filter_data_stream_from_workload(self):
-        source = params.DeleteDataStreamParamSource(workload.Workload(name="unit-test", data_streams=[
-            workload.DataStream(name="data-stream-1"),
-            workload.DataStream(name="data-stream-2"),
-            workload.DataStream(name="data-stream-3")
-        ]), params={"data-stream": "data-stream-2", "only-if-exists": False,
-                    "request-params": {"allow_no_indices": True}})
-
-        p = source.params()
-
-        self.assertEqual(["data-stream-2"], p["data-streams"])
-        self.assertDictEqual({"allow_no_indices": True}, p["request-params"])
-        self.assertFalse(p["only-if-exists"])
-
-    def test_delete_data_stream_by_name(self):
-        source = params.DeleteDataStreamParamSource(workload.Workload(name="unit-test"),
-                                                    params={"data-stream": "data-stream-2"})
-
-        p = source.params()
-
-        self.assertEqual(["data-stream-2"], p["data-streams"])
-
-    def test_delete_no_data_stream(self):
-        with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.DeleteDataStreamParamSource(workload.Workload(name="unit-test"), params={})
-        self.assertEqual("delete-data-stream operation targets no data stream", ctx.exception.args[0])
-
-
-class CreateIndexTemplateParamSourceTests(TestCase):
-    def test_create_index_template_inline(self):
-        source = params.CreateIndexTemplateParamSource(workload=workload.Workload(name="unit-test"), params={
-            "template": "test",
-            "body": {
-                "index_patterns": ["*"],
-                "settings": {
-                    "index.number_of_shards": 3
-                },
-                "mappings": {
-                    "docs": {
-                        "_source": {
-                            "enabled": False
-                        }
-                    }
-                }
-            }
-        })
-
-        p = source.params()
-
-        self.assertEqual(1, len(p["templates"]))
-        self.assertDictEqual({}, p["request-params"])
-        template, body = p["templates"][0]
-        self.assertEqual("test", template)
-        self.assertDictEqual({
-            "index_patterns": ["*"],
-            "settings": {
-                "index.number_of_shards": 3
-            },
-            "mappings": {
-                "docs": {
-                    "_source": {
-                        "enabled": False
-                    }
-                }
-            }
-        }, body)
-
-    def test_create_index_template_from_workload(self):
-        tpl = workload.IndexTemplate(name="default", pattern="*", content={
-            "index_patterns": ["*"],
-            "settings": {
-                "index.number_of_shards": 3
-            },
-            "mappings": {
-                "docs": {
-                    "_source": {
-                        "enabled": False
-                    }
-                }
-            }
-        })
-
-        source = params.CreateIndexTemplateParamSource(workload=workload.Workload(name="unit-test", templates=[tpl]), params={
-            "settings": {
-                "index.number_of_replicas": 1
-            }
-        })
-
-        p = source.params()
-
-        self.assertEqual(1, len(p["templates"]))
-        self.assertDictEqual({}, p["request-params"])
-        template, body = p["templates"][0]
-        self.assertEqual("default", template)
-        self.assertDictEqual({
-            "index_patterns": ["*"],
-            "settings": {
-                "index.number_of_shards": 3,
-                "index.number_of_replicas": 1
-            },
-            "mappings": {
-                "docs": {
-                    "_source": {
-                        "enabled": False
-                    }
-                }
-            }
-        }, body)
-
-
-class DeleteIndexTemplateParamSourceTests(TestCase):
-    def test_delete_index_template_by_name(self):
-        source = params.DeleteIndexTemplateParamSource(workload.Workload(name="unit-test"), params={"template": "default"})
-
-        p = source.params()
-
-        self.assertEqual(1, len(p["templates"]))
-        self.assertEqual(("default", False, None), p["templates"][0])
-        self.assertTrue(p["only-if-exists"])
-        self.assertDictEqual({}, p["request-params"])
-
-    def test_delete_index_template_by_name_and_matching_indices(self):
-        source = params.DeleteIndexTemplateParamSource(workload.Workload(name="unit-test"),
-                                                       params={
-                                                           "template": "default",
-                                                           "delete-matching-indices": True,
-                                                           "index-pattern": "logs-*"
-                                                       })
-
-        p = source.params()
-
-        self.assertEqual(1, len(p["templates"]))
-        self.assertEqual(("default", True, "logs-*"), p["templates"][0])
-        self.assertTrue(p["only-if-exists"])
-        self.assertDictEqual({}, p["request-params"])
-
-    def test_delete_index_template_by_name_and_matching_indices_missing_index_pattern(self):
-        with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.DeleteIndexTemplateParamSource(workload.Workload(name="unit-test"),
-                                                  params={
-                                                      "template": "default",
-                                                      "delete-matching-indices": True
-                                                  })
-        self.assertEqual("The property 'index-pattern' is required for delete-index-template if 'delete-matching-indices' is true.",
-                         ctx.exception.args[0])
-
-    def test_delete_index_template_from_workload(self):
-        tpl1 = workload.IndexTemplate(name="metrics", pattern="metrics-*", delete_matching_indices=True, content={
-            "index_patterns": ["metrics-*"],
-            "settings": {},
-            "mappings": {}
-        })
-        tpl2 = workload.IndexTemplate(name="logs", pattern="logs-*", delete_matching_indices=False, content={
-            "index_patterns": ["logs-*"],
-            "settings": {},
-            "mappings": {}
-        })
-
-        source = params.DeleteIndexTemplateParamSource(workload.Workload(name="unit-test", templates=[tpl1, tpl2]), params={
-            "request-params": {
-                "master_timeout": 20
-            },
-            "only-if-exists": False
-        })
-
-        p = source.params()
-
-        self.assertEqual(2, len(p["templates"]))
-        self.assertEqual(("metrics", True, "metrics-*"), p["templates"][0])
-        self.assertEqual(("logs", False, "logs-*"), p["templates"][1])
-        self.assertFalse(p["only-if-exists"])
-        self.assertDictEqual({"master_timeout": 20}, p["request-params"])
-
-
-class CreateComposableTemplateParamSourceTests(TestCase):
-    def test_create_index_template_inline(self):
-        source = params.CreateComposableTemplateParamSource(workload=workload.Workload(name="unit-test"), params={
-            "template": "test",
-            "body": {
-              "index_patterns": ["my*"],
-              "template": {
-                "settings" : {
-                    "index.number_of_shards" : 3
-                }
-              },
-              "composed_of": ["ct1", "ct2"]
-            }
-        })
-
-        p = source.params()
-
-        self.assertEqual(1, len(p["templates"]))
-        self.assertDictEqual({}, p["request-params"])
-        template, body = p["templates"][0]
-        self.assertEqual("test", template)
-        self.assertDictEqual({
-              "index_patterns": ["my*"],
-              "template": {
-                "settings" : {
-                    "index.number_of_shards" : 3
-                }
-              },
-              "composed_of": ["ct1", "ct2"]
-            }, body)
-
-    def test_create_composable_index_template_from_workload(self):
-        tpl = workload.IndexTemplate(name="default", pattern="*", content={
-              "index_patterns": ["my*"],
-              "template": {
-                "settings" : {
-                    "index.number_of_shards" : 3
-                }
-              },
-              "composed_of": ["ct1", "ct2"]
-            })
-
-        source = params.CreateComposableTemplateParamSource(workload=workload.Workload(
-            name="unit-test", composable_templates=[tpl]), params={
-            "settings": {
-                "index.number_of_replicas": 1
-            }
-        })
-
-        p = source.params()
-
-        self.assertEqual(1, len(p["templates"]))
-        self.assertDictEqual({}, p["request-params"])
-        template, body = p["templates"][0]
-        self.assertEqual("default", template)
-        self.assertDictEqual({
-              "index_patterns": ["my*"],
-              "template": {
-                "settings" : {
-                    "index.number_of_shards" : 3,
-                    "index.number_of_replicas": 1
-                }
-              },
-              "composed_of": ["ct1", "ct2"]
-            }, body)
-
-    def test_create_or_merge(self):
-        content = params.CreateComposableTemplateParamSource._create_or_merge({"parent": {}}, ["parent", "child", "grandchild"],
-                                                       {"name": "Mike"})
-        assert content["parent"]["child"]["grandchild"]["name"] == "Mike"
-        content = params.CreateComposableTemplateParamSource._create_or_merge({"parent": {"child": {}}}, ["parent", "child", "grandchild"],
-                                                       {"name": "Mike"})
-        assert content["parent"]["child"]["grandchild"]["name"] == "Mike"
-        content = params.CreateComposableTemplateParamSource._create_or_merge({"parent": {"child": {"grandchild": {}}}},
-                                                       ["parent", "child", "grandchild"], {"name": "Mike"})
-        assert content["parent"]["child"]["grandchild"]["name"] == "Mike"
-        content = params.CreateComposableTemplateParamSource._create_or_merge(
-            {"parent": {"child": {"name": "Mary", "grandchild": {"name": "Dale", "age": 38}}}},
-            ["parent", "child", "grandchild"], {"name": "Mike"})
-        assert content["parent"]["child"]["name"] == "Mary"
-        assert content["parent"]["child"]["grandchild"]["name"] == "Mike"
-        assert content["parent"]["child"]["grandchild"]["age"] == 38
-        content = params.CreateComposableTemplateParamSource._create_or_merge(
-            {"parent": {
-                "child": {"name": "Mary", "grandchild": {"name": {"first": "Dale", "last": "Smith"}, "age": 38}}}},
-            ["parent", "child", "grandchild"], {"name": "Mike"})
-        assert content["parent"]["child"]["grandchild"]["name"] == "Mike"
-        assert content["parent"]["child"]["grandchild"]["age"] == 38
-        content = params.CreateComposableTemplateParamSource._create_or_merge(
-            {"parent": {
-                "child": {"name": "Mary", "grandchild": {"name": {"first": "Dale", "last": "Smith"}, "age": 38}}}},
-            ["parent", "child", "grandchild"], {"name": {"first": "Mike"}})
-        assert content["parent"]["child"]["grandchild"]["name"]["first"] == "Mike"
-        assert content["parent"]["child"]["grandchild"]["name"]["last"] == "Smith"
-
-    def test_no_templates_specified(self):
-        with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.CreateComposableTemplateParamSource(
-                workload=workload.Workload(name="unit-test"), params={
-                    "settings": {
-                        "index.number_of_shards": 1,
-                        "index.number_of_replicas": 1
-                    },
-                    "operation-type": "create-composable-template"
-                })
-        self.assertEqual("Please set the properties 'template' and 'body' for the create-composable-template operation "
-                         "or declare composable and/or component templates in the workload", ctx.exception.args[0])
-
-
-class CreateComponentTemplateParamSourceTests(TestCase):
-    def test_create_component_index_template_from_workload(self):
-        tpl = workload.ComponentTemplate(name="default", content={
-          "template": {
-            "mappings": {
-              "properties": {
-                "@timestamp": {
-                  "type": "date"
-                }
-              }
-            }
-          }
-        })
-
-        source = params.CreateComponentTemplateParamSource(
-            workload=workload.Workload(name="unit-test", component_templates=[tpl]), params={
-                "settings": {
-                    "index.number_of_shards": 1,
-                    "index.number_of_replicas": 1
-                }
-            })
-
-        p = source.params()
-
-        self.assertEqual(1, len(p["templates"]))
-        self.assertDictEqual({}, p["request-params"])
-        template, body = p["templates"][0]
-        self.assertEqual("default", template)
-        self.assertDictEqual({
-          "template": {
-            "settings": {
-              "index.number_of_shards": 1,
-              "index.number_of_replicas": 1
-            },
-            "mappings": {
-              "properties": {
-                "@timestamp": {
-                  "type": "date"
-                }
-              }
-            }
-          }
-        }, body)
-
-
-class DeleteComponentTemplateParamSource(TestCase):
-    def test_delete_index_template_by_name(self):
-        source = params.DeleteComponentTemplateParamSource(workload.Workload(name="unit-test"), params={"template": "default"})
-        p = source.params()
-        self.assertEqual(1, len(p["templates"]))
-        self.assertEqual("default", p["templates"][0])
-        self.assertTrue(p["only-if-exists"])
-        self.assertDictEqual({}, p["request-params"])
-
-    def test_delete_index_template_no_name(self):
-        with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.DeleteComponentTemplateParamSource(workload.Workload(name="unit-test"),
-                                                  params={"operation-type": "delete-component-template"})
-        self.assertEqual("Please set the property 'template' for the delete-component-template operation.",
-                         ctx.exception.args[0])
-
-    def test_delete_index_template_from_workload(self):
-        tpl1 = workload.ComponentTemplate(name="logs", content={
-          "template": {
-            "mappings": {
-              "properties": {
-                "@timestamp": {
-                  "type": "date"
-                }
-              }
-            }
-          }
-        })
-        tpl2 = workload.ComponentTemplate(name="metrics", content={
-          "template": {
-            "settings": {
-              "index.number_of_shards": 1,
-              "index.number_of_replicas": 1
-            }
-          }
-        })
-        source = params.DeleteComponentTemplateParamSource(workload.Workload(name="unit-test", templates=[tpl1, tpl2]), params={
-            "request-params": {
-                "master_timeout": 20
-            },
-            "only-if-exists": False
-        })
-
-        p = source.params()
-
-        self.assertEqual(2, len(p["templates"]))
-        self.assertEqual("logs", p["templates"][0])
-        self.assertEqual("metrics", p["templates"][1])
-        self.assertFalse(p["only-if-exists"])
-        self.assertDictEqual({"master_timeout": 20}, p["request-params"])
-
-
 class SearchParamSourceTests(TestCase):
     def test_passes_cache(self):
-        index1 = workload.Index(name="index1", types=["type1"])
+        col1 = workload.Collection(name="index1")
 
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", indices=[index1]), params={
+        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
+            "index": "index1",
             "body": {
                 "query": {
                     "match_all": {}
@@ -2374,9 +1558,9 @@ class SearchParamSourceTests(TestCase):
             }
         }, p["body"])
 
-    def test_uses_data_stream(self):
-        ds1 = workload.DataStream(name="data-stream-1")
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", data_streams=[ds1]), params={
+    def test_uses_collection_default(self):
+        col1 = workload.Collection(name="collection-1")
+        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
             "body": {
                 "query": {
                     "match_all": {}
@@ -2394,7 +1578,7 @@ class SearchParamSourceTests(TestCase):
 
         self.assertEqual(11, len(p))
         self.assertEqual(True, p["calculate-recall"])
-        self.assertEqual("data-stream-1", p["index"])
+        self.assertEqual("collection-1", p["index"])
         self.assertIsNone(p["type"])
         self.assertEqual(1.0, p["request-timeout"])
         self.assertDictEqual({
@@ -2426,9 +1610,10 @@ class SearchParamSourceTests(TestCase):
         self.assertEqual("'index' or 'data-stream' is mandatory and is missing for operation 'test_operation'", ctx.exception.args[0])
 
     def test_passes_request_parameters(self):
-        index1 = workload.Index(name="index1", types=["type1"])
+        col1 = workload.Collection(name="index1")
 
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", indices=[index1]), params={
+        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
+            "index": "index1",
             "request-params": {
                 "_source_include": "some_field"
             },
@@ -2460,9 +1645,9 @@ class SearchParamSourceTests(TestCase):
         }, p["body"])
 
     def test_user_specified_overrides_defaults(self):
-        index1 = workload.Index(name="index1", types=["type1"])
+        col1 = workload.Collection(name="index1")
 
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", indices=[index1]), params={
+        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
             "index": "_all",
             "type": "type1",
             "cache": False,
@@ -2495,11 +1680,11 @@ class SearchParamSourceTests(TestCase):
             }
         }, p["body"])
 
-    def test_user_specified_data_stream_overrides_defaults(self):
-        ds1 = workload.DataStream(name="data-stream-1")
+    def test_user_specified_collection_overrides_defaults(self):
+        col1 = workload.Collection(name="collection-1")
 
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", data_streams=[ds1]), params={
-            "data-stream": "data-stream-2",
+        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
+            "index": "collection-2",
             "cache": False,
             "response-compression-enabled": False,
             "request-timeout": 1.0,
@@ -2513,7 +1698,7 @@ class SearchParamSourceTests(TestCase):
 
         self.assertEqual(11, len(p))
         self.assertEqual(True, p["calculate-recall"])
-        self.assertEqual("data-stream-2", p["index"])
+        self.assertEqual("collection-2", p["index"])
         self.assertIsNone(p["type"])
         self.assertEqual(1.0, p["request-timeout"])
         self.assertIsNone(p["headers"])
@@ -2529,30 +1714,11 @@ class SearchParamSourceTests(TestCase):
             }
         }, p["body"])
 
-    def test_invalid_data_stream_with_type(self):
-        with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            ds1 = workload.DataStream(name="data-stream-1")
-
-            params.SearchParamSource(workload=workload.Workload(name="unit-test", data_streams=[ds1]), params={
-                "data-stream": "data-stream-2",
-                "type": "_doc",
-                "cache": False,
-                "response-compression-enabled": False,
-                "body": {
-                    "query": {
-                        "match_all": {}
-                    }
-                }
-            }, operation_name="test_operation")
-
-        self.assertEqual("'type' not supported with 'data-stream' for operation 'test_operation'",
-                         ctx.exception.args[0])
-
     def test_assertions_without_detailed_results_are_invalid(self):
-        index1 = workload.Index(name="index1", types=["type1"])
+        col1 = workload.Collection(name="index1")
         with self.assertRaisesRegex(exceptions.InvalidSyntax,
                                     r"The property \[detailed-results\] must be \[true\] if assertions are defined"):
-            params.SearchParamSource(workload=workload.Workload(name="unit-test", indices=[index1]), params={
+            params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
                 "index": "_all",
                 # unset!
                 #"detailed-results": True,
@@ -2569,1251 +1735,35 @@ class SearchParamSourceTests(TestCase):
             })
 
 
-class ForceMergeParamSourceTests(TestCase):
-    def test_force_merge_index_from_workload(self):
-        source = params.ForceMergeParamSource(workload.Workload(name="unit-test", indices=[
-            workload.Index(name="index1"),
-            workload.Index(name="index2"),
-            workload.Index(name="index3")
-        ]), params={})
-
-        p = source.params()
-
-        self.assertEqual("index1,index2,index3", p["index"])
-        self.assertEqual("blocking", p["mode"])
-
-    def test_force_merge_data_stream_from_workload(self):
-        source = params.ForceMergeParamSource(workload.Workload(name="unit-test", data_streams=[
-            workload.DataStream(name="data-stream-1"),
-            workload.DataStream(name="data-stream-2"),
-            workload.DataStream(name="data-stream-3")
-        ]), params={})
-
-        p = source.params()
-
-        self.assertEqual("data-stream-1,data-stream-2,data-stream-3", p["index"])
-        self.assertEqual("blocking", p["mode"])
-
-    def test_force_merge_index_by_name(self):
-        source = params.ForceMergeParamSource(workload.Workload(name="unit-test"), params={"index": "index2"})
-
-        p = source.params()
-
-        self.assertEqual("index2", p["index"])
-        self.assertEqual("blocking", p["mode"])
-
-    def test_force_merge_by_data_stream_name(self):
-        source = params.ForceMergeParamSource(workload.Workload(name="unit-test"), params={"data-stream": "data-stream-2"})
-
-        p = source.params()
-
-        self.assertEqual("data-stream-2", p["index"])
-        self.assertEqual("blocking", p["mode"])
-
-    def test_default_force_merge_index(self):
-        source = params.ForceMergeParamSource(workload.Workload(name="unit-test"), params={})
-
-        p = source.params()
-
-        self.assertEqual("_all", p["index"])
-        self.assertEqual("blocking", p["mode"])
-
-    def test_force_merge_all_params(self):
-        source = params.ForceMergeParamSource(workload.Workload(name="unit-test"), params={"index": "index2",
-                                                                                     "request-timeout": 30,
-                                                                                     "max-num-segments": 1,
-                                                                                     "polling-period": 20,
-                                                                                     "mode": "polling"})
-
-        p = source.params()
-
-        self.assertEqual("index2", p["index"])
-        self.assertEqual(30, p["request-timeout"])
-        self.assertEqual(1, p["max-num-segments"])
-        self.assertEqual("polling", p["mode"])
-
-
-class VectorSearchParamSourceTests(TestCase):
-    DEFAULT_INDEX_NAME = "test-index"
-    DEFAULT_FIELD_NAME = "test-field"
-    DEFAULT_CONTEXT = Context.INDEX
-    DEFAULT_TYPE = HDF5DataSet.FORMAT_NAME
-    DEFAULT_NUM_VECTORS = 10
-    DEFAULT_DIMENSION = 10
-    DEFAULT_RANDOM_STRING_LENGTH = 8
-
-    def setUp(self) -> None:
-        self.data_set_dir = tempfile.mkdtemp()
-
-        # Create a data set we know to be valid for convenience
-        self.valid_data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            self.DEFAULT_CONTEXT,
-            self.data_set_dir
-        )
-
-    def tearDown(self):
-        shutil.rmtree(self.data_set_dir)
-
-    def test_missing_params(self):
-        empty_params = dict()
-        self.assertRaises(
-            ConfigurationError,
-            lambda: self.TestVectorsFromDataSetParamSource(
-                workload.Workload(name="unit-test"),
-                empty_params, VectorSearchParamSourceTests.DEFAULT_CONTEXT)
-        )
-
-    def test_invalid_data_set_format(self):
-        invalid_data_set_format = "invalid-data-set-format"
-
-        test_param_source_params = {
-            "index": VectorSearchParamSourceTests.DEFAULT_INDEX_NAME,
-            "field": VectorSearchParamSourceTests.DEFAULT_FIELD_NAME,
-            "data_set_format": invalid_data_set_format,
-            "data_set_path": self.valid_data_set_path,
-        }
-        self.assertRaises(
-            ConfigurationError,
-            lambda: self.TestVectorsFromDataSetParamSource(
-                workload.Workload(name="unit-test"),
-                test_param_source_params,
-                self.DEFAULT_CONTEXT
-            ).partition(0, 1)
-        )
-
-    def test_corpus_not_found_in_workload(self):
-        corpora = [
-            workload.DocumentCorpus(name="sift-128", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_HDF5,number_of_documents=10)
-            ]),
-        ]
-        test_param_source_params = {
-            "index": VectorSearchParamSourceTests.DEFAULT_INDEX_NAME,
-            "field": VectorSearchParamSourceTests.DEFAULT_FIELD_NAME,
-            "data_set_format": "hdf5",
-            "data_set_corpus": "sift-128-1"
-        }
-        self.assertRaises(
-            ConfigurationError,
-            lambda: self.TestVectorsFromDataSetParamSource(
-                workload.Workload(name="unit-test", corpora=corpora),
-                test_param_source_params,
-                self.DEFAULT_CONTEXT
-            ).partition(0, 1)
-        )
-
-    def test_corpus_contains_more_than_one_files(self):
-        corpus_name="sift-128"
-        corpora = [
-            workload.DocumentCorpus(name=corpus_name, documents=[
-                workload.Documents(
-                    source_format=workload.Documents.SOURCE_FORMAT_HDF5,
-                    number_of_documents=10,
-                    document_file="file1"
-                ),
-                workload.Documents(
-                    source_format=workload.Documents.SOURCE_FORMAT_HDF5,
-                    number_of_documents=10,
-                    document_file="file2"
-                )
-            ]),
-        ]
-        test_param_source_params = {
-            "index": VectorSearchParamSourceTests.DEFAULT_INDEX_NAME,
-            "field": VectorSearchParamSourceTests.DEFAULT_FIELD_NAME,
-            "data_set_format": "hdf5",
-            "data_set_corpus": corpus_name,
-        }
-        self.assertRaises(
-            ConfigurationError,
-            lambda: self.TestVectorsFromDataSetParamSource(
-                workload.Workload(name="unit-test", corpora=corpora),
-                test_param_source_params,
-                self.DEFAULT_CONTEXT
-            ).partition(0, 1)
-        )
-
-    def test_missing_data_set_path_or_corpus(self):
-        test_param_source_params = {
-            "index": VectorSearchParamSourceTests.DEFAULT_INDEX_NAME,
-            "field": VectorSearchParamSourceTests.DEFAULT_FIELD_NAME,
-            "data_set_format": "hdf5",
-        }
-        self.assertRaises(
-            ConfigurationError,
-            lambda: self.TestVectorsFromDataSetParamSource(
-                workload.Workload(name="unit-test"),
-                test_param_source_params,
-                self.DEFAULT_CONTEXT
-            ).partition(0, 1)
-        )
-
-    def test_either_data_set_path_or_corpus(self):
-        test_param_source_params = {
-            "index": VectorSearchParamSourceTests.DEFAULT_INDEX_NAME,
-            "field": VectorSearchParamSourceTests.DEFAULT_FIELD_NAME,
-            "data_set_format": "hdf5",
-            "data_set_corpus": "corpus_name",
-            "data_set_path": "file-path",
-        }
-        self.assertRaises(
-            ConfigurationError,
-            lambda: self.TestVectorsFromDataSetParamSource(
-                workload.Workload(name="unit-test"),
-                test_param_source_params,
-                self.DEFAULT_CONTEXT
-            )
-        )
-
-    def test_missing_corpus(self):
-        test_param_source_params = {
-            "index": VectorSearchParamSourceTests.DEFAULT_INDEX_NAME,
-            "field": VectorSearchParamSourceTests.DEFAULT_FIELD_NAME,
-            "data_set_format": "hdf5",
-            "data_set_corpus": "sift-128"
-        }
-        self.assertRaises(
-            ConfigurationError,
-            lambda: self.TestVectorsFromDataSetParamSource(
-                workload.Workload(name="unit-test", corpora=[]),
-                test_param_source_params,
-                self.DEFAULT_CONTEXT
-            ).partition(0, 1)
-        )
-
-    def test_invalid_data_set_path(self):
-        invalid_data_set_path = "invalid-data-set-path"
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_FIELD_NAME,
-            "data_set_format": HDF5DataSet.FORMAT_NAME,
-            "data_set_path": invalid_data_set_path,
-        }
-        self.assertRaises(
-            FileNotFoundError,
-            lambda: self.TestVectorsFromDataSetParamSource(
-                workload.Workload(name="unit-test"),
-                test_param_source_params,
-                self.DEFAULT_CONTEXT
-            ).partition(0, 1)
-        )
-
-    def test_partition_hdf5_corpus(self):
-        num_vectors = 100
-        num_partitions = 10
-        corpus_name = "random-hdf5-corpus"
-
-        hdf5_data_set_path = create_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            HDF5DataSet.FORMAT_NAME,
-            self.DEFAULT_CONTEXT,
-            self.data_set_dir
-        )
-        corpora = [
-            workload.DocumentCorpus(name=corpus_name, documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_HDF5,
-                                   number_of_documents=num_vectors,
-                                   document_file=hdf5_data_set_path)
-            ]),
-        ]
-
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_FIELD_NAME,
-            "data_set_format": HDF5DataSet.FORMAT_NAME,
-            "data_set_corpus": corpus_name,
-        }
-        test_param_source = self.TestVectorsFromDataSetParamSource(
-            workload.Workload(name="unit-test", corpora=corpora),
-            test_param_source_params,
-            self.DEFAULT_CONTEXT
-        )
-
-        vectors_per_partition = num_vectors // num_partitions
-
-        self._test_partition(
-            test_param_source,
-            num_partitions,
-            vectors_per_partition
-        )
-
-    def test_partition_hdf5(self):
-        num_vectors = 100
-        num_partitions = 10
-
-        hdf5_data_set_path = create_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            HDF5DataSet.FORMAT_NAME,
-            self.DEFAULT_CONTEXT,
-            self.data_set_dir
-        )
-
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_FIELD_NAME,
-            "data_set_format": HDF5DataSet.FORMAT_NAME,
-            "data_set_path": hdf5_data_set_path,
-        }
-        test_param_source = self.TestVectorsFromDataSetParamSource(
-            workload.Workload(name="unit-test"),
-            test_param_source_params,
-            self.DEFAULT_CONTEXT
-        )
-
-        vectors_per_partition = num_vectors // num_partitions
-
-        self._test_partition(
-            test_param_source,
-            num_partitions,
-            vectors_per_partition
-        )
-
-    def test_partition_bigann(self):
-        num_vectors = 100
-        num_partitions = 10
-        float_extension = "fbin"
-
-        bigann_data_set_path = create_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            float_extension,
-            self.DEFAULT_CONTEXT,
-            self.data_set_dir
-        )
-
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_FIELD_NAME,
-            "data_set_format": "bigann",
-            "data_set_path": bigann_data_set_path,
-        }
-        test_param_source = self.TestVectorsFromDataSetParamSource(
-            workload.Workload(name="unit-test"),
-            test_param_source_params,
-            self.DEFAULT_CONTEXT
-        )
-        vectors_per_partition = num_vectors // num_partitions
-        self._test_partition(
-            test_param_source,
-            num_partitions,
-            vectors_per_partition
-        )
-
-    def _test_partition(
-            self,
-            test_param_source: VectorDataSetPartitionParamSource,
-            num_partitions: int,
-            vec_per_partition: int
-    ):
-        for i in range(num_partitions):
-            test_param_source_i = test_param_source.partition(i, num_partitions)
-            self.assertEqual(test_param_source_i.num_vectors, vec_per_partition)
-            self.assertEqual(test_param_source_i.offset, i * vec_per_partition)
-
-    class TestVectorsFromDataSetParamSource(VectorDataSetPartitionParamSource):
-        """
-        Empty implementation of ABC VectorsFromDataSetParamSource so that we can
-        test the concrete methods.
-        """
-
-        def params(self):
-            pass
-
-
-class VectorSearchPartitionPartitionParamSourceTestCase(TestCase):
-
-    DEFAULT_INDEX_NAME = "test-partition-index"
-    DEFAULT_FIELD_NAME = "test-vector-field"
-    DEFAULT_CONTEXT = Context.INDEX
-    DEFAULT_TYPE = HDF5DataSet.FORMAT_NAME
-    DEFAULT_NUM_VECTORS = 10
-    DEFAULT_DIMENSION = 10
-    DEFAULT_RANDOM_STRING_LENGTH = 8
-
-    def setUp(self) -> None:
-        self.data_set_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        shutil.rmtree(self.data_set_dir)
-
-    def test_params_default(self):
-        # Create a data set
-        k = 12
-        data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.QUERY,
-            self.data_set_dir
-        )
-        create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.NEIGHBORS,
-            self.data_set_dir,
-            data_set_path
-        )
-
-        # Create a QueryVectorsFromDataSetParamSource with relevant params
-        test_param_source_params = {
-            "field": self.DEFAULT_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "k": k
-        }
-        query_param_source = VectorSearchPartitionParamSource(
-            workload.Workload(name="unit-test"),
-            test_param_source_params, {
-                "index": self.DEFAULT_INDEX_NAME,
-                "request-params": {},
-            }
-        )
-        query_param_source_partition = query_param_source.partition(0, 1)
-
-        # Check each
-        for _ in range(DEFAULT_NUM_VECTORS):
-            self._check_params(
-                query_param_source_partition.params(),
-                self.DEFAULT_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                k,
-            )
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            query_param_source_partition.params()
-
-    def test_post_filter(self):
-        # Create a data set
-        k = 12
-        data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.QUERY,
-            self.data_set_dir
-        )
-        neighbors_data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.NEIGHBORS,
-            self.data_set_dir,
-        )
-
-        # Create a QueryVectorsFromDataSetParamSource with relevant params
-
-        POST_FILTER_BODY = {"range": {"price": {"gte": 5, "lte": 10}}}
-        test_param_source_params = {
-            "field": self.DEFAULT_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "neighbors_data_set_path": neighbors_data_set_path,
-            "k": k,
-            "filter_type": "post_filter",
-            "filter_body": POST_FILTER_BODY,
-        }
-        query_param_source = VectorSearchPartitionParamSource(
-            workload.Workload(name="unit-test"),
-            test_param_source_params,
-            {
-                "index": self.DEFAULT_INDEX_NAME,
-                "request-params": {},
-                "body": {
-                    "size": 100,
-                },
-            },
-        )
-        query_param_source_partition = query_param_source.partition(0, 1)
-
-        # Check each
-        for _ in range(DEFAULT_NUM_VECTORS):
-            params = query_param_source_partition.params()
-            self._check_params(
-                params,
-                self.DEFAULT_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                k,
-                100,
-            )
-            post_filter = params.get("body").get("post_filter")
-            self.assertIsInstance(post_filter, dict)
-            self.assertEqual(post_filter, POST_FILTER_BODY)
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            query_param_source_partition.params()
-
-    def test_bool_filter(self):
-        # Create a data set
-        k = 12
-        data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.QUERY,
-            self.data_set_dir,
-        )
-        neighbors_data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.NEIGHBORS,
-            self.data_set_dir,
-        )
-        # Create a QueryVectorsFromDataSetParamSource with relevant params
-
-        BOOL_FILTER_BODY = {
-            "bool": {
-                "must": [
-                    {"range": {"rating": {"gte": 8, "lte": 10}}},
-                    {"term": {"parking": "true"}},
-                ]
-            }
-        }
-        test_param_source_params = {
-            "field": self.DEFAULT_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "neighbors_data_set_path": neighbors_data_set_path,
-            "k": k,
-            "filter_type": "boolean",
-            "filter_body": BOOL_FILTER_BODY,
-        }
-        query_param_source = VectorSearchPartitionParamSource(
-            workload.Workload(name="unit-test"),
-            test_param_source_params,
-            {
-                "index": self.DEFAULT_INDEX_NAME,
-                "request-params": {},
-                "body": {
-                    "size": 100,
-                },
-            },
-        )
-        query_param_source_partition = query_param_source.partition(0, 1)
-
-        # Check each
-        for _ in range(DEFAULT_NUM_VECTORS):
-            params = query_param_source_partition.params()
-            self._check_params_bool(
-                params,
-                self.DEFAULT_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                k,
-                100,
-                BOOL_FILTER_BODY,
-            )
-            # post_filter = params.get("body").get("post_filter")
-            # self.assertIsInstance(post_filter, dict)
-            # self.assertEqual(post_filter, BOOL_FILTER_BODY)
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            query_param_source_partition.params()
-
-    def test_script_score_filter(self):
-        # Create a data set
-        k = 12
-        data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.QUERY,
-            self.data_set_dir,
-        )
-        neighbors_data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.NEIGHBORS,
-            self.data_set_dir,
-        )
-
-        # Create a QueryVectorsFromDataSetParamSource with relevant params
-
-        SCRIPT_SCORE_FILTER_BODY = {
-            "bool": {
-                "must": [
-                    {"range": {"rating": {"gte": 8, "lte": 10}}},
-                    {"term": {"parking": "true"}},
-                ]
-            }
-        }
-        test_param_source_params = {
-            "field": self.DEFAULT_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "neighbors_data_set_path": neighbors_data_set_path,
-            "k": k,
-            "filter_type": "script",
-            "filter_body": SCRIPT_SCORE_FILTER_BODY,
-        }
-        query_param_source = VectorSearchPartitionParamSource(
-            workload.Workload(name="unit-test"),
-            test_param_source_params,
-            {
-                "index": self.DEFAULT_INDEX_NAME,
-                "request-params": {},
-                "body": {
-                    "size": 100,
-                },
-            },
-        )
-        query_param_source_partition = query_param_source.partition(0, 1)
-
-        # Check each
-        for _ in range(DEFAULT_NUM_VECTORS):
-            params = query_param_source_partition.params()
-            self._check_params_script_score(
-                params,
-                self.DEFAULT_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                k,
-                100,
-                SCRIPT_SCORE_FILTER_BODY,
-            )
-            # post_filter = params.get("body").get("post_filter")
-            # self.assertIsInstance(post_filter, dict)
-            # self.assertEqual(post_filter, BOOL_FILTER_BODY)
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            query_param_source_partition.params()
-
-    def _check_params(
-            self,
-            actual_params: dict,
-            expected_field: str,
-            expected_dimension: int,
-            expected_k: int,
-            expected_size=None,
-            expected_filter=None,
-    ):
-        body = actual_params.get("body")
-        self.assertIsInstance(body, dict)
-        query = body.get("query")
-        self.assertIsInstance(query, dict)
-        query_knn = query.get("knn")
-        self.assertIsInstance(query_knn, dict)
-        field = query_knn.get(expected_field)
-        self.assertIsInstance(field, dict)
-        vector = field.get("vector")
-        self.assertIsInstance(vector, np.ndarray)
-        self.assertEqual(len(list(vector)), expected_dimension)
-        k = field.get("k")
-        self.assertEqual(k, expected_k)
-        neighbor = actual_params.get("neighbors")
-        self.assertIsInstance(neighbor, list)
-        self.assertEqual(len(neighbor), expected_dimension)
-        size = body.get("size")
-        self.assertEqual(size, expected_size if expected_size else expected_k)
-        self.assertEqual(field.get("filter"), expected_filter)
-
-    def _check_params_bool(
-        self,
-            actual_params: dict,
-            expected_field: str,
-            expected_dimension: int,
-            expected_k: int,
-            expected_size=None,
-            expected_bool_query=None,
-            check_vectors=True,
-            ):
-        body = actual_params.get("body")
-        self.assertIsInstance(body, dict)
-        query = body.get("query")
-        self.assertIsInstance(query, dict)
-        query_bool = query.get("bool")
-        self.assertIsInstance(query_bool, dict)
-        filter = query_bool.get("filter")
-        self.assertIsInstance(filter, dict)
-        self.assertEqual(filter, expected_bool_query)
-
-        must_clause = query_bool.get("must")
-        self.assertIsInstance(must_clause, list)
-
-        if check_vectors:
-            knn_dict = must_clause[0]
-
-            repacked = {"body": {"query": knn_dict, "size": body.get("size") },
-                        "neighbors": actual_params.get("neighbors")
-                        }
-
-            self._check_params(repacked, expected_field, expected_dimension, expected_k,expected_size)
-
-    def _check_params_script_score(
-                                           self,
-            actual_params: dict,
-            expected_field: str,
-            expected_dimension: int,
-            expected_k: int,
-            expected_size=None,
-            expected_script_query=None
-            ):
-        body = actual_params.get("body")
-        self.assertIsInstance(body, dict)
-        query = body.get("query")
-        self.assertIsInstance(query, dict)
-        script_score_query = query.get("script_score")
-        self.assertIsInstance(script_score_query, dict)
-        bool_from_script_score = script_score_query.get("query").get("bool").get("filter")
-
-        self.assertEqual(bool_from_script_score, expected_script_query)
-
-        script = script_score_query.get("script")
-        self.assertIsInstance(script, dict)
-
-        source = script.get("source")
-        self.assertEqual(source, "knn_score")
-
-        lang = script.get("lang")
-        self.assertEqual(lang, "knn")
-
-        params = script.get("params")
-        self.assertIsInstance(params, dict)
-
-        field = params.get("field")
-        self.assertEqual(field, expected_field)
-
-        vector = params.get("query_value")
-        self.assertIsInstance(vector, np.ndarray)
-        self.assertEqual(len(list(vector)), expected_dimension)
-
-        space_type = params.get("space_type")
-        self.assertEqual(space_type, "l2") # TODO change this once it's all modifiable.
-
-class BulkVectorsFromDataSetParamSourceTestCase(TestCase):
-
-    DEFAULT_INDEX_NAME = "test-partition-index"
-    DEFAULT_VECTOR_FIELD_NAME = "test-vector-field"
-    DEFAULT_CONTEXT = Context.INDEX
-    DEFAULT_TYPE = HDF5DataSet.FORMAT_NAME
-    DEFAULT_NUM_VECTORS = 10
-    DEFAULT_DIMENSION = 10
-    DEFAULT_RANDOM_STRING_LENGTH = 8
-    DEFAULT_ID_FIELD_NAME = "_id"
-
-    def setUp(self) -> None:
-        self.data_set_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        shutil.rmtree(self.data_set_dir)
-
-    def test_params_default(self):
-        num_vectors = 49
-        bulk_size = 10
-        data_set_path = create_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.INDEX,
-            self.data_set_dir
-        )
-
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_VECTOR_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "bulk_size": bulk_size,
-            "id-field-name": self.DEFAULT_ID_FIELD_NAME,
-        }
-        bulk_param_source = BulkVectorsFromDataSetParamSource(
-            workload.Workload(name="unit-test"), test_param_source_params)
-        bulk_param_source_partition = bulk_param_source.partition(0, 1)
-        # Check each payload returned
-        vectors_consumed = 0
-        while vectors_consumed < num_vectors:
-            expected_num_vectors = min(num_vectors - vectors_consumed, bulk_size)
-            actual_params = bulk_param_source_partition.params()
-            self._check_params(
-                actual_params,
-                self.DEFAULT_INDEX_NAME,
-                self.DEFAULT_VECTOR_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                expected_num_vectors,
-                self.DEFAULT_ID_FIELD_NAME,
-            )
-            vectors_consumed += expected_num_vectors
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            bulk_param_source_partition.params()
-
-    def test_params_custom(self):
-        num_vectors = 49
-        bulk_size = 10
-        data_set_path = create_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.INDEX,
-            self.data_set_dir
-        )
-
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_VECTOR_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "bulk_size": bulk_size,
-            "id-field-name": "id",
-        }
-        bulk_param_source = BulkVectorsFromDataSetParamSource(
-            workload.Workload(name="unit-test"), test_param_source_params)
-        bulk_param_source_partition = bulk_param_source.partition(0, 1)
-        # Check each payload returned
-        vectors_consumed = 0
-        while vectors_consumed < num_vectors:
-            expected_num_vectors = min(num_vectors - vectors_consumed, bulk_size)
-            actual_params = bulk_param_source_partition.params()
-            self._check_params(
-                actual_params,
-                self.DEFAULT_INDEX_NAME,
-                self.DEFAULT_VECTOR_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                expected_num_vectors,
-                "id",
-            )
-            vectors_consumed += expected_num_vectors
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            bulk_param_source_partition.params()
-
-    def _check_params(
-            self,
-            actual_params: dict,
-            expected_index: str,
-            expected_vector_field: str,
-            expected_dimension: int,
-            expected_num_vectors_in_payload: int,
-            expected_id_field: str,
-    ):
-        size = actual_params.get("size")
-        self.assertEqual(size, expected_num_vectors_in_payload)
-        body = actual_params.get("body")
-        self.assertIsInstance(body, list)
-        self.assertEqual(len(body) // 2, expected_num_vectors_in_payload)
-
-        # Bulk payload has 2 parts: first one is the header and the second one
-        # is the body. The header will have the index name and the body will
-        # have the vector
-        for header, req_body in zip(*[iter(body)] * 2):
-            index = header.get("index")
-            self.assertIsInstance(index, dict)
-
-            index_name = index.get("_index")
-            self.assertEqual(index_name, expected_index)
-
-            vector = req_body.get(expected_vector_field)
-            self.assertIsInstance(vector, list)
-            self.assertEqual(len(vector), expected_dimension)
-            if expected_id_field in index:
-                self.assertEqual(self.DEFAULT_ID_FIELD_NAME, expected_id_field)
-                self.assertFalse(expected_id_field in req_body)
-                continue
-            self.assertTrue(expected_id_field in req_body)
-
-
-class BulkVectorsAttributeCase(TestCase):
-    DEFAULT_INDEX_NAME = "test-partition-index"
-    DEFAULT_VECTOR_FIELD_NAME = "test-vector-field"
-    DEFAULT_CONTEXT = Context.INDEX
-    DEFAULT_TYPE = HDF5DataSet.FORMAT_NAME
-    DEFAULT_NUM_VECTORS = 10
-    DEFAULT_DIMENSION = 10
-    DEFAULT_RANDOM_STRING_LENGTH = 8
-    DEFAULT_ID_FIELD_NAME = "_id"
-    ATTRIBUTES_LIST = ['taste', 'color', 'age']
-
-    def setUp(self) -> None:
-        self.data_set_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        shutil.rmtree(self.data_set_dir)
-
-    def test_params_efficient_filter(
-        self
-    ):
-        num_vectors = 49
-        bulk_size = 10
-        data_set_path = create_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.INDEX,
-            self.data_set_dir
-        )
-        parent_data_set_path = create_attributes_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.ATTRIBUTES,
-            self.data_set_dir,
-        )
-
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_VECTOR_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "bulk_size": bulk_size,
-            "id-field-name": self.DEFAULT_ID_FIELD_NAME,
-            "filter_attributes": self.ATTRIBUTES_LIST
-        }
-        bulk_param_source = BulkVectorsFromDataSetParamSource(
-            workload.Workload(name="unit-test"), test_param_source_params
-        )
-        bulk_param_source.parent_data_set_path = parent_data_set_path
-        bulk_param_source_partition = bulk_param_source.partition(0, 1)
-        # Check each payload returned
-        vectors_consumed = 0
-        while vectors_consumed < num_vectors:
-            expected_num_vectors = min(num_vectors - vectors_consumed, bulk_size)
-            actual_params = bulk_param_source_partition.params()
-            self._check_params_attributes(
-                actual_params,
-                self.DEFAULT_INDEX_NAME,
-                self.DEFAULT_VECTOR_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                expected_num_vectors,
-                self.DEFAULT_ID_FIELD_NAME,
-            )
-            vectors_consumed += expected_num_vectors
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            bulk_param_source_partition.params()
-
-    def _check_params_attributes(
-            self,
-        actual_params: dict,
-        expected_index: str,
-        expected_vector_field: str,
-        expected_dimension: int,
-        expected_num_vectors_in_payload: int,
-        expected_id_field: str,
-    ):
-        size = actual_params.get("size")
-        self.assertEqual(size, expected_num_vectors_in_payload)
-        body = actual_params.get("body")
-        self.assertIsInstance(body, list)
-        self.assertEqual(len(body) // 2, expected_num_vectors_in_payload)
-
-        # Bulk payload has 2 parts: first one is the header and the second one
-        # is the body. The header will have the index name and the body will
-        # have the vector
-        for header, req_body in zip(*[iter(body)] * 2):
-            index = header.get("index")
-            self.assertIsInstance(index, dict)
-
-            index_name = index.get("_index")
-            self.assertEqual(index_name, expected_index)
-
-            vector = req_body.get(expected_vector_field)
-            self.assertIsInstance(vector, list)
-            self.assertEqual(len(vector), expected_dimension)
-
-            for attribute in self.ATTRIBUTES_LIST:
-                self.assertTrue(attribute in req_body)
-            if expected_id_field in index:
-                self.assertEqual(self.DEFAULT_ID_FIELD_NAME, expected_id_field)
-                self.assertFalse(expected_id_field in req_body)
-                continue
-            self.assertTrue(expected_id_field in req_body)
-
-
-class VectorsNestedCase(TestCase):
-    DEFAULT_INDEX_NAME = "test-partition-index"
-    DEFAULT_VECTOR_FIELD_NAME = "nested.test-vector-field"
-    DEFAULT_CONTEXT = Context.INDEX
-    DEFAULT_TYPE = HDF5DataSet.FORMAT_NAME
-    DEFAULT_NUM_VECTORS = 10
-    DEFAULT_DIMENSION = 10
-    DEFAULT_RANDOM_STRING_LENGTH = 8
-    DEFAULT_ID_FIELD_NAME = "_id"
-
-    def setUp(self) -> None:
-        self.data_set_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        shutil.rmtree(self.data_set_dir)
-
-    def test_invalid_nesting_scheme(self):
-        # Test with 0 "." in the vector field, with 2 "." in the vector field, and with a different separator.
-        invalid_nesting_schemes = ["a", "a.b.c", "a.b.c.d"]
-        for nesting_scheme in invalid_nesting_schemes:
-            with self.subTest(nesting_scheme=nesting_scheme):
-                bulk_param_source = BulkVectorsFromDataSetParamSource(
-                    workload.Workload(name="unit-test"),
-                    {
-                        "index": self.DEFAULT_INDEX_NAME,
-                        "field": nesting_scheme,
-                        "data_set_format": self.DEFAULT_TYPE,
-                        "data_set_path": "path",
-                        "bulk_size": 10,
-                        "id-field-name": self.DEFAULT_ID_FIELD_NAME,
-                    },
-                )
-                with self.assertRaises(ValueError):
-                    bulk_param_source.get_split_fields()
-
-    def _test_params_default(
-        self, bulk_size, data_set_path, parent_data_set_path, num_vectors
-    ):
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_VECTOR_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "bulk_size": bulk_size,
-            "id-field-name": self.DEFAULT_ID_FIELD_NAME,
-        }
-        bulk_param_source = BulkVectorsFromDataSetParamSource(
-            workload.Workload(name="unit-test"), test_param_source_params
-        )
-        bulk_param_source.parent_data_set_path = parent_data_set_path
-        bulk_param_source_partition = bulk_param_source.partition(0, 1)
-        # Check each payload returned
-        vectors_consumed = 0
-        while vectors_consumed < num_vectors:
-            expected_num_vectors = min(num_vectors - vectors_consumed, bulk_size)
-            actual_params = bulk_param_source_partition.params()
-            expected_num_docs = len(actual_params["body"]) // 2
-
-            self._check_params_nested(
-                actual_params,
-                self.DEFAULT_INDEX_NAME,
-                self.DEFAULT_VECTOR_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                expected_num_vectors,
-                expected_num_docs,
-                self.DEFAULT_ID_FIELD_NAME,
-            )
-            vectors_consumed += expected_num_vectors
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            bulk_param_source_partition.params()
-
-    def test_params_default(self):
-
-        bulk_sizes = [1, 3, 4, 10, 50]
-
-        num_vectors = 49
-        # bulk_size = 10
-        data_set_path = create_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.INDEX,
-            self.data_set_dir,
-        )
-        parent_data_set_path = create_parent_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.PARENTS,
-            self.data_set_dir,
-        )
-
-        for bulk_size in bulk_sizes:
-            with self.subTest(bulk_size=bulk_size):
-                self._test_params_default(
-                    bulk_size, data_set_path, parent_data_set_path, num_vectors
-                )
-
-    def test_params_custom(self):
-        num_vectors = 49
-        bulk_size = 15
-        data_set_path = create_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.INDEX,
-            self.data_set_dir,
-        )
-
-        parent_data_set_path = create_parent_data_set(
-            num_vectors,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.PARENTS,
-            self.data_set_dir,
-        )
-
-        test_param_source_params = {
-            "index": self.DEFAULT_INDEX_NAME,
-            "field": self.DEFAULT_VECTOR_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "parents_data_set_path": parent_data_set_path,
-            "bulk_size": bulk_size,
-            "id-field-name": "id",
-        }
-
-        # todo is it weird with the parent data set path?
-        bulk_param_source = BulkVectorsFromDataSetParamSource(
-            workload.Workload(name="unit-test"), test_param_source_params
-        )
-        bulk_param_source.parent_data_set_path = parent_data_set_path
-        bulk_param_source_partition = bulk_param_source.partition(0, 1)
-        # Check each payload returned
-        vectors_consumed = 0
-        while vectors_consumed < num_vectors:
-            # expected_num_vectors = 10, 30, 10, 9 (15, 15, 15, 4)
-            expected_num_vectors = min(num_vectors - vectors_consumed, bulk_size)
-            # expected_num_documents = min()
-            actual_params = bulk_param_source_partition.params()
-            expected_num_docs = len(actual_params["body"]) // 2
-            self._check_params_nested(
-                actual_params,
-                self.DEFAULT_INDEX_NAME,
-                self.DEFAULT_VECTOR_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                expected_num_vectors,
-                expected_num_docs,
-                "id",
-            )
-            vectors_consumed += expected_num_vectors
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            bulk_param_source_partition.params()
-
-    def test_build_vector_search_query_body(self):
-        k = 12
-        data_set_path = create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.QUERY,
-            self.data_set_dir
-        )
-        create_data_set(
-            self.DEFAULT_NUM_VECTORS,
-            self.DEFAULT_DIMENSION,
-            self.DEFAULT_TYPE,
-            Context.NEIGHBORS,
-            self.data_set_dir,
-            data_set_path
-        )
-
-        # Create a QueryVectorsFromDataSetParamSource with relevant params
-        test_param_source_params = {
-            "field": self.DEFAULT_VECTOR_FIELD_NAME,
-            "data_set_format": self.DEFAULT_TYPE,
-            "data_set_path": data_set_path,
-            "k": k
-        }
-        query_param_source = VectorSearchPartitionParamSource(
-            workload.Workload(name="unit-test"),
-            test_param_source_params, {
-                "index": self.DEFAULT_INDEX_NAME,
-                "request-params": {},
-            }
-        )
-        query_param_source_partition = query_param_source.partition(0, 1)
-
-        # Check each
-        for _ in range(DEFAULT_NUM_VECTORS):
-            self._check_query_params(
-                query_param_source_partition.params(),
-                self.DEFAULT_VECTOR_FIELD_NAME,
-                self.DEFAULT_DIMENSION,
-                k,
-            )
-
-        # Assert last call creates stop iteration
-        with self.assertRaises(StopIteration):
-            query_param_source_partition.params()
-
-    def _check_query_params(
-            self,
-            actual_params: dict,
-            expected_field: str,
-            expected_dimension: int,
-            expected_k: int,
-            expected_size=None,
-            expected_filter=None,
-    ):
-        body = actual_params.get("body")
-        self.assertIsInstance(body, dict)
-        query = body.get("query")
-        self.assertIsInstance(query, dict)
-        nested = query.get("nested")
-        self.assertIsInstance(nested, dict)
-
-        outer, _inner = expected_field.split(".")
-
-        path = nested.get("path")
-        self.assertEqual(path, outer)
-
-        query_knn = nested.get("query").get("knn")
-
-        field = query_knn.get(expected_field)
-        self.assertIsInstance(field, dict)
-        vector = field.get("vector")
-        self.assertIsInstance(vector, np.ndarray)
-        self.assertEqual(len(list(vector)), expected_dimension)
-        k = field.get("k")
-        self.assertEqual(k, expected_k)
-        neighbor = actual_params.get("neighbors")
-        self.assertIsInstance(neighbor, list)
-        self.assertEqual(len(neighbor), expected_dimension)
-        size = body.get("size")
-        self.assertEqual(size, expected_size if expected_size else expected_k)
-        self.assertEqual(field.get("filter"), expected_filter)
-
-    def _check_params_nested(
-        self,
-        actual_params: dict,
-        expected_index: str,
-        expected_vector_field: str,
-        expected_dimension: int,
-        _expected_num_vectors_in_payload: int,
-        expected_num_docs_in_payload: int,
-        expected_id_field: str,
-    ):
-        size = actual_params.get("size")
-        self.assertEqual(size, expected_num_docs_in_payload)
-        body = actual_params.get("body")
-        self.assertIsInstance(body, list)
-        self.assertEqual(len(body) // 2, expected_num_docs_in_payload)
-
-        # Bulk payload has 2 parts: first one is the header and the second one
-        # is the body. The header will have the index name and the body will
-        # have the vector
-        for header, req_body in zip(*[iter(body)] * 2):
-            index = header.get("index")
-            self.assertIsInstance(index, dict)
-
-            index_name = index.get("_index")
-            self.assertEqual(index_name, expected_index)
-            # here, need to iterate over all of the nested fields.
-            outer, inner = expected_vector_field.split(".")
-            vector_list = req_body.get(outer)
-            self.assertIsInstance(vector_list, list)
-            for vec in vector_list:
-                actual_vec = vec.get(inner)
-                self.assertIsInstance(actual_vec, list)
-
-                self.assertEqual(len(actual_vec), expected_dimension)
-
-            if expected_id_field in index:
-                self.assertEqual(self.DEFAULT_ID_FIELD_NAME, expected_id_field)
-                self.assertFalse(expected_id_field in req_body)
-                continue
-            self.assertTrue(expected_id_field in req_body)
-
-    def test_nested_vector_query_body(self):
-        # assert that _build_vector_search_query_body returns the correct thing.
-        pass
+class CreateCollectionParamSourceTests(TestCase):
+    def test_uses_first_collection_when_no_target_specified(self):
+        col = workload.Collection(name="my-col", configset="my-cfg", configset_path="/path/conf",
+                                  num_shards=2, replication_factor=1)
+        wl = workload.Workload(name="unit-test", collections=[col])
+        ps = params.CreateCollectionParamSource(workload=wl, params={})
+        p = ps.params()
+        self.assertEqual("my-col", p["collection"])
+        self.assertEqual("my-cfg", p["configset"])
+        self.assertEqual("/path/conf", p["configset-path"])
+        self.assertEqual(2, p["num-shards"])
+        self.assertEqual(1, p["replication-factor"])
+
+    def test_selects_named_collection(self):
+        col1 = workload.Collection(name="col-a")
+        col2 = workload.Collection(name="col-b", num_shards=3)
+        wl = workload.Workload(name="unit-test", collections=[col1, col2])
+        ps = params.CreateCollectionParamSource(workload=wl, params={"collection": "col-b"})
+        p = ps.params()
+        self.assertEqual("col-b", p["collection"])
+        self.assertEqual(3, p["num-shards"])
+
+    def test_raises_when_no_collections(self):
+        wl = workload.Workload(name="unit-test", collections=[])
+        with self.assertRaises(exceptions.InvalidSyntax):
+            params.CreateCollectionParamSource(workload=wl, params={})
+
+    def test_registered_by_op_type_string(self):
+        col = workload.Collection(name="my-col")
+        wl = workload.Workload(name="unit-test", collections=[col])
+        ps = params.param_source_for_operation("create-collection", wl, {}, "create-collection")
+        self.assertIsInstance(ps, params.CreateCollectionParamSource)

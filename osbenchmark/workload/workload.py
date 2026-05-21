@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -25,32 +28,37 @@
 import collections
 import numbers
 import re
-from enum import Enum, unique, auto, IntEnum
+from enum import Enum, unique, auto
 
 from osbenchmark import exceptions
 
 
-class Index:
+
+class Collection:
     """
-    Defines an index in OpenSearch.
+    Defines a Solr collection (Solr-native equivalent of Index).
+
+    Attributes:
+        name:               Collection name.
+        configset:          Configset name registered on the cluster.
+        configset_path:     Local path to the configset directory (containing conf/).
+        num_shards:         Number of shards (default: 1).
+        replication_factor: NRT replicas per shard — alias for ``nrtReplicas`` in Solr V2 API (default: 1).
+        pull_replicas:      Pull (read-only) replicas per shard (default: 0).
+        tlog_replicas:      TLOG replicas per shard (default: 0).
     """
 
-    def __init__(self, name, body=None, types=None):
-        """
-
-        Creates a new index.
-
-        :param name: The index name. Mandatory.
-        :param body: A dict representation of the index body. Optional.
-        :param types: A list of types. Should contain at least one type.
-        """
-        if types is None:
-            types = []
-        if body is None:
-            body = {}
+    def __init__(self, name: str, configset: str = None,
+                 configset_path: str = None,
+                 num_shards: int = 1, replication_factor: int = 1,
+                 pull_replicas: int = 0, tlog_replicas: int = 0):
         self.name = name
-        self.body = body
-        self.types = types
+        self.configset = configset or name
+        self.configset_path = configset_path
+        self.num_shards = num_shards
+        self.replication_factor = replication_factor
+        self.pull_replicas = pull_replicas
+        self.tlog_replicas = tlog_replicas
 
     def matches(self, pattern):
         if pattern is None:
@@ -77,111 +85,6 @@ class Index:
     def __eq__(self, other):
         return self.name == other.name
 
-
-class DataStream:
-    """
-    Defines a data stream in OpenSearch.
-    """
-
-    def __init__(self, name):
-        """
-
-        Creates a new data stream.
-
-        :param name: The data stream name. Mandatory.
-        """
-        self.name = name
-
-    def matches(self, pattern):
-        if pattern is None:
-            return True
-        elif pattern in ["_all", "*"]:
-            return True
-        elif self.name == pattern:
-            return True
-        else:
-            return False
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        r = []
-        for prop, value in vars(self).items():
-            r.append("%s = [%s]" % (prop, repr(value)))
-        return ", ".join(r)
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def __eq__(self, other):
-        return self.name == other.name
-
-
-class IndexTemplate:
-    """
-    Defines an index template in OpenSearch.
-    """
-
-    def __init__(self, name, pattern, content, delete_matching_indices=False):
-        """
-
-        Creates a new index template.
-
-        :param name: Name of the index template. Mandatory.
-        :param pattern: The index pattern to which the index template applies. Mandatory.
-        :param content: The content of the corresponding template. Mandatory.
-        :param delete_matching_indices: Delete all indices that match the pattern before the benchmark iff True.
-        """
-        self.name = name
-        self.pattern = pattern
-        self.content = content
-        self.delete_matching_indices = delete_matching_indices
-
-    def __str__(self, *args, **kwargs):
-        return self.name
-
-    def __repr__(self):
-        r = []
-        for prop, value in vars(self).items():
-            r.append("%s = [%s]" % (prop, repr(value)))
-        return ", ".join(r)
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def __eq__(self, other):
-        return self.name == other.name
-
-
-class ComponentTemplate:
-    """
-    Defines a component template in OpenSearch.
-    """
-
-    def __init__(self, name, content):
-        """
-        Creates a new index template.
-        :param name: Name of the index template. Mandatory.
-        :param content: The content of the corresponding template. Mandatory.
-        """
-        self.name = name
-        self.content = content
-
-    def __str__(self, *args, **kwargs):
-        return self.name
-
-    def __repr__(self):
-        r = []
-        for prop, value in vars(self).items():
-            r.append("%s = [%s]" % (prop, repr(value)))
-        return ", ".join(r)
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def __eq__(self, other):
-        return self.name == other.name
 
 
 class Documents:
@@ -192,8 +95,8 @@ class Documents:
 
     def __init__(self, source_format, document_file=None, document_file_parts=None, document_archive=None, base_url=None, source_url=None,
                  includes_action_and_meta_data=False,
-                 number_of_documents=0, compressed_size_in_bytes=0, uncompressed_size_in_bytes=0, target_index=None,
-                 target_data_stream=None, target_type=None, meta_data=None):
+                 number_of_documents=0, compressed_size_in_bytes=0, uncompressed_size_in_bytes=0, target_collection=None,
+                 target_type=None, meta_data=None):
         """
 
         :param source_format: The format of these documents. Mandatory.
@@ -214,9 +117,8 @@ class Documents:
          user reporting. Only useful if a document_archive is given (optional but recommended to be set).
         :param uncompressed_size_in_bytes: The size in bytes of the benchmark document after decompressing it.
         Only useful if a document_archive is given (optional but recommended to be set).
-        :param target_index: The index to target for bulk operations. May be ``None`` if ``includes_action_and_meta_data`` is ``False``.
-        :param target_data_stream: The data stream to target for bulk operations.
-        Maybe be ``None`` if ``includes_action_and_meta_data`` is ``False``.
+        :param target_collection: The Solr collection to target for bulk operations. May be ``None`` if
+                                  ``includes_action_and_meta_data`` is ``False``.
         :param target_type: The document type to target for bulk operations. May be ``None`` if ``includes_action_and_meta_data``
                             is ``False``.
         :param meta_data: A dict containing key-value pairs with additional meta-data describing documents. Optional.
@@ -232,8 +134,7 @@ class Documents:
         self._number_of_documents = number_of_documents
         self._compressed_size_in_bytes = compressed_size_in_bytes
         self._uncompressed_size_in_bytes = uncompressed_size_in_bytes
-        self.target_index = target_index
-        self.target_data_stream = target_data_stream
+        self.target_collection = target_collection
         self.target_type = target_type
         self.meta_data = meta_data or {}
 
@@ -300,17 +201,17 @@ class Documents:
     def __hash__(self):
         return hash(self.source_format) ^ hash(self.document_file) ^ hash(self.document_archive) ^ hash(self.base_url) ^ \
                hash(self.source_url) ^ hash(self.includes_action_and_meta_data) ^ hash(self.number_of_documents) ^ \
-               hash(self.compressed_size_in_bytes) ^ hash(self.uncompressed_size_in_bytes) ^ hash(self.target_index) ^ \
-               hash(self.target_data_stream) ^ hash(self.target_type) ^ hash(frozenset(self.meta_data.items()))
+               hash(self.compressed_size_in_bytes) ^ hash(self.uncompressed_size_in_bytes) ^ hash(self.target_collection) ^ \
+               hash(self.target_type) ^ hash(frozenset(self.meta_data.items()))
 
     def __eq__(self, othr):
         return (isinstance(othr, type(self)) and
                 (self.source_format, self.document_file, self.document_archive, self.base_url, self.source_url,
                  self.includes_action_and_meta_data, self.number_of_documents, self.compressed_size_in_bytes,
-                 self.uncompressed_size_in_bytes, self.target_type, self.target_data_stream, self.target_type, self.meta_data) ==
-                (othr.source_format, othr.document_file, othr.document_archive, othr.base_url, self.source_url,
+                 self.uncompressed_size_in_bytes, self.target_collection, self.target_type, self.meta_data) ==
+                (othr.source_format, othr.document_file, othr.document_archive, othr.base_url, othr.source_url,
                  othr.includes_action_and_meta_data, othr.number_of_documents, othr.compressed_size_in_bytes,
-                 othr.uncompressed_size_in_bytes, othr.target_type, othr.target_data_stream, othr.target_type, othr.meta_data))
+                 othr.uncompressed_size_in_bytes, othr.target_collection, othr.target_type, othr.meta_data))
 
 
 class DocumentCorpus:
@@ -351,15 +252,13 @@ class DocumentCorpus:
                 return None
         return num
 
-    def filter(self, source_format=None, target_indices=None, target_data_streams=None):
+    def filter(self, source_format=None, target_collections=None):
         filtered = []
         for d in self.documents:
-            # skip if source format or target index does not match
+            # skip if source format or target collection does not match
             if source_format and d.source_format != source_format:
                 continue
-            if target_indices and d.target_index not in target_indices:
-                continue
-            if target_data_streams and d.target_data_stream not in target_data_streams:
+            if target_collections and d.target_collection not in target_collections:
                 continue
 
             filtered.append(d)
@@ -411,8 +310,8 @@ class Workload:
     A workload defines the data set that is used. It corresponds loosely to a use case (e.g. logging, event processing, analytics, ...)
     """
 
-    def __init__(self, name, description=None, meta_data=None, test_procedures=None, indices=None, data_streams=None,
-                 templates=None, composable_templates=None, component_templates=None, corpora=None, has_plugins=False):
+    def __init__(self, name, description=None, meta_data=None, test_procedures=None,
+                 corpora=None, has_plugins=False, collections=None):
         """
 
         Creates a new workload.
@@ -423,22 +322,16 @@ class Workload:
         :param test_procedures: A list of one or more test_procedures to use.
         Precondition: If the list is non-empty it contains exactly one element
         with its ``default`` property set to ``True``.
-        :param indices: A list of indices for this workload. May be None.
-        :param data_streams: A list of data streams for this workload. May be None.
-        :param templates: A list of index templates for this workload. May be None.
         :param corpora: A list of document corpus definitions for this workload. May be None.
         :param has_plugins: True iff the workload also defines plugins (e.g. custom runners or parameter sources).
+        :param collections: A list of Solr collections for this workload. May be None.
         """
         self.name = name
         self.meta_data = meta_data if meta_data else {}
         self.description = description if description is not None else ""
         self.test_procedures = test_procedures if test_procedures else []
-        self.indices = indices if indices else []
-        self.data_streams = data_streams if data_streams else []
+        self.collections = collections if collections else []
         self.corpora = corpora if corpora else []
-        self.templates = templates if templates else []
-        self.composable_templates = composable_templates if composable_templates else []
-        self.component_templates = component_templates if component_templates else []
         self.has_plugins = has_plugins
 
     @property
@@ -520,15 +413,12 @@ class Workload:
 
     def __hash__(self):
         return hash(self.name) ^ hash(self.meta_data) ^ hash(self.description) ^ hash(self.test_procedures) ^ \
-               hash(self.indices) ^ hash(self.templates) ^ hash(self.composable_templates) ^ hash(self.component_templates) \
-               ^ hash(self.corpora)
+               hash(self.corpora)
 
     def __eq__(self, othr):
         return (isinstance(othr, type(self)) and
-                (self.name, self.meta_data, self.description, self.test_procedures, self.indices, self.data_streams,
-                 self.templates, self.composable_templates, self.component_templates, self.corpora) ==
-                (othr.name, othr.meta_data, othr.description, othr.test_procedures, othr.indices, othr.data_streams,
-                 othr.templates, othr.composable_templates, othr.component_templates, othr.corpora))
+                (self.name, self.meta_data, self.description, self.test_procedures, self.collections, self.corpora) ==
+                (othr.name, othr.meta_data, othr.description, othr.test_procedures, othr.collections, othr.corpora))
 
 
 class TestProcedure:
@@ -554,7 +444,6 @@ class TestProcedure:
         self.user_info = user_info
         self.default = default
         self.selected = selected
-        self.serverless_info = []
         self.auto_generated = auto_generated
         self.schedule = schedule if schedule else []
 
@@ -593,78 +482,24 @@ class AdminStatus(Enum):
 
 
 @unique
-class ServerlessStatus(IntEnum):
-    Blocked = auto()
-    Public = auto()
-
-@unique
 class OperationType(Enum):
     # for the time being we are not considering this action as administrative
-    IndexStats = (1, AdminStatus.No, ServerlessStatus.Blocked)
-    NodeStats = (2, AdminStatus.No, ServerlessStatus.Blocked)
-    Search = (3, AdminStatus.No, ServerlessStatus.Public)
-    Bulk = (4, AdminStatus.No, ServerlessStatus.Public)
-    RawRequest = (5, AdminStatus.No, ServerlessStatus.Public)
-    WaitForRecovery = (6, AdminStatus.No, ServerlessStatus.Blocked)
-    WaitForSnapshotCreate = (7, AdminStatus.No, ServerlessStatus.Blocked)
-    Composite = (8, AdminStatus.No, ServerlessStatus.Public)
-    SubmitAsyncSearch = (9, AdminStatus.No, ServerlessStatus.Blocked)
-    GetAsyncSearch = (10, AdminStatus.No, ServerlessStatus.Blocked)
-    DeleteAsyncSearch = (11, AdminStatus.No, ServerlessStatus.Blocked)
-    PaginatedSearch = (12, AdminStatus.No, ServerlessStatus.Public)
-    ScrollSearch = (13, AdminStatus.No, ServerlessStatus.Blocked)
-    CreatePointInTime = (14, AdminStatus.No, ServerlessStatus.Blocked)
-    DeletePointInTime = (15, AdminStatus.No, ServerlessStatus.Blocked)
-    ListAllPointInTime = (16, AdminStatus.No, ServerlessStatus.Blocked)
-    VectorSearch = (17, AdminStatus.No, ServerlessStatus.Public)
-    BulkVectorDataSet = (18, AdminStatus.No, ServerlessStatus.Public)
-    TrainKnnModel = (19, AdminStatus.No, ServerlessStatus.Public)
-    DeleteKnnModel = (20, AdminStatus.No, ServerlessStatus.Public)
-    ProduceStreamMessage = (21, AdminStatus.No, ServerlessStatus.Blocked)
-    ProtoBulk = (201, AdminStatus.No, ServerlessStatus.Blocked)
-    ProtoSearch = (202, AdminStatus.No, ServerlessStatus.Blocked)
-    ProtoVectorSearch = (203, AdminStatus.No, ServerlessStatus.Blocked)
+    Search = (3, AdminStatus.No)
+    Bulk = (4, AdminStatus.No)
+    RawRequest = (5, AdminStatus.No)
+    WaitForBackupCreate = (7, AdminStatus.No)
+    Composite = (8, AdminStatus.No)
 
     # administrative actions
-    ForceMerge = (22, AdminStatus.Yes, ServerlessStatus.Blocked)
-    ClusterHealth = (23, AdminStatus.Yes, ServerlessStatus.Blocked)
-    PutPipeline = (24, AdminStatus.Yes, ServerlessStatus.Public)
-    DeletePipeline = (25, AdminStatus.Yes, ServerlessStatus.Public)
-    Refresh = (26, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateIndex = (27, AdminStatus.Yes, ServerlessStatus.Public)
-    DeleteIndex = (28, AdminStatus.Yes, ServerlessStatus.Public)
-    CreateIndexTemplate = (29, AdminStatus.Yes, ServerlessStatus.Blocked)
-    DeleteIndexTemplate = (30, AdminStatus.Yes, ServerlessStatus.Blocked)
-    ShrinkIndex = (31, AdminStatus.Yes, ServerlessStatus.Blocked)
-    Sleep = (32, AdminStatus.Yes, ServerlessStatus.Public)
-    DeleteSnapshotRepository = (33, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateSnapshotRepository = (34, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateSnapshot = (35, AdminStatus.Yes, ServerlessStatus.Blocked)
-    RestoreSnapshot = (36, AdminStatus.Yes, ServerlessStatus.Blocked)
-    PutSettings = (37, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateTransform = (38, AdminStatus.Yes, ServerlessStatus.Blocked)
-    StartTransform = (39, AdminStatus.Yes, ServerlessStatus.Blocked)
-    WaitForTransform = (40, AdminStatus.Yes, ServerlessStatus.Blocked)
-    DeleteTransform = (41, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateDataStream = (42, AdminStatus.Yes, ServerlessStatus.Blocked)
-    DeleteDataStream = (43, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateComposableTemplate = (44, AdminStatus.Yes, ServerlessStatus.Blocked)
-    DeleteComposableTemplate = (45, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateComponentTemplate = (46, AdminStatus.Yes, ServerlessStatus.Blocked)
-    DeleteComponentTemplate = (47, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateSearchPipeline = (48, AdminStatus.Yes, ServerlessStatus.Public)
-    DeleteMlModel = (49, AdminStatus.Yes, ServerlessStatus.Public)
-    RegisterMlModel = (50, AdminStatus.Yes, ServerlessStatus.Public)
-    DeployMlModel = (51, AdminStatus.Yes, ServerlessStatus.Public)
-    UpdateConcurrentSegmentSearchSettings = (52, AdminStatus.Yes, ServerlessStatus.Blocked)
-    CreateMlConnector = (53, AdminStatus.Yes, ServerlessStatus.Public)
-    RegisterRemoteMlModel = (54, AdminStatus.Yes, ServerlessStatus.Public)
-    DeleteMlConnector = (55, AdminStatus.Yes, ServerlessStatus.Public)
+    Sleep = (32, AdminStatus.Yes)
+    DeleteBackupRepository = (33, AdminStatus.Yes)
+    CreateBackupRepository = (34, AdminStatus.Yes)
+    CreateBackup = (35, AdminStatus.Yes)
+    RestoreBackup = (36, AdminStatus.Yes)
 
-    def __init__(self, op_id: int, admin_status: AdminStatus, serverless_status: ServerlessStatus):
+    def __init__(self, op_id: int, admin_status: AdminStatus):
         self.op_id = op_id
         self.admin_status = admin_status
-        self.serverless_status = serverless_status
 
     @property
     def admin_op(self):
@@ -682,146 +517,28 @@ class OperationType(Enum):
     # pylint: disable=too-many-return-statements
     @classmethod
     def from_hyphenated_string(cls, v):
-        if v == "force-merge":
-            return OperationType.ForceMerge
-        elif v == "index-stats":
-            return OperationType.IndexStats
-        elif v == "node-stats":
-            return OperationType.NodeStats
-        elif v == "search":
+        if v == "search":
             return OperationType.Search
-        elif v == "proto-search":
-            return OperationType.ProtoSearch
-        elif v == "scroll-search":
-            return OperationType.ScrollSearch
-        elif v == "paginated-search":
-            return OperationType.PaginatedSearch
-        elif v == "vector-search":
-            return OperationType.VectorSearch
-        elif v == "proto-vector-search":
-            return OperationType.ProtoVectorSearch
-        elif v == "bulk-vector-data-set":
-            return OperationType.BulkVectorDataSet
-        elif v == "cluster-health":
-            return OperationType.ClusterHealth
         elif v == "bulk":
             return OperationType.Bulk
-        elif v == "proto-bulk":
-            return OperationType.ProtoBulk
         elif v == "raw-request":
             return OperationType.RawRequest
-        elif v == "put-pipeline":
-            return OperationType.PutPipeline
-        elif v == "delete-pipeline":
-            return OperationType.DeletePipeline
-        elif v == "refresh":
-            return OperationType.Refresh
-        elif v == "create-index":
-            return OperationType.CreateIndex
-        elif v == "delete-index":
-            return OperationType.DeleteIndex
-        elif v == "create-index-template":
-            return OperationType.CreateIndexTemplate
-        elif v == "delete-index-template":
-            return OperationType.DeleteIndexTemplate
-        elif v == "create-composable-template":
-            return OperationType.CreateComposableTemplate
-        elif v == "delete-composable-template":
-            return OperationType.DeleteComposableTemplate
-        elif v == "create-component-template":
-            return OperationType.CreateComponentTemplate
-        elif v == "delete-component-template":
-            return OperationType.DeleteComponentTemplate
-        elif v == "shrink-index":
-            return OperationType.ShrinkIndex
         elif v == "sleep":
             return OperationType.Sleep
-        elif v == "delete-snapshot-repository":
-            return OperationType.DeleteSnapshotRepository
-        elif v == "create-snapshot-repository":
-            return OperationType.CreateSnapshotRepository
-        elif v == "create-snapshot":
-            return OperationType.CreateSnapshot
-        elif v == "wait-for-snapshot-create":
-            return OperationType.WaitForSnapshotCreate
-        elif v == "restore-snapshot":
-            return OperationType.RestoreSnapshot
-        elif v == "wait-for-recovery":
-            return OperationType.WaitForRecovery
-        elif v == "put-settings":
-            return OperationType.PutSettings
-        elif v == "create-transform":
-            return OperationType.CreateTransform
-        elif v == "start-transform":
-            return OperationType.StartTransform
-        elif v == "wait-for-transform":
-            return OperationType.WaitForTransform
-        elif v == "delete-transform":
-            return OperationType.DeleteTransform
-        elif v == "create-data-stream":
-            return OperationType.CreateDataStream
-        elif v == "delete-data-stream":
-            return OperationType.DeleteDataStream
+        elif v == "delete-backup-repository":
+            return OperationType.DeleteBackupRepository
+        elif v == "create-backup-repository":
+            return OperationType.CreateBackupRepository
+        elif v == "create-backup":
+            return OperationType.CreateBackup
+        elif v == "wait-for-backup-create":
+            return OperationType.WaitForBackupCreate
+        elif v == "restore-backup":
+            return OperationType.RestoreBackup
         elif v == "composite":
             return OperationType.Composite
-        elif v == "submit-async-search":
-            return OperationType.SubmitAsyncSearch
-        elif v == "get-async-search":
-            return OperationType.GetAsyncSearch
-        elif v == "delete-async-search":
-            return OperationType.DeleteAsyncSearch
-        elif v == "create-point-in-time":
-            return OperationType.CreatePointInTime
-        elif v == "delete-point-in-time":
-            return OperationType.DeletePointInTime
-        elif v == "list-all-point-in-time":
-            return OperationType.ListAllPointInTime
-        elif v == "create-search-pipeline":
-            return OperationType.CreateSearchPipeline
-        elif v == "delete-ml-model":
-            return OperationType.DeleteMlModel
-        elif v == "register-ml-model":
-            return OperationType.RegisterMlModel
-        elif v == "deploy-ml-model":
-            return OperationType.DeployMlModel
-        elif v == "train-knn-model":
-            return OperationType.TrainKnnModel
-        elif v == "delete-knn-model":
-            return OperationType.DeleteKnnModel
-        elif v == "create-ml-connector":
-            return OperationType.CreateMlConnector
-        elif v == "delete-ml-connector":
-            return OperationType.DeleteMlConnector
-        elif v == "register-remote-ml-model":
-            return OperationType.RegisterRemoteMlModel
-        elif v == "update-concurrent-segment-search-settings":
-            return OperationType.UpdateConcurrentSegmentSearchSettings
-        elif v == "produce-stream-message":
-            return OperationType.ProduceStreamMessage
         else:
             raise KeyError(f"No enum value for [{v}]")
-
-@unique
-class IndexCodec(Enum):
-    Default = "default"
-    BestCompression = "best_compression"
-    ZSTD = "zstd"
-    ZSTDNODICT = "zstd_no_dict"
-    QATDEFLATE = "qat_deflate"
-    QATLZ4 = "qat_lz4"
-
-    @classmethod
-    def is_codec_valid(cls, codec):
-        available_codecs = cls.get_available_codecs()
-        if codec.lower() in available_codecs:
-            return True
-
-        raise ValueError(f"Invalid index.codec value '{codec}'. Choose from available codecs: {available_codecs}")
-
-    @classmethod
-    def get_available_codecs(cls):
-        return list(map(lambda codec: codec.value, cls))
-
 
 class TaskNameFilter:
     def __init__(self, name):
@@ -1075,10 +792,6 @@ class Operation:
     @property
     def include_in_reporting(self):
         return self.params.get("include-in-reporting", True)
-
-    @property
-    def run_on_serverless(self):
-        return self.params.get("serverless", None)
 
     def __hash__(self):
         return hash(self.name)

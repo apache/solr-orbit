@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -167,7 +170,7 @@ def best_match(available_alternatives, distribution_version):
     See test_find_best_match() for examples.
 
     :param available_alternatives: A list of possible distribution versions (or shortened versions).
-    :param distribution_version: An OpenSearch distribution version.
+    :param distribution_version: An Solr distribution version.
     :return: The most specific alternative that is available or None.
     """
     if is_version_identifier(distribution_version):

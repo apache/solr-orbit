@@ -1,10 +1,10 @@
 version: '3'
 services:
-  opensearch-node1:
-    image: {{docker_image}}:{{os_version}}
-    container_name: opensearch-node1
+  solr-node1:
+    image: {{docker_image}}:{{solr_version}}
+    container_name: solr-node1
     labels:
-      io.benchmark.description: "opensearch-benchmark"
+      io.benchmark.description: "solr-benchmark"
     {%- if docker_cpu_count is defined %}
     cpu_count: {{docker_cpu_count}}
     {%- endif %}
@@ -12,39 +12,29 @@ services:
     mem_limit: {{docker_mem_limit}}
     {%- endif %}
     environment:
-      - cluster.name=opensearch-cluster
-      - node.name=opensearch-node1
-      - discovery.seed_hosts=opensearch-node1
-      - DISABLE_INSTALL_DEMO_CONFIG=true
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "SOLR_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
-      memlock:
-        soft: -1
-        hard: -1
       nofile:
         soft: 65536
         hard: 65536
     volumes:
-      - {{os_data_dir}}:/usr/share/opensearch/data
-      - {{os_log_dir}}:/var/log/opensearch
-      - {{os_heap_dump_dir}}:/usr/share/opensearch/heapdump
+      - {{solr_data_dir}}:/var/solr/data
+      - {{solr_log_dir}}:/var/solr/logs
+      - {{solr_heap_dump_dir}}:/var/solr/heapdump
     {%- for host_path, docker_path in mounts.items() %}
       - {{host_path}}:{{docker_path}}
     {%- endfor %}
     ports:
-      - {{http_port}}:{{http_port}}
-      - 9200:9200
-      - 9600:9600
+      - {{http_port}}:8983
     networks:
-      - opensearch-net
+      - solr-net
     healthcheck:
-          test: curl -f http://localhost:{{http_port}} -u admin:admin --insecure
+          test: curl -f http://localhost:8983/solr/admin/ping
           interval: 5s
           timeout: 2s
           retries: 10
 
 volumes:
-  opensearch-data1:
+  solr-data1:
 networks:
-  opensearch-net:
+  solr-net:

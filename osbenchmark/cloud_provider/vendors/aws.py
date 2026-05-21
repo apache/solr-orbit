@@ -17,11 +17,7 @@
 import os
 import logging
 
-import opensearchpy
-import boto3
-from botocore.credentials import Credentials
-
-from osbenchmark import exceptions, async_connection
+from osbenchmark import exceptions
 from ..cloud_provider import CloudProvider
 
 class AWSProvider(CloudProvider):
@@ -188,22 +184,5 @@ class AWSProvider(CloudProvider):
         return client_options
 
     def create_client(self, hosts, client_options, client_class=None, use_async=False):
-        self.logger.info("client options %s", client_options)
-        if client_options['amazon_aws_log_in'] == "session":
-            credentials = boto3.Session().get_credentials()
-        else:
-            credentials = Credentials(access_key=self.aws_log_in_config["aws_access_key_id"],
-                                    secret_key=self.aws_log_in_config["aws_secret_access_key"],
-                                    token=self.aws_log_in_config["aws_session_token"])
-
-        if use_async:
-            aws_auth = opensearchpy.AWSV4SignerAsyncAuth(credentials, self.aws_log_in_config["region"],
-                                                     self.aws_log_in_config["service"])
-            return client_class(hosts=hosts, use_ssl=True, verify_certs=True, http_auth=aws_auth,
-                                        connection_class=async_connection.AsyncHttpConnection,
-                                        **client_options)
-        else:
-            aws_auth = opensearchpy.Urllib3AWSV4SignerAuth(credentials, self.aws_log_in_config["region"],
-                                                    self.aws_log_in_config["service"])
-            return opensearchpy.OpenSearch(hosts=hosts, use_ssl=True, verify_certs=True, http_auth=aws_auth,
-                                        connection_class=opensearchpy.Urllib3HttpConnection)
+        raise exceptions.SystemSetupError("AWS OpenSearch client creation is not supported in this build. "
+                                          "This benchmark tool targets Apache Solr.")

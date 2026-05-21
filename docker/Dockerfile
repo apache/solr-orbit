@@ -1,5 +1,5 @@
 ########################################################
-# Install OpenSearch Benchmark to build a Docker image #
+# Install Apache Solr Benchmark to build a Docker image #
 ########################################################
 
 #
@@ -11,10 +11,10 @@ RUN apt-get -y update && \
     apt-get install -y curl git gcc pbzip2 pigz make jq && \
     apt-get -y upgrade
 
-COPY . opensearch-benchmark
+COPY . solr-benchmark
 
 # There is no binary package currently available for yappi on ARM.
-RUN cd opensearch-benchmark; \
+RUN cd solr-benchmark; \
     make build; \
     if test "`uname -m`" = aarch64; then pip wheel yappi && cp yappi-*.whl dist; fi
 
@@ -25,15 +25,15 @@ RUN cd opensearch-benchmark; \
 FROM python:3.11.2-slim AS image-stage
 ENV BENCHMARK_RUNNING_IN_DOCKER=True
 
-RUN groupadd --gid 1000 opensearch-benchmark && \
-    useradd -d /opensearch-benchmark -m -k /dev/null -g 1000 -N -u 1000 -l -s /bin/bash benchmark
+RUN groupadd --gid 1000 solr-benchmark && \
+    useradd -d /solr-benchmark -m -k /dev/null -g 1000 -N -u 1000 -l -s /bin/bash benchmark
 
-WORKDIR /opensearch-benchmark
+WORKDIR /solr-benchmark
 
-RUN mkdir -p /opensearch-benchmark/.benchmark && \
-    chown -R 1000:0 /opensearch-benchmark/.benchmark
+RUN mkdir -p /solr-benchmark/.solr-benchmark && \
+    chown -R 1000:0 /solr-benchmark/.solr-benchmark
 
-COPY --from=build-stage /opensearch-benchmark/dist/*.whl ./
+COPY --from=build-stage /solr-benchmark/dist/*.whl ./
 
 RUN set -ex; \
     apt-get -y update; \
@@ -49,16 +49,16 @@ ARG VERSION
 ARG BUILD_DATE
 
 LABEL org.label-schema.schema-version="1.0" \
-  org.label-schema.vendor="OpenSearch-Project" \
-  org.label-schema.name="opensearch-benchmark" \
-  org.label-schema.url="https://opensearch.org/" \
+  org.label-schema.vendor="Apache" \
+  org.label-schema.name="solr-benchmark" \
+  org.label-schema.url="https://solr.apache.org/" \
   org.label-schema.version="$VERSION" \
   org.label-schema.license="Apache-2.0" \
-  org.label-schema.description="A community driven, open source project to run performance tests for OpenSearch" \
+  org.label-schema.description="Apache Solr Benchmark — performance benchmarking tool for Apache Solr clusters" \
   org.label-schema.build-date="$BUILD_DATE" \
-  org.label-schema.vcs-url="https://github.com/opensearch-project/OpenSearch-Benchmark" \
-  "DOCKERFILE"="https://github.com/opensearch-project/opensearch-benchmark/blob/main/docker/Dockerfile"
+  org.label-schema.vcs-url="https://github.com/janhoy/solr-benchmark" \
+  "DOCKERFILE"="https://github.com/janhoy/solr-benchmark/blob/main/docker/Dockerfile"
 
-VOLUME ["/opensearch-benchmark/.benchmark"]
+VOLUME ["/solr-benchmark/.solr-benchmark"]
 
-ENTRYPOINT [ "opensearch-benchmark" ]
+ENTRYPOINT [ "solr-benchmark" ]

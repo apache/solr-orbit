@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -28,22 +31,23 @@ import urllib
 
 from importlib.metadata import version as get_version
 
-__version__ = get_version("opensearch-benchmark")
+__version__ = get_version("solr-benchmark")
 
-# Allow an alternative program name be set in case OSB is invoked a wrapper script
+# Allow an alternative program name to be set in case solr-benchmark is invoked via a wrapper script
 PROGRAM_NAME = os.getenv("BENCHMARK_ALTERNATIVE_BINARY_NAME", os.path.basename(sys.argv[0]))
 
-DOC_LINK = "https://opensearch.org/docs"
+DOC_LINK = "https://solr.apache.org/guide/"
 
-FORUM_LINK = "https://forum.opensearch.org/"
+FORUM_LINK = "https://solr.apache.org/community.html#mailing-lists-chat"
 
 BANNER = r"""
-   ____                  _____                      __       ____                  __                         __
-  / __ \____  ___  ____ / ___/___  ____ ___________/ /_     / __ )___  ____  _____/ /_  ____ ___  ____ ______/ /__
- / / / / __ \/ _ \/ __ \\__ \/ _ \/ __ `/ ___/ ___/ __ \   / __  / _ \/ __ \/ ___/ __ \/ __ `__ \/ __ `/ ___/ //_/
-/ /_/ / /_/ /  __/ / / /__/ /  __/ /_/ / /  / /__/ / / /  / /_/ /  __/ / / / /__/ / / / / / / / / /_/ / /  / ,<
-\____/ .___/\___/_/ /_/____/\___/\__,_/_/   \___/_/ /_/  /_____/\___/_/ /_/\___/_/ /_/_/ /_/ /_/\__,_/_/  /_/|_|
-    /_/
+   _____       __        ____                  __                         __
+  / ___/____  / /____   / __ )___  ____  _____/ /_  ____ ___  ____ ______/ /__
+  \__ \/ __ \/ / ___/  / __  / _ \/ __ \/ ___/ __ \/ __ `__ \/ __ `/ ___/ //_/
+ ___/ / /_/ / / /     / /_/ /  __/ / / / /__/ / / / / / / / / /_/ / /  / ,<
+/____/\____/_/_/     /_____/\___/_/ /_/\___/_/ /_/_/ /_/ /_/\__,_/_/  /_/|_|
+
+  Apache Solr Benchmark
 """
 
 
@@ -79,8 +83,8 @@ $$$$$$$$$$""""           ""$$$$$$$$$$$"
 
 
 def check_python_version():
-    if sys.version_info.major != 3 or sys.version_info.minor < 8:
-        raise RuntimeError("OSB requires at least Python 3.10 but you are using:\n\nPython %s" % str(sys.version))
+    if sys.version_info < (3, 10):
+        raise RuntimeError("solr-benchmark requires at least Python 3.10 but you are using:\n\nPython %s" % str(sys.version))
 
 
 def doc_link(path=None):

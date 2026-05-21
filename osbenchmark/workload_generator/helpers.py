@@ -127,8 +127,8 @@ class QueryProcessor:
         with self.queries as queries:
             try:
                 processed_queries = json.load(queries)
-                if isinstance(data, dict):
-                    data = [data]
+                if isinstance(processed_queries, dict):
+                    processed_queries = [processed_queries]
             except ValueError as err:
                 raise exceptions.SystemSetupError(f"Ensure JSON schema is valid and queries are contained in a list: {err}")
 
@@ -138,7 +138,7 @@ def process_indices(indices, sample_frequency_mapping, indices_docs_mapping):
     processed_indices = []
     for index_name in indices:
         try:
-            # Setting number_of_docs_for_index to None means OSB will grab all docs available in index
+            # Setting number_of_docs_for_index to None means ASB will grab all docs available in index
             number_of_docs_for_index = None
             if indices_docs_mapping and index_name in indices_docs_mapping:
                 number_of_docs_for_index = int(indices_docs_mapping[index_name])

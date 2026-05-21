@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -35,4 +38,4 @@ class ScriptsTests(TestCase):
         p = subprocess.Popen([str(script), "-c", "10"],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stderr = p.communicate()[1].decode('UTF-8')
-        self.assertTrue("could not find OSB config file" in stderr)
+        self.assertTrue("could not find benchmark config file" in stderr)

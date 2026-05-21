@@ -20,7 +20,6 @@ class DockerLauncherTests(TestCase):
         self.host = None
         self.node_config = NodeConfiguration(build_type="docker",
                                         cluster_config_runtime_jdks="12,11",
-                                        cluster_config_provides_bundled_jdk=True,
                                         ip="127.0.0.1", node_name="testnode",
                                         node_root_path="/tmp", binary_path="/bin",
                                         data_paths="/tmp")

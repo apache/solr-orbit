@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -21,7 +24,6 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-import copy
 import os
 import random
 import re
@@ -705,21 +707,21 @@ class WorkloadPreparationTests(TestCase):
                     "target-type": "type",
                     "documents": [
                         {
-                            "target-index": "logs-181998",
+                            "target-collection": "logs-181998",
                             "source-file": "documents-181998.unparsed.json.bz2",
                             "document-count": 2708746,
                             "compressed-bytes": 13064317,
                             "uncompressed-bytes": 303920342
                         },
                         {
-                            "target-index": "logs-191998",
+                            "target-collection": "logs-191998",
                             "source-file": "documents-191998.unparsed.json.bz2",
                             "document-count": 9697882,
                             "compressed-bytes": 47211781,
                             "uncompressed-bytes": 1088378738
                         },
                         {
-                            "target-index": "logs-201998",
+                            "target-collection": "logs-201998",
                             "source-file": "documents-201998.unparsed.json.bz2",
                             "document-count": 13053463,
                             "compressed-bytes": 63174979,
@@ -732,21 +734,21 @@ class WorkloadPreparationTests(TestCase):
                     "target-type": "type",
                     "documents": [
                         {
-                            "target-index": "logs-181998",
+                            "target-collection": "logs-181998",
                             "source-file": "documents-181998.json.bz2",
                             "document-count": 2708746,
                             "compressed-bytes": 13815456,
                             "uncompressed-bytes": 363512754
                         },
                         {
-                            "target-index": "logs-191998",
+                            "target-collection": "logs-191998",
                             "source-file": "documents-191998.json.bz2",
                             "document-count": 9697882,
                             "compressed-bytes": 49439633,
                             "uncompressed-bytes": 1301732149
                         },
                         {
-                            "target-index": "logs-201998",
+                            "target-collection": "logs-201998",
                             "source-file": "documents-201998.json.bz2",
                             "document-count": 13053463,
                             "compressed-bytes": 65623436,
@@ -1499,7 +1501,7 @@ class WorkloadPostProcessingTests(TestCase):
         )
 
         self.assertEqual(
-            ["number_of_replicas", "number_of_shards"],
+            [],
             complete_workload_params.sorted_workload_defined_params
         )
 
@@ -1536,7 +1538,7 @@ class WorkloadPathTests(TestCase):
                                    document_archive="docs/documents.json.bz2")
             ])
         ],
-            indices=[workload.Index(name="test", types=["docs"])])
+            )
 
         loader.set_absolute_data_path(cfg, t)
 
@@ -1998,7 +2000,7 @@ class WorkloadRandomizationTests(TestCase):
             # Modified from test_filters_tasks
             workload_specification = {
                 "description": "description for unit test",
-                "indices": [{"name": self.index_name, "auto-managed": False}],
+                "collections": [{"name": self.index_name}],
                 "operations": [
                     {
                         "name": "create-index",
@@ -2740,60 +2742,6 @@ class WorkloadSpecificationReaderTests(TestCase):
                          "'duplicate-task-name'. Please use the task's name property to assign a unique name for each task.",
                          ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
-    def test_load_invalid_index_body(self, mocked_params_checker):
-        workload_specification = {
-            "description": "description for unit test",
-            "indices": [
-                {
-                    "name": "index-historical",
-                    "body": "body.json",
-                    "types": ["_doc"]
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000
-                        }
-                    ]
-                }
-            ],
-            "schedule": [
-                {
-                    "clients": 8,
-                    "operation": {
-                        "name": "index-append",
-                        "operation-type": "index",
-                        "bulk-size": 5000
-                    }
-                }
-            ]
-        }
-        reader = loader.WorkloadSpecificationReader(
-            workload_params={"number_of_shards": 3},
-            source=io.DictStringFileSourceFactory({
-                "/mappings/body.json": ["""
-            {
-                "settings": {
-                    "number_of_shards": {{ number_of_shards }}
-                },
-                "mappings": {
-                    "_doc": "no closing quotation mark!!,
-                }
-            }
-            """]
-            }))
-        with self.assertRaises(loader.WorkloadSyntaxError) as ctx:
-            reader("unittest", workload_specification, "/mappings")
-        self.assertEqual(
-            "Could not load file template for 'definition for index index-historical in body.json'", ctx.exception.args[0])
-
     def test_parse_unique_task_names(self):
         workload_specification = {
             "description": "description for unit test",
@@ -2901,875 +2849,6 @@ class WorkloadSpecificationReaderTests(TestCase):
         # Test case 4: name contains neither "_" nor "-"
         result = reader._rename_task_based_on_num_clients("testname", 1)
         self.assertEqual(result, "testname_1_clients")
-
-    def test_parse_indices_valid_workload_specification(self):
-        workload_specification = {
-            "description": "description for unit test",
-            "indices": [
-                {
-                    "name": "index-historical",
-                    "body": "body.json",
-                    "types": ["main", "secondary"]
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "base-url": "https://localhost/data",
-                    "meta": {
-                        "test-corpus": True
-                    },
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000,
-                            "target-index": "index-historical",
-                            "target-type": "main",
-                            "meta": {
-                                "test-docs": True,
-                                "role": "main"
-                            }
-                        },
-                        {
-                            "source-file": "documents-secondary.json.bz2",
-                            "includes-action-and-meta-data": True,
-                            "document-count": 20,
-                            "compressed-bytes": 200,
-                            "uncompressed-bytes": 20000,
-                            "meta": {
-                                "test-docs": True,
-                                "role": "secondary"
-                            }
-
-                        }
-                    ]
-                }
-            ],
-            "operations": [
-                {
-                    "name": "index-append",
-                    "operation-type": "index",
-                    "bulk-size": 5000,
-                    "meta": {
-                        "append": True
-                    }
-                },
-                {
-                    "name": "search",
-                    "operation-type": "search",
-                    "index": "index-historical"
-                }
-            ],
-            "test_procedures": [
-                {
-                    "name": "default-test_procedure",
-                    "description": "Default test_procedure",
-                    "meta": {
-                        "mixed": True,
-                        "max-clients": 8
-                    },
-                    "schedule": [
-                        {
-                            "clients": 8,
-                            "operation": "index-append",
-                            "meta": {
-                                "operation-index": 0
-                            }
-                        },
-                        {
-                            "clients": 1,
-                            "operation": "search"
-                        }
-                    ]
-                }
-            ]
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            workload_params={"number_of_shards": 3},
-            complete_workload_params=complete_workload_params,
-            source=io.DictStringFileSourceFactory({
-                "/mappings/body.json": ["""
-            {
-                "settings": {
-                    "number_of_shards": {{ number_of_shards }}
-                },
-                "mappings": {
-                    "main": "empty-for-test",
-                    "secondary": "empty-for-test"
-                }
-            }
-            """]
-            }))
-        resulting_workload = reader(
-            "unittest", workload_specification, "/mappings")
-        # j2 variables defined in the workload -- used for checking mismatching user workload params
-        self.assertEqual(
-            ["number_of_shards"],
-            complete_workload_params.sorted_workload_defined_params
-        )
-        self.assertEqual("unittest", resulting_workload.name)
-        self.assertEqual("description for unit test",
-                         resulting_workload.description)
-        # indices
-        self.assertEqual(1, len(resulting_workload.indices))
-        self.assertEqual("index-historical",
-                         resulting_workload.indices[0].name)
-        self.assertDictEqual({
-            "settings": {
-                "number_of_shards": 3
-            },
-            "mappings":
-                {
-                    "main": "empty-for-test",
-                    "secondary": "empty-for-test"
-            }
-        }, resulting_workload.indices[0].body)
-        self.assertEqual(2, len(resulting_workload.indices[0].types))
-        self.assertEqual("main", resulting_workload.indices[0].types[0])
-        self.assertEqual("secondary", resulting_workload.indices[0].types[1])
-        # corpora
-        self.assertEqual(1, len(resulting_workload.corpora))
-        self.assertEqual("test", resulting_workload.corpora[0].name)
-        self.assertDictEqual({"test-corpus": True},
-                             resulting_workload.corpora[0].meta_data)
-        self.assertEqual(2, len(resulting_workload.corpora[0].documents))
-
-        docs_primary = resulting_workload.corpora[0].documents[0]
-        self.assertEqual(workload.Documents.SOURCE_FORMAT_BULK,
-                         docs_primary.source_format)
-        self.assertEqual("documents-main.json", docs_primary.document_file)
-        self.assertEqual("documents-main.json.bz2",
-                         docs_primary.document_archive)
-        self.assertEqual("https://localhost/data", docs_primary.base_url)
-        self.assertFalse(docs_primary.includes_action_and_meta_data)
-        self.assertEqual(10, docs_primary.number_of_documents)
-        self.assertEqual(100, docs_primary.compressed_size_in_bytes)
-        self.assertEqual(10000, docs_primary.uncompressed_size_in_bytes)
-        self.assertEqual("index-historical", docs_primary.target_index)
-        self.assertEqual("main", docs_primary.target_type)
-        self.assertDictEqual({
-            "test-docs": True,
-            "role": "main"
-        }, docs_primary.meta_data)
-
-        docs_secondary = resulting_workload.corpora[0].documents[1]
-        self.assertEqual(workload.Documents.SOURCE_FORMAT_BULK,
-                         docs_secondary.source_format)
-        self.assertEqual("documents-secondary.json",
-                         docs_secondary.document_file)
-        self.assertEqual("documents-secondary.json.bz2",
-                         docs_secondary.document_archive)
-        self.assertEqual("https://localhost/data", docs_secondary.base_url)
-        self.assertTrue(docs_secondary.includes_action_and_meta_data)
-        self.assertEqual(20, docs_secondary.number_of_documents)
-        self.assertEqual(200, docs_secondary.compressed_size_in_bytes)
-        self.assertEqual(20000, docs_secondary.uncompressed_size_in_bytes)
-        # This is defined by the action-and-meta-data line!
-        self.assertIsNone(docs_secondary.target_index)
-        self.assertIsNone(docs_secondary.target_type)
-        self.assertDictEqual({
-            "test-docs": True,
-            "role": "secondary"
-        }, docs_secondary.meta_data)
-
-        # test_procedures
-        self.assertEqual(1, len(resulting_workload.test_procedures))
-        self.assertEqual("default-test_procedure",
-                         resulting_workload.test_procedures[0].name)
-        self.assertEqual("Default test_procedure",
-                         resulting_workload.test_procedures[0].description)
-        self.assertEqual({"mixed": True, "max-clients": 8},
-                         resulting_workload.test_procedures[0].meta_data)
-        self.assertEqual(
-            {"append": True}, resulting_workload.test_procedures[0].schedule[0].operation.meta_data)
-        self.assertEqual({"operation-index": 0},
-                         resulting_workload.test_procedures[0].schedule[0].meta_data)
-
-    def test_parse_data_streams_valid_workload_specification(self):
-        workload_specification = {
-            "description": "description for unit test",
-            "data-streams": [
-                {
-                    "name": "data-stream-historical"
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "base-url": "https://localhost/data",
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000,
-                            "target-data-stream": "data-stream-historical"
-                        },
-                        {
-                            "source-file": "documents-secondary.json.bz2",
-                            "includes-action-and-meta-data": True,
-                            "document-count": 20,
-                            "compressed-bytes": 200,
-                            "uncompressed-bytes": 20000
-                        },
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000,
-                            "target-data-stream": "data-stream-historical"
-                        }
-                    ]
-                }
-            ],
-            "operations": [
-                {
-                    "name": "index-append",
-                    "operation-type": "index",
-                    "bulk-size": 5000,
-                    "meta": {
-                        "append": True
-                    }
-                },
-                {
-                    "name": "search",
-                    "operation-type": "search",
-                    "data-stream": "data-stream-historical"
-                }
-            ],
-            "test_procedures": [
-                {
-                    "name": "default-test_procedure",
-                    "description": "Default test_procedure",
-                    "meta": {
-                        "mixed": True,
-                        "max-clients": 8
-                    },
-                    "schedule": [
-                        {
-                            "clients": 8,
-                            "operation": "index-append",
-                            "meta": {
-                                "operation-index": 0
-                            }
-                        },
-                        {
-                            "clients": 1,
-                            "operation": "search"
-                        }
-                    ]
-                }
-            ]
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            complete_workload_params=complete_workload_params)
-        resulting_workload = reader(
-            "unittest", workload_specification, "/mappings")
-        # j2 variables defined in the workload -- used for checking mismatching user workload params
-        self.assertEqual("unittest", resulting_workload.name)
-        self.assertEqual("description for unit test",
-                         resulting_workload.description)
-        # data streams
-        self.assertEqual(1, len(resulting_workload.data_streams))
-        self.assertEqual("data-stream-historical",
-                         resulting_workload.data_streams[0].name)
-        # corpora
-        self.assertEqual(1, len(resulting_workload.corpora))
-        self.assertEqual("test", resulting_workload.corpora[0].name)
-        self.assertEqual(3, len(resulting_workload.corpora[0].documents))
-
-        docs_primary = resulting_workload.corpora[0].documents[0]
-        self.assertEqual(workload.Documents.SOURCE_FORMAT_BULK,
-                         docs_primary.source_format)
-        self.assertEqual("documents-main.json", docs_primary.document_file)
-        self.assertEqual("documents-main.json.bz2",
-                         docs_primary.document_archive)
-        self.assertEqual("https://localhost/data", docs_primary.base_url)
-        self.assertFalse(docs_primary.includes_action_and_meta_data)
-        self.assertEqual(10, docs_primary.number_of_documents)
-        self.assertEqual(100, docs_primary.compressed_size_in_bytes)
-        self.assertEqual(10000, docs_primary.uncompressed_size_in_bytes)
-        self.assertEqual("data-stream-historical",
-                         docs_primary.target_data_stream)
-        self.assertIsNone(docs_primary.target_index)
-        self.assertIsNone(docs_primary.target_type)
-
-        docs_secondary = resulting_workload.corpora[0].documents[1]
-        self.assertEqual(workload.Documents.SOURCE_FORMAT_BULK,
-                         docs_secondary.source_format)
-        self.assertEqual("documents-secondary.json",
-                         docs_secondary.document_file)
-        self.assertEqual("documents-secondary.json.bz2",
-                         docs_secondary.document_archive)
-        self.assertEqual("https://localhost/data", docs_secondary.base_url)
-        self.assertTrue(docs_secondary.includes_action_and_meta_data)
-        self.assertEqual(20, docs_secondary.number_of_documents)
-        self.assertEqual(200, docs_secondary.compressed_size_in_bytes)
-        self.assertEqual(20000, docs_secondary.uncompressed_size_in_bytes)
-        # This is defined by the action-and-meta-data line!
-        self.assertIsNone(docs_secondary.target_data_stream)
-        self.assertIsNone(docs_secondary.target_index)
-        self.assertIsNone(docs_secondary.target_type)
-
-        docs_tertiary = resulting_workload.corpora[0].documents[2]
-        self.assertEqual(workload.Documents.SOURCE_FORMAT_BULK,
-                         docs_tertiary.source_format)
-        self.assertEqual("documents-main.json", docs_tertiary.document_file)
-        self.assertEqual("documents-main.json.bz2",
-                         docs_tertiary.document_archive)
-        self.assertEqual("https://localhost/data", docs_tertiary.base_url)
-        self.assertFalse(docs_tertiary.includes_action_and_meta_data)
-        self.assertEqual(10, docs_tertiary.number_of_documents)
-        self.assertEqual(100, docs_tertiary.compressed_size_in_bytes)
-        self.assertIsNone(docs_tertiary.target_index)
-        self.assertIsNone(docs_tertiary.target_type)
-        self.assertEqual("data-stream-historical",
-                         docs_tertiary.target_data_stream)
-
-        # test_procedures
-        self.assertEqual(1, len(resulting_workload.test_procedures))
-        self.assertEqual("default-test_procedure",
-                         resulting_workload.test_procedures[0].name)
-        self.assertEqual("Default test_procedure",
-                         resulting_workload.test_procedures[0].description)
-        self.assertEqual({"mixed": True, "max-clients": 8},
-                         resulting_workload.test_procedures[0].meta_data)
-        self.assertEqual(
-            {"append": True}, resulting_workload.test_procedures[0].schedule[0].operation.meta_data)
-        self.assertEqual({"operation-index": 0},
-                         resulting_workload.test_procedures[0].schedule[0].meta_data)
-
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
-    def test_parse_valid_without_types(self, mocked_param_checker):
-        workload_specification = {
-            "description": "description for unit test",
-            "indices": [
-                {
-                    "name": "index-historical",
-                    "body": "body.json"
-                    # no type information here
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "base-url": "https://localhost/data",
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000,
-                        },
-                    ]
-                }
-            ],
-            "schedule": [
-                {
-                    "clients": 8,
-                    "operation": {
-                        "name": "index-append",
-                        "operation-type": "bulk",
-                        "bulk-size": 5000
-                    }
-                }
-            ]
-        }
-        reader = loader.WorkloadSpecificationReader(
-            workload_params={"number_of_shards": 3},
-            source=io.DictStringFileSourceFactory({
-                "/mappings/body.json": ["""
-            {
-                "settings": {
-                    "number_of_shards": {{ number_of_shards }}
-                }
-            }
-            """]
-            }))
-        resulting_workload = reader(
-            "unittest", workload_specification, "/mappings")
-        self.assertEqual("unittest", resulting_workload.name)
-        self.assertEqual("description for unit test",
-                         resulting_workload.description)
-        # indices
-        self.assertEqual(1, len(resulting_workload.indices))
-        self.assertEqual("index-historical",
-                         resulting_workload.indices[0].name)
-        self.assertDictEqual({
-            "settings": {
-                "number_of_shards": 3
-            }
-        }, resulting_workload.indices[0].body)
-        self.assertEqual(0, len(resulting_workload.indices[0].types))
-        # corpora
-        self.assertEqual(1, len(resulting_workload.corpora))
-        self.assertEqual("test", resulting_workload.corpora[0].name)
-        self.assertEqual(1, len(resulting_workload.corpora[0].documents))
-
-        docs_primary = resulting_workload.corpora[0].documents[0]
-        self.assertEqual(workload.Documents.SOURCE_FORMAT_BULK,
-                         docs_primary.source_format)
-        self.assertEqual("documents-main.json", docs_primary.document_file)
-        self.assertEqual("documents-main.json.bz2",
-                         docs_primary.document_archive)
-        self.assertEqual("https://localhost/data", docs_primary.base_url)
-        self.assertFalse(docs_primary.includes_action_and_meta_data)
-        self.assertEqual(10, docs_primary.number_of_documents)
-        self.assertEqual(100, docs_primary.compressed_size_in_bytes)
-        self.assertEqual(10000, docs_primary.uncompressed_size_in_bytes)
-        self.assertEqual("index-historical", docs_primary.target_index)
-        self.assertIsNone(docs_primary.target_type)
-        self.assertIsNone(docs_primary.target_data_stream)
-
-        # test_procedures
-        self.assertEqual(1, len(resulting_workload.test_procedures))
-
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
-    def test_parse_invalid_data_streams_with_indices(self, mocked_param_checker):
-        workload_specification = {
-            "description": "description for unit test",
-            "indices": [
-                {
-                    "name": "index-historical",
-                    # no type information here
-                }
-            ],
-            "data-streams": [
-                {
-                    "name": "historical-data-stream"
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "base-url": "https://localhost/data",
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000,
-                        },
-                    ]
-                }
-            ],
-            "schedule": [
-                {
-                    "clients": 8,
-                    "operation": {
-                        "name": "index-append",
-                        "operation-type": "bulk",
-                        "bulk-size": 5000
-                    }
-                }
-            ]
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            complete_workload_params=complete_workload_params)
-        with self.assertRaises(loader.WorkloadSyntaxError):
-            reader("unittest", workload_specification, "/mapping")
-
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
-    def test_parse_invalid_data_streams_with_target_index(self, mocked_param_checker):
-        workload_specification = {
-            "description": "description for unit test",
-            "data-streams": [
-                {
-                    "name": "historical-data-stream"
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "base-url": "https://localhost/data",
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000,
-                            "target-index": "historical-index",
-                        },
-                    ]
-                }
-            ],
-            "schedule": [
-                {
-                    "clients": 8,
-                    "operation": {
-                        "name": "index-append",
-                        "operation-type": "bulk",
-                        "bulk-size": 5000
-                    }
-                }
-            ]
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            complete_workload_params=complete_workload_params)
-        with self.assertRaises(loader.WorkloadSyntaxError):
-            reader("unittest", workload_specification, "/mapping")
-
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
-    def test_parse_invalid_data_streams_with_target_type(self, mocked_param_checker):
-        workload_specification = {
-            "description": "description for unit test",
-            "data-streams": [
-                {
-                    "name": "historical-data-stream"
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "base-url": "https://localhost/data",
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000,
-                            "target-type": "_doc",
-                        },
-                    ]
-                }
-            ],
-            "schedule": [
-                {
-                    "clients": 8,
-                    "operation": {
-                        "name": "index-append",
-                        "operation-type": "bulk",
-                        "bulk-size": 5000
-                    }
-                }
-            ]
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            complete_workload_params=complete_workload_params)
-        with self.assertRaises(loader.WorkloadSyntaxError):
-            reader("unittest", workload_specification, "/mapping")
-
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
-    def test_parse_invalid_no_data_stream_target(self, mocked_param_checker):
-        workload_specification = {
-            "description": "description for unit test",
-            "data-streams": [
-                {
-                    "name": "historical-data-stream"
-                },
-                {
-                    "name": "historical-data-stream-2"
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "base-url": "https://localhost/data",
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000
-                        }
-                    ]
-                }
-            ],
-            "schedule": [
-                {
-                    "clients": 8,
-                    "operation": {
-                        "name": "index-append",
-                        "operation-type": "bulk",
-                        "bulk-size": 5000
-                    }
-                }
-            ]
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            complete_workload_params=complete_workload_params)
-        with self.assertRaises(loader.WorkloadSyntaxError):
-            reader("unittest", workload_specification, "/mapping")
-
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
-    def test_parse_valid_without_indices(self, mocked_param_checker):
-        workload_specification = {
-            "description": "description for unit test",
-            "data-streams": [
-                {
-                    "name": "historical-data-stream"
-                }
-            ],
-            "corpora": [
-                {
-                    "name": "test",
-                    "base-url": "https://localhost/data",
-                    "documents": [
-                        {
-                            "source-file": "documents-main.json.bz2",
-                            "document-count": 10,
-                            "compressed-bytes": 100,
-                            "uncompressed-bytes": 10000,
-                        },
-                    ]
-                }
-            ],
-            "schedule": [
-                {
-                    "clients": 8,
-                    "operation": {
-                        "name": "index-append",
-                        "operation-type": "bulk",
-                        "bulk-size": 5000
-                    }
-                }
-            ]
-        }
-        reader = loader.WorkloadSpecificationReader(
-            workload_params={"number_of_shards": 3},
-            source=io.DictStringFileSourceFactory({
-                "/mappings/body.json": ["""
-                {
-                    "settings": {
-                        "number_of_shards": {{ number_of_shards }}
-                    }
-                }
-                """]
-            }))
-        resulting_workload = reader(
-            "unittest", workload_specification, "/mappings")
-        self.assertEqual("unittest", resulting_workload.name)
-        self.assertEqual("description for unit test",
-                         resulting_workload.description)
-        # indices
-        self.assertEqual(0, len(resulting_workload.indices))
-        # data streams
-        self.assertEqual(1, len(resulting_workload.data_streams))
-        self.assertEqual("historical-data-stream",
-                         resulting_workload.data_streams[0].name)
-        # corpora
-        self.assertEqual(1, len(resulting_workload.corpora))
-        self.assertEqual("test", resulting_workload.corpora[0].name)
-        self.assertEqual(1, len(resulting_workload.corpora[0].documents))
-
-        docs_primary = resulting_workload.corpora[0].documents[0]
-        self.assertEqual(workload.Documents.SOURCE_FORMAT_BULK,
-                         docs_primary.source_format)
-        self.assertEqual("documents-main.json", docs_primary.document_file)
-        self.assertEqual("documents-main.json.bz2",
-                         docs_primary.document_archive)
-        self.assertEqual("https://localhost/data", docs_primary.base_url)
-        self.assertFalse(docs_primary.includes_action_and_meta_data)
-        self.assertEqual(10, docs_primary.number_of_documents)
-        self.assertEqual(100, docs_primary.compressed_size_in_bytes)
-        self.assertEqual(10000, docs_primary.uncompressed_size_in_bytes)
-        self.assertEqual("historical-data-stream",
-                         docs_primary.target_data_stream)
-        self.assertIsNone(docs_primary.target_type)
-        self.assertIsNone(docs_primary.target_index)
-
-        # test_procedures
-        self.assertEqual(1, len(resulting_workload.test_procedures))
-
-    def test_parse_valid_workload_specification_with_index_template(self):
-        workload_specification = {
-            "description": "description for unit test",
-            "templates": [
-                {
-                    "name": "my-index-template",
-                    "index-pattern": "*",
-                    "template": "default-template.json"
-                }
-            ],
-            "operations": [],
-            "test_procedures": []
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            workload_params={"index_pattern": "*"},
-            complete_workload_params=complete_workload_params,
-            source=io.DictStringFileSourceFactory({
-                "/mappings/default-template.json": ["""
-                {
-                    "index_patterns": [ "{{index_pattern}}"],
-                    "settings": {
-                        "number_of_shards": {{ number_of_shards | default(1) }}
-                    }
-                }
-                """],
-            }))
-        resulting_workload = reader(
-            "unittest", workload_specification, "/mappings")
-        self.assertEqual(
-            ["index_pattern", "number_of_shards"],
-            complete_workload_params.sorted_workload_defined_params
-        )
-        self.assertEqual("unittest", resulting_workload.name)
-        self.assertEqual("description for unit test",
-                         resulting_workload.description)
-        self.assertEqual(0, len(resulting_workload.indices))
-        self.assertEqual(1, len(resulting_workload.templates))
-        self.assertEqual("my-index-template",
-                         resulting_workload.templates[0].name)
-        self.assertEqual("*", resulting_workload.templates[0].pattern)
-        self.assertDictEqual(
-            {
-                "index_patterns": ["*"],
-                "settings": {
-                    "number_of_shards": 1
-                }
-            }, resulting_workload.templates[0].content)
-        self.assertEqual(0, len(resulting_workload.test_procedures))
-
-    def test_parse_valid_workload_specification_with_composable_template(self):
-        workload_specification = {
-            "description": "description for unit test",
-            "composable-templates": [
-                {
-                    "name": "my-index-template",
-                    "index-pattern": "*",
-                    "template": "default-template.json"
-                }
-            ],
-            "component-templates": [
-                {
-                    "name": "my-component-template-1",
-                    "template": "component-template-1.json"
-                },
-                {
-                    "name": "my-component-template-2",
-                    "template": "component-template-2.json"
-                }
-            ],
-            "operations": [],
-            "test_procedures": []
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            workload_params={"index_pattern": "logs-*",
-                             "number_of_replicas": 1},
-            complete_workload_params=complete_workload_params,
-            source=io.DictStringFileSourceFactory({
-                "/mappings/default-template.json": ["""
-                        {
-                            "index_patterns": [ "{{index_pattern}}"],
-                            "template": {
-                                "settings": {
-                                    "number_of_shards": {{ number_of_shards | default(1) }}
-                                }
-                            },
-                            "composed_of": ["my-component-template-1", "my-component-template-2"]
-                        }
-                        """],
-                "/mappings/component-template-1.json": ["""
-                        {
-                            "template": {
-                                "settings": {
-                                  "index.number_of_shards": 2
-                                }
-                            }
-                        }
-                        """],
-                "/mappings/component-template-2.json": ["""
-                        {
-                            "template": {
-                                "settings": {
-                                  "index.number_of_replicas": {{ number_of_replicas }}
-                                },
-                                "mappings": {
-                                  "properties": {
-                                    "@timestamp": {
-                                      "type": "date"
-                                    }
-                                  }
-                                }
-                              }
-                        }
-                        """]
-            }))
-        resulting_workload = reader(
-            "unittest", workload_specification, "/mappings")
-        self.assertEqual(
-            ["index_pattern", "number_of_replicas", "number_of_shards"],
-            complete_workload_params.sorted_workload_defined_params
-        )
-        self.assertEqual("unittest", resulting_workload.name)
-        self.assertEqual("description for unit test",
-                         resulting_workload.description)
-        self.assertEqual(0, len(resulting_workload.indices))
-        self.assertEqual(1, len(resulting_workload.composable_templates))
-        self.assertEqual(2, len(resulting_workload.component_templates))
-        self.assertEqual("my-index-template",
-                         resulting_workload.composable_templates[0].name)
-        self.assertEqual(
-            "*", resulting_workload.composable_templates[0].pattern)
-        self.assertEqual("my-component-template-1",
-                         resulting_workload.component_templates[0].name)
-        self.assertEqual("my-component-template-2",
-                         resulting_workload.component_templates[1].name)
-        self.assertDictEqual(
-            {
-                "index_patterns": ["logs-*"],
-                "template": {
-                    "settings": {
-                        "number_of_shards": 1
-                    }
-                },
-                "composed_of": ["my-component-template-1", "my-component-template-2"]
-            }, resulting_workload.composable_templates[0].content)
-        self.assertDictEqual(
-            {
-                "template": {
-                    "settings": {
-                        "index.number_of_shards": 2
-                    }
-                }
-            }, resulting_workload.component_templates[0].content)
-        self.assertDictEqual(
-            {
-                "template": {
-                    "settings": {
-                        "index.number_of_replicas": 1
-                    },
-                    "mappings": {
-                        "properties": {
-                            "@timestamp": {
-                                "type": "date"
-                            }
-                        }
-                    }
-                }
-            }, resulting_workload.component_templates[1].content)
-        self.assertEqual(0, len(resulting_workload.test_procedures))
-
-    def test_parse_invalid_workload_specification_with_composable_template(self):
-        workload_specification = {
-            "description": "description for unit test",
-            "component-templates": [
-                {
-                    "name": "my-component-template-2"
-                }
-            ],
-            "operations": [],
-            "test_procedures": []
-        }
-        complete_workload_params = loader.CompleteWorkloadParams()
-        reader = loader.WorkloadSpecificationReader(
-            workload_params={"index_pattern": "logs-*",
-                             "number_of_replicas": 1},
-            complete_workload_params=complete_workload_params)
-        with self.assertRaises(loader.WorkloadSyntaxError) as ctx:
-            reader("unittest", workload_specification, "/mappings")
-        self.assertEqual("Workload 'unittest' is invalid. Mandatory element 'template' is missing.",
-                         ctx.exception.args[0])
 
     def test_unique_test_procedure_names(self):
         workload_specification = {
@@ -3998,7 +3077,7 @@ class WorkloadSpecificationReaderTests(TestCase):
                     },
                     # a parameterless operation can just use the operation type as implicit reference to the operation
                     {
-                        "operation": "force-merge"
+                        "operation": "sleep"
                     }
                 ]
             }
@@ -4011,7 +3090,7 @@ class WorkloadSpecificationReaderTests(TestCase):
         self.assertEqual(2, len(test_procedure.schedule))
         self.assertEqual(workload.OperationType.Bulk.to_hyphenated_string(
         ), test_procedure.schedule[0].operation.type)
-        self.assertEqual(workload.OperationType.ForceMerge.to_hyphenated_string(
+        self.assertEqual(workload.OperationType.Sleep.to_hyphenated_string(
         ), test_procedure.schedule[1].operation.type)
 
     def test_supports_target_throughput(self):
@@ -4468,7 +3547,6 @@ class WorkloadProcessorRegistryTests(TestCase):
             loader.TaskFilterWorkloadProcessor,
             loader.TestModeWorkloadProcessor,
             loader.QueryRandomizerWorkloadProcessor,
-            loader.ServerlessFilterWorkloadProcessor,
             loader.DefaultWorkloadPreparator
         ]
         actual_defaults = [proc.__class__ for proc in tpr.processors]
@@ -4485,7 +3563,6 @@ class WorkloadProcessorRegistryTests(TestCase):
             loader.TaskFilterWorkloadProcessor,
             loader.TestModeWorkloadProcessor,
             loader.QueryRandomizerWorkloadProcessor,
-            loader.ServerlessFilterWorkloadProcessor,
             MyMockWorkloadProcessor
         ]
         actual_processors = [proc.__class__ for proc in tpr.processors]
@@ -4505,111 +3582,6 @@ class WorkloadProcessorRegistryTests(TestCase):
             loader.QueryRandomizerWorkloadProcessor,
             MyMockWorkloadProcessor,
             loader.DefaultWorkloadPreparator,
-            loader.ServerlessFilterWorkloadProcessor
         ]
         actual_processors = [proc.__class__ for proc in tpr.processors]
         self.assertCountEqual(expected_processors, actual_processors)
-
-
-class TestServerlessTaskFilter:
-    workload_specification = {
-        "description": "description for unit test",
-        "indices": [{"name": "test-index", "auto-managed": False}],
-        "operations": [
-            {
-                "name": "create-index",
-                "operation-type": "create-index",
-            },
-            {
-                "name": "bulk-index",
-                "operation-type": "bulk",
-            },
-            {
-                "name": "check-cluster-health",
-                "operation-type": "cluster-health",
-            },
-            {
-                "name": "cluster-stats",
-                "operation-type": "custom-operation-type",
-            },
-        ],
-        "test_procedures": [
-            {
-                "name": "default-test-procedure",
-                "schedule": [
-                    {
-                        "operation": "create-index",
-                    },
-                    {
-                        "operation": "check-cluster-health",
-                    },
-                    {
-                        "operation": {
-                            "operation-type": "bulk-index",
-                            "serverless": False,
-                        }
-                    },
-                    {
-                        "parallel": {
-                            "tasks": [
-                                {
-                                    "name": "index-1",
-                                    "operation": "bulk-index",
-                                },
-                                {
-                                    "name": "match-all-parallel",
-                                    "operation": "match-all",
-                                },
-                            ]
-                        }
-                    },
-                    {
-                        "operation": {
-                            "operation-type": "create-index-template",
-                            "serverless": True,
-                        }
-                    },
-                    {
-                        "operation": "cluster-stats",
-                    },
-                ],
-            }
-        ],
-    }
-
-    def filter(self, workload_specification, *, serverless_mode, serverless_operator):
-        cfg = config.Config()
-        cfg.add(config.Scope.benchmark, "worker_coordinator", "serverless.mode", serverless_mode)
-        cfg.add(config.Scope.benchmark, "worker_coordinator", "serverless.operator", serverless_operator)
-
-        processor = loader.ServerlessFilterWorkloadProcessor(cfg)
-        return processor.on_after_load_workload(workload_specification)
-
-    def test_noop_if_not_serverless(self):
-        filtered_task = self.filter(workload_specification={"foo": "bar"}, serverless_mode=False, serverless_operator=False)
-        assert filtered_task == {"foo": "bar"}
-
-    def test_no_message_if_no_filter(self):
-        workload_specification = {"test_procedures": [
-            {
-                "name": "default-test-procedure",
-                "schedule": []
-            }
-        ]}
-
-        reader = loader.WorkloadSpecificationReader()
-        full_workload = reader("unittest", copy.deepcopy(workload_specification), "/mappings")
-        filtered_workload = self.filter(full_workload, serverless_mode=True, serverless_operator=True)
-        assert filtered_workload.test_procedures[0].serverless_info == []
-
-    def test_filters_tasks_operator_false(self):
-        reader = loader.WorkloadSpecificationReader()
-        full_workload = reader("unittest", copy.deepcopy(self.workload_specification), "/mappings")
-        assert len(full_workload.test_procedures[0].schedule) == 6
-
-        filtered_workload = self.filter(full_workload, serverless_mode=True, serverless_operator=True)
-
-        assert filtered_workload.test_procedures[0].serverless_info == ["Treating parallel task in test-procedure "
-                                                                        "[default-test-procedure] as public.",
-                                                                        "Excluding [check-cluster-health], [bulk-index] "
-                                                                        "as test-procedure [default-test-procedure] is run on serverless."]

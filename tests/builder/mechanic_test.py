@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -35,16 +38,16 @@ class HostHandlingTests(TestCase):
         resolver.side_effect = ["127.0.0.1", "10.16.23.5", "11.22.33.44"]
 
         hosts = [
-            {"host": "127.0.0.1", "port": 9200},
+            {"host": "127.0.0.1", "port": 8983},
             # also applies default port if none given
             {"host": "10.16.23.5"},
-            {"host": "site.example.com", "port": 9200},
+            {"host": "site.example.com", "port": 8983},
         ]
 
         self.assertEqual([
-            ("127.0.0.1", 9200),
-            ("10.16.23.5", 9200),
-            ("11.22.33.44", 9200),
+            ("127.0.0.1", 8983),
+            ("10.16.23.5", 8983),
+            ("11.22.33.44", 8983),
         ], builder.to_ip_port(hosts))
 
     @mock.patch("osbenchmark.utils.net.resolve")
@@ -52,15 +55,15 @@ class HostHandlingTests(TestCase):
         resolver.side_effect = ["127.0.0.1", "10.16.23.5", "11.22.33.44"]
 
         hosts = [
-            {"host": "127.0.0.1", "port": 9200, "ssl": True},
-            {"host": "10.16.23.5", "port": 10200},
-            {"host": "site.example.com", "port": 9200},
+            {"host": "127.0.0.1", "port": 8983, "ssl": True},
+            {"host": "10.16.23.5", "port": 10983},
+            {"host": "site.example.com", "port": 8983},
         ]
 
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             builder.to_ip_port(hosts)
         self.assertEqual("When specifying nodes to be managed by "
-        "OSB you can only supply hostname:port pairs (e.g. 'localhost:9200'), "
+                         "solr-benchmark you can only supply hostname:port pairs (e.g. 'localhost:8983'), "
                          "any additional options cannot be supported.", ctx.exception.args[0])
 
     def test_groups_nodes_by_host(self):

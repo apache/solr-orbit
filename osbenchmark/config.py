@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -248,10 +251,12 @@ class Config:
             (Scope.application, "benchmarks", "workload.repository.dir"): "workloads",
             (Scope.application, "benchmarks", "workload.default.repository"): "default",
             (Scope.application, "provisioning", "node.name.prefix"): "benchmark-node",
-            (Scope.application, "provisioning", "node.http.port"): 39200,
+            (Scope.application, "provisioning", "node.http.port"): 38983,
             (Scope.application, "builder", "cluster_config.repository.dir"): "cluster_configs",
             (Scope.application, "builder", "cluster_config.default.repository"): "default",
-
+            # Solr-specific defaults
+            (Scope.application, "solr", "port"): 8983,
+            (Scope.application, "reporting", "datastore.type"): "in-memory",
         }
 
     def _fill_from_config_file(self, config):
@@ -292,7 +297,7 @@ def migrate(config_file, current_version, target_version, out=print, i=input):
         return
     if current_version < Config.EARLIEST_SUPPORTED_VERSION:
         raise exceptions.ConfigError(f"The config file in {config_file.location} is too old. Please delete it "
-                                     f"and reconfigure OSB from scratch with {PROGRAM_NAME} configure.")
+                                     f"and reconfigure from scratch with {PROGRAM_NAME} configure.")
 
     logger.info("Upgrading configuration from version [%s] to [%s].", current_version, target_version)
     # Something is really fishy. We don't want to downgrade the configuration.

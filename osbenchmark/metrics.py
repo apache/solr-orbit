@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -29,245 +32,18 @@ import logging
 import math
 import os
 import pickle
-import random
 import statistics
 import sys
 import time
 import zlib
 import webbrowser
 from enum import Enum, IntEnum
-from http.client import responses
 import psutil
-import opensearchpy.helpers
 import tabulate
 
-from osbenchmark import client, time, exceptions, config, version, paths
+from osbenchmark import time, exceptions, version, paths
 from osbenchmark.utils import convert, console, io, versions
 from osbenchmark.visualizations.benchmark_report_renderer import render_results_html
-from osbenchmark.cloud_provider import CloudProviderFactory
-
-
-class OsClient:
-    """
-    Provides a stripped-down client interface that is easier to exchange for testing
-    """
-
-    def __init__(self, client, cluster_version=None):
-        self._client = client
-        self.logger = logging.getLogger(__name__)
-        self._cluster_version = cluster_version
-        self._cluster_distribution = None
-
-    def probe_version(self):
-        info = self.guarded(self._client.info)
-        try:
-            self._cluster_version = versions.components(info["version"]["number"])
-        except BaseException:
-            msg = "Could not determine version of metrics cluster"
-            self.logger.exception(msg)
-            raise exceptions.BenchmarkError(msg)
-
-        try:
-            self._cluster_distribution = info["version"]["distribution"]
-        except BaseException:
-            msg = "Could not determine distribution of metrics cluster, assuming elasticsearch"
-            self.logger.exception(msg)
-            self._cluster_distribution = "elasticsearch"
-
-    def put_template(self, name, template):
-        return self.guarded(self._client.indices.put_template, name=name, body=template)
-
-    def template_exists(self, name):
-        return self.guarded(self._client.indices.exists_template, name)
-
-    def delete_template(self,  name):
-        self.guarded(self._client.indices.delete_template, name)
-
-    def get_index(self, name):
-        return self.guarded(self._client.indices.get,  name)
-
-    def create_index(self, index):
-        # ignore 400 cause by IndexAlreadyExistsException when creating an index
-        return self.guarded(self._client.indices.create, index=index, ignore=400)
-
-    def exists(self, index):
-        return self.guarded(self._client.indices.exists, index=index)
-
-    def refresh(self, index):
-        return self.guarded(self._client.indices.refresh, index=index)
-
-    def bulk_index(self, index, doc_type, items):
-        self.guarded(opensearchpy.helpers.bulk, self._client, items, index=index, chunk_size=5000)
-
-    def index(self, index, doc_type, item, id=None):
-        doc = {
-            "_source": item
-        }
-        if id:
-            doc["_id"] = id
-        self.bulk_index(index, doc_type, [doc])
-
-    def search(self, index, body):
-        return self.guarded(self._client.search, index=index, body=body)
-
-    def guarded(self, target, *args, **kwargs):
-        # pylint: disable=import-outside-toplevel
-        import opensearchpy
-        max_execution_count = 11
-        execution_count = 0
-
-        while execution_count < max_execution_count:
-            time_to_sleep = 2 ** execution_count + random.random()
-            execution_count += 1
-
-            try:
-                return target(*args, **kwargs)
-            except opensearchpy.exceptions.AuthenticationException:
-                # we know that it is just one host (see OsClientFactory)
-                node = self._client.transport.hosts[0]
-                msg = "The configured user could not authenticate against your OpenSearch metrics store running on host [%s] at " \
-                      "port [%s] (wrong password?). Please fix the configuration in [%s]." % \
-                      (node["host"], node["port"], config.ConfigFile().location)
-                self.logger.exception(msg)
-                raise exceptions.SystemSetupError(msg)
-            except opensearchpy.exceptions.AuthorizationException:
-                node = self._client.transport.hosts[0]
-                msg = "The configured user does not have enough privileges to run the operation [%s] against your OpenSearch metrics " \
-                      "store running on host [%s] at port [%s]. Please specify a user with enough " \
-                      "privileges in the configuration in [%s]." % \
-                      (target.__name__, node["host"], node["port"], config.ConfigFile().location)
-                self.logger.exception(msg)
-                raise exceptions.SystemSetupError(msg)
-            except opensearchpy.exceptions.ConnectionTimeout:
-                if execution_count < max_execution_count:
-                    self.logger.debug("Connection timeout in attempt [%d/%d].", execution_count, max_execution_count)
-                    time.sleep(time_to_sleep)
-                else:
-                    operation = target.__name__
-                    self.logger.exception("Connection timeout while running [%s] (retried %d times).", operation, max_execution_count)
-                    node = self._client.transport.hosts[0]
-                    msg = "A connection timeout occurred while running the operation [%s] against your OpenSearch metrics store on " \
-                          "host [%s] at port [%s]." % (operation, node["host"], node["port"])
-                    raise exceptions.BenchmarkError(msg)
-            except opensearchpy.exceptions.ConnectionError:
-                node = self._client.transport.hosts[0]
-                msg = "Could not connect to your OpenSearch metrics store. Please check that it is running on host [%s] at port [%s]" \
-                      " or fix the configuration in [%s]." % (node["host"], node["port"], config.ConfigFile().location)
-                self.logger.exception(msg)
-                raise exceptions.SystemSetupError(msg)
-            except opensearchpy.TransportError as e:
-                if e.status_code in (502, 503, 504, 429) and execution_count < max_execution_count:
-                    self.logger.debug("%s (code: %d) in attempt [%d/%d]. Sleeping for [%f] seconds.",
-                                      responses[e.status_code], e.status_code, execution_count, max_execution_count, time_to_sleep)
-                    time.sleep(time_to_sleep)
-                else:
-                    node = self._client.transport.hosts[0]
-                    msg = "A transport error occurred while running the operation [%s] against your OpenSearch metrics store on " \
-                          "host [%s] at port [%s]." % (target.__name__, node["host"], node["port"])
-                    self.logger.exception(msg)
-                    raise exceptions.BenchmarkError(msg)
-
-            except opensearchpy.exceptions.OpenSearchException:
-                node = self._client.transport.hosts[0]
-                msg = "An unknown error occurred while running the operation [%s] against your OpenSearch metrics store on host [%s] " \
-                      "at port [%s]." % (target.__name__, node["host"], node["port"])
-                self.logger.exception(msg)
-                # this does not necessarily mean it's a system setup problem...
-                raise exceptions.BenchmarkError(msg)
-
-
-class OsClientFactory:
-    """
-    Abstracts how the OpenSearch client is created. Intended for testing.
-    """
-
-    def __init__(self, cfg):
-        self._config = cfg
-        host = self._config.opts("reporting", "datastore.host")
-        port = self._config.opts("reporting", "datastore.port")
-        secure = convert.to_bool(self._config.opts("reporting", "datastore.secure"))
-        user = self._config.opts("reporting", "datastore.user", default_value=None, mandatory=False)
-        provider = CloudProviderFactory.get_provider_from_config(self._config)
-
-        if user is None and provider is None:
-            raise exceptions.ConfigError("To use an OpenSearch datastore, specify datastore.user or provider like datastore.amazon_aws_log_in")
-        if provider:
-            provider.parse_log_in_params(config=self._config, for_metrics_datastore=True)
-        if user:
-            try:
-                password = os.environ["OSB_DATASTORE_PASSWORD"]
-            except KeyError:
-                try:
-                    password = self._config.opts("reporting", "datastore.password")
-                except exceptions.ConfigError:
-                    raise exceptions.ConfigError(
-                        "No password configured through [reporting] configuration or OSB_DATASTORE_PASSWORD environment variable."
-                    ) from None
-        verify = self._config.opts("reporting", "datastore.ssl.verification_mode", default_value="full", mandatory=False) != "none"
-        ca_path = self._config.opts("reporting", "datastore.ssl.certificate_authorities", default_value=None, mandatory=False)
-        self.probe_version = self._config.opts("reporting", "datastore.probe.cluster_version", default_value=True, mandatory=False)
-
-        # Instead of duplicating code, we're just adapting the metrics store specific properties to match the regular client options.
-        client_options = {
-            "use_ssl": secure,
-            "verify_certs": verify,
-            "timeout": 120
-        }
-        if ca_path:
-            client_options["ca_certs"] = ca_path
-        if user and password:
-            client_options["basic_auth_user"] = user
-            client_options["basic_auth_password"] = password
-
-        if provider:
-            client_options = provider.update_client_options_for_metrics(client_options)
-
-        factory = client.OsClientFactory(hosts=[{"host": host, "port": port}], client_options=client_options)
-        self._client = factory.create()
-
-    def create(self):
-        c = OsClient(self._client)
-        if self.probe_version:
-            c.probe_version()
-        return c
-
-
-class IndexTemplateProvider:
-    """
-    Abstracts how the OSB index template is retrieved. Intended for testing.
-    """
-
-    def __init__(self, cfg):
-        self._config = cfg
-        self.script_dir = self._config.opts("node", "benchmark.root")
-        self._number_of_shards = self._config.opts("reporting", "datastore.number_of_shards", default_value=None, mandatory=False)
-        self._number_of_replicas = self._config.opts("reporting", "datastore.number_of_replicas",
-                                                     default_value=None, mandatory=False)
-
-    def metrics_template(self):
-        return self._read("metrics-template")
-
-    def test_runs_template(self):
-        return self._read("test-runs-template")
-
-    def results_template(self):
-        return self._read("results-template")
-
-    def _read(self, template_name):
-        with open("%s/resources/%s.json" % (self.script_dir, template_name), encoding="utf-8") as f:
-            template = json.load(f)
-            if self._number_of_shards is not None:
-                if int(self._number_of_shards) < 1:
-                    raise exceptions.SystemSetupError(
-                        f"The setting: datastore.number_of_shards must be >= 1. Please "
-                        f"check the configuration in {self._config.config_file.location}"
-                    )
-                template["settings"]["index"]["number_of_shards"] = int(self._number_of_shards)
-            if self._number_of_replicas is not None:
-                template["settings"]["index"]["number_of_replicas"] = int(self._number_of_replicas)
-            return json.dumps(template)
-
-
 class MetaInfoScope(Enum):
     """
     Defines the scope of a meta-information. Meta-information provides more context for a metric, for example the concrete version
@@ -307,7 +83,8 @@ def metrics_store(cfg, read_only=True, workload=None, test_procedure=None, clust
     :param read_only: Whether to open the metrics store only for reading (Default: True).
     :return: A metrics store implementation.
     """
-    cls = metrics_store_class(cfg)
+    store_type = cfg.opts("reporting", "datastore.type", mandatory=False, default_value="in-memory")
+    cls = FilesystemMetricsStore if store_type == "filesystem" else InMemoryMetricsStore
     store = cls(cfg=cfg, meta_info=meta_info)
     logging.getLogger(__name__).info("Creating %s", str(store))
 
@@ -321,13 +98,6 @@ def metrics_store(cfg, read_only=True, workload=None, test_procedure=None, clust
         workload, test_procedure, selected_cluster_config,
         create=not read_only)
     return store
-
-
-def metrics_store_class(cfg):
-    if cfg.opts("reporting", "datastore.type") == "opensearch":
-        return OsMetricsStore
-    else:
-        return InMemoryMetricsStore
 
 
 def extract_user_tags_from_config(cfg):
@@ -438,7 +208,7 @@ class MetricsStore:
 
         self.logger.info("Opening metrics store for test run timestamp=[%s], workload=[%s],"
         "test_procedure=[%s], cluster_config=[%s]",
-                         self._test_run_timestamp, self._workload, self._test_procedure, self._cluster_config)
+                         self._test_run_timestamp, self._workload, self._test_procedure, self._cluster_config_name)
 
         user_tags = extract_user_tags_from_config(self._config)
         for k, v in user_tags.items():
@@ -493,7 +263,7 @@ class MetricsStore:
 
     def _clear_meta_info(self):
         """
-        Clears all internally stored meta-info. This is considered OSB internal API and not intended for normal client consumption.
+        Clears all internally stored meta-info. This is considered ASB internal API and not intended for normal client consumption.
         """
         self._meta_info = {
             MetaInfoScope.cluster: {},
@@ -795,262 +565,6 @@ class MetricsStore:
         """
         stats = self.get_stats(name, task, operation_type, sample_type)
         return stats["avg"] if stats else None
-
-
-class OsMetricsStore(MetricsStore):
-    """
-    A metrics store backed by OpenSearch.
-    """
-    METRICS_DOC_TYPE = "_doc"
-
-    def __init__(self,
-                 cfg,
-                 client_factory_class=OsClientFactory,
-                 index_template_provider_class=IndexTemplateProvider,
-                 clock=time.Clock, meta_info=None):
-        """
-        Creates a new metrics store.
-
-        :param cfg: The config object. Mandatory.
-        :param client_factory_class: This parameter is optional and needed for testing.
-        :param index_template_provider_class: This parameter is optional and needed for testing.
-        :param clock: This parameter is optional and needed for testing.
-        :param meta_info: This parameter is optional and intended for creating a metrics store with a previously serialized meta-info.
-        """
-        MetricsStore.__init__(self, cfg=cfg, clock=clock, meta_info=meta_info)
-        self._index = None
-        self._client = client_factory_class(cfg).create()
-        self._index_template_provider = index_template_provider_class(cfg)
-        self._docs = None
-
-    def open(self, test_run_id=None, test_run_timestamp=None, workload_name=None, \
-        test_procedure_name=None, cluster_config_name=None, ctx=None, \
-        create=False):
-        self._docs = []
-        MetricsStore.open(
-            self, test_run_id, test_run_timestamp,
-            workload_name, test_procedure_name,
-            cluster_config_name, ctx, create)
-        self._index = self.index_name()
-        # reduce a bit of noise in the metrics cluster log
-        if create:
-            # always update the mapping to the latest version
-            self._client.put_template("benchmark-metrics", self._get_template())
-            if not self._client.exists(index=self._index):
-                self._client.create_index(index=self._index)
-            else:
-                self.logger.info("[%s] already exists.", self._index)
-        else:
-            # we still need to check for the correct index name - prefer the one with the suffix
-            new_name = self._migrated_index_name(self._index)
-            if self._client.exists(index=new_name):
-                self._index = new_name
-
-        # ensure we can search immediately after opening
-        self._client.refresh(index=self._index)
-
-    def index_name(self):
-        ts = time.from_is8601(self._test_run_timestamp)
-        return "benchmark-metrics-%04d-%02d" % (ts.year, ts.month)
-
-    def _migrated_index_name(self, original_name):
-        return "{}.new".format(original_name)
-
-    def _get_template(self):
-        return self._index_template_provider.metrics_template()
-
-    def flush(self, refresh=True):
-        if self._docs:
-            sw = time.StopWatch()
-            sw.start()
-            self._client.bulk_index(index=self._index, doc_type=OsMetricsStore.METRICS_DOC_TYPE, items=self._docs)
-            sw.stop()
-            self.logger.info("Successfully added %d metrics documents for test run timestamp=[%s], workload=[%s], "
-                             "test_procedure=[%s], cluster_config=[%s] in [%f] seconds.",
-                             len(self._docs), self._test_run_timestamp,
-                             self._workload, self._test_procedure, self._cluster_config, sw.total_time())
-        self._docs = []
-        # ensure we can search immediately after flushing
-        if refresh:
-            self._client.refresh(index=self._index)
-
-    def _add(self, doc):
-        self._docs.append(doc)
-
-    def _get(self, name, task, operation_type, sample_type, node_name, mapper):
-        query = {
-            "query": self._query_by_name(name, task, operation_type, sample_type, node_name)
-        }
-        self.logger.debug("Issuing get against index=[%s], query=[%s].", self._index, query)
-        result = self._client.search(index=self._index, body=query)
-        self.logger.debug("Metrics query produced [%s] results.", result["hits"]["total"])
-        return [mapper(v["_source"]) for v in result["hits"]["hits"]]
-
-    def get_one(self, name, sample_type=None, node_name=None, task=None, mapper=lambda doc: doc["value"],
-                sort_key=None, sort_reverse=False):
-        order = "desc" if sort_reverse else "asc"
-        query = {
-            "query": self._query_by_name(name, task, None, sample_type, node_name),
-            "size": 1
-        }
-        if sort_key:
-            query["sort"] = [{sort_key: {"order": order}}]
-        self.logger.debug("Issuing get against index=[%s], query=[%s].", self._index, query)
-        result = self._client.search(index=self._index, body=query)
-        hits = result["hits"]["total"]
-        # OpenSearch 1.0+
-        if isinstance(hits, dict):
-            hits = hits["value"]
-        self.logger.debug("Metrics query produced [%s] results.", hits)
-        if hits > 0:
-            return mapper(result["hits"]["hits"][0]["_source"])
-        else:
-            return None
-
-    def get_error_rate(self, task, operation_type=None, sample_type=None):
-        query = {
-            "query": self._query_by_name("service_time", task, operation_type, sample_type, None),
-            "size": 0,
-            "aggs": {
-                "error_rate": {
-                    "terms": {
-                        "field": "meta.success"
-                    }
-                }
-            }
-        }
-        self.logger.debug("Issuing get_error_rate against index=[%s], query=[%s]", self._index, query)
-        result = self._client.search(index=self._index, body=query)
-        buckets = result["aggregations"]["error_rate"]["buckets"]
-        self.logger.debug("Query returned [%d] buckets.", len(buckets))
-        count_success = 0
-        count_errors = 0
-        for bucket in buckets:
-            k = bucket["key_as_string"]
-            doc_count = int(bucket["doc_count"])
-            self.logger.debug("Processing key [%s] with [%d] docs.", k, doc_count)
-            if k == "true":
-                count_success = doc_count
-            elif k == "false":
-                count_errors = doc_count
-            else:
-                self.logger.warning("Unrecognized bucket key [%s] with [%d] docs.", k, doc_count)
-
-        if count_errors == 0:
-            return 0.0
-        elif count_success == 0:
-            return 1.0
-        else:
-            return count_errors / (count_errors + count_success)
-
-    def get_stats(self, name, task=None, operation_type=None, sample_type=None):
-        """
-        Gets standard statistics for the given metric name.
-
-        :return: A metric_stats structure.
-        """
-        query = {
-            "query": self._query_by_name(name, task, operation_type, sample_type, None),
-            "size": 0,
-            "aggs": {
-                "metric_stats": {
-                    "stats": {
-                        "field": "value"
-                    }
-                }
-            }
-        }
-        self.logger.debug("Issuing get_stats against index=[%s], query=[%s]", self._index, query)
-        result = self._client.search(index=self._index, body=query)
-        return result["aggregations"]["metric_stats"]
-
-    def get_percentiles(self, name, task=None, operation_type=None, sample_type=None, percentiles=None):
-        if percentiles is None:
-            percentiles = [99, 99.9, 100]
-        query = {
-            "query": self._query_by_name(name, task, operation_type, sample_type, None),
-            "size": 0,
-            "aggs": {
-                "percentile_stats": {
-                    "percentiles": {
-                        "field": "value",
-                        "percents": percentiles
-                    }
-                }
-            }
-        }
-        self.logger.debug("Issuing get_percentiles against index=[%s], query=[%s]", self._index, query)
-        result = self._client.search(index=self._index, body=query)
-        hits = result["hits"]["total"]
-        # OpenSearch 1.0+
-        if isinstance(hits, dict):
-            hits = hits["value"]
-        self.logger.debug("get_percentiles produced %d hits", hits)
-        if hits > 0:
-            raw = result["aggregations"]["percentile_stats"]["values"]
-            return collections.OrderedDict(sorted(raw.items(), key=lambda t: float(t[0])))
-        else:
-            return None
-
-    def _query_by_name(self, name, task, operation_type, sample_type, node_name):
-        q = {
-            "bool": {
-                "filter": [
-                    {
-                        "term": {
-                            "test-run-id": self._test_run_id
-                        }
-                    },
-                    {
-                        "term": {
-                            "name": name
-                        }
-                    }
-                ]
-            }
-        }
-        if task:
-            q["bool"]["filter"].append({
-                "term": {
-                    "task": task
-                }
-            })
-        if operation_type:
-            q["bool"]["filter"].append({
-                "term": {
-                    "operation-type": operation_type
-                }
-            })
-        if sample_type:
-            q["bool"]["filter"].append({
-                "term": {
-                    "sample-type": sample_type.name.lower()
-                }
-            })
-        if node_name:
-            q["bool"]["filter"].append({
-                "term": {
-                    "meta.node_name": node_name
-                }
-            })
-        return q
-
-    def to_externalizable(self, clear=False):
-        # no need for an externalizable representation - stores everything directly
-        return None
-
-    @property
-    def index(self) -> str:
-        return self._index
-
-    @property
-    def test_run_id(self) -> str:
-        return self._test_run_id
-
-    def __str__(self):
-        return "OpenSearch metrics store"
-
-
 class InMemoryMetricsStore(MetricsStore):
     # Note that this implementation can run out of memory; generally, this can occur when ingesting very large corpora.
 
@@ -1204,6 +718,44 @@ class InMemoryMetricsStore(MetricsStore):
         return "in-memory metrics store"
 
 
+class FilesystemMetricsStore(InMemoryMetricsStore):
+    """Extends InMemoryMetricsStore to also persist each metric document to disk as a JSONL file."""
+
+    def __init__(self, cfg, clock=time.Clock, meta_info=None):
+        super().__init__(cfg=cfg, clock=clock, meta_info=meta_info)
+        self._metrics_file = None
+
+    def open(self, test_run_id=None, test_run_timestamp=None, workload_name=None,
+             test_procedure_name=None, cluster_config_name=None, ctx=None, create=False):
+        super().open(test_run_id, test_run_timestamp, workload_name,
+                     test_procedure_name, cluster_config_name, ctx, create)
+        if create:
+            run_dir = paths.test_run_root(self._config, test_run_id=self._test_run_id)
+            io.ensure_dir(run_dir)
+            metrics_path = os.path.join(run_dir, "metrics.jsonl")
+            # line-buffered so each metric line is flushed immediately
+            self._metrics_file = open(metrics_path, "wt", encoding="utf-8", buffering=1)  # pylint: disable=consider-using-with
+            self.logger.info("FilesystemMetricsStore writing raw metrics to %s", metrics_path)
+
+    def _add(self, doc):
+        super()._add(doc)
+        if self._metrics_file is not None:
+            self._metrics_file.write(json.dumps(doc) + "\n")
+
+    def flush(self, refresh=True):
+        if self._metrics_file is not None:
+            self._metrics_file.flush()
+
+    def close(self):
+        super().close()
+        if self._metrics_file is not None:
+            self._metrics_file.close()
+            self._metrics_file = None
+
+    def __str__(self):
+        return "filesystem metrics store"
+
+
 def test_run_store(cfg):
     """
     Creates a proper test_run store based on the current configuration.
@@ -1211,12 +763,8 @@ def test_run_store(cfg):
     :return: A test_run store implementation.
     """
     logger = logging.getLogger(__name__)
-    if cfg.opts("reporting", "datastore.type") == "opensearch":
-        logger.info("Creating OS test run store")
-        return CompositeTestRunStore(OsTestRunStore(cfg), FileTestRunStore(cfg))
-    else:
-        logger.info("Creating file test_run store")
-        return FileTestRunStore(cfg)
+    logger.info("Creating file test_run store")
+    return FileTestRunStore(cfg)
 
 
 def results_store(cfg):
@@ -1226,12 +774,8 @@ def results_store(cfg):
     :return: A test_run store implementation.
     """
     logger = logging.getLogger(__name__)
-    if cfg.opts("reporting", "datastore.type") == "opensearch":
-        logger.info("Creating OS results store")
-        return OsResultsStore(cfg)
-    else:
-        logger.info("Creating no-op results store")
-        return NoopResultsStore()
+    logger.info("Creating no-op results store")
+    return NoopResultsStore()
 
 
 def list_test_helper(store_item, title):
@@ -1299,12 +843,15 @@ def create_test_run(cfg, workload, test_procedure, workload_revision=None):
     # In tests, we don't get the default command-line arg value for percentiles,
     # so supply them as defaults here as well
 
+    # Get cluster_config_instance if available (stored during provisioning)
+    cluster_config_instance = cfg.opts("builder", "cluster_config.instance", mandatory=False, default_value=None)
+
     return TestRun(benchmark_version, benchmark_revision,
     environment, test_run_id, test_run_timestamp,
     pipeline, user_tags, workload,
     workload_params, test_procedure, cluster_config, cluster_config_params,
     plugin_params, workload_revision, latency_percentiles=latency_percentiles,
-    throughput_percentiles=throughput_percentiles)
+    throughput_percentiles=throughput_percentiles, cluster_config_instance=cluster_config_instance)
 
 
 class TestRun:
@@ -1314,7 +861,8 @@ class TestRun:
                  cluster_config_params, plugin_params,
                  workload_revision=None, cluster_config_revision=None,
                  distribution_version=None, distribution_flavor=None,
-                 revision=None, results=None, meta_data=None, latency_percentiles=None, throughput_percentiles=None):
+                 revision=None, results=None, meta_data=None, latency_percentiles=None, throughput_percentiles=None,
+                 cluster_config_instance=None):
         if results is None:
             results = {}
         # this happens when the test run is created initially
@@ -1351,6 +899,7 @@ class TestRun:
         self.meta_data = meta_data
         self.latency_percentiles = latency_percentiles
         self.throughput_percentiles = throughput_percentiles
+        self.cluster_config_instance = cluster_config_instance
 
 
     @property
@@ -1409,6 +958,16 @@ class TestRun:
             d["cluster-config-instance-params"] = self.cluster_config_params
         if self.plugin_params:
             d["plugin-params"] = self.plugin_params
+        # Add complete cluster-config specification for result portal display and time-series analysis
+        if self.cluster_config_instance:
+            d["cluster-config-spec"] = {
+                "names": self.cluster_config_instance.names if hasattr(self.cluster_config_instance, "names") else [],
+                "variables": self.cluster_config_instance.variables if hasattr(self.cluster_config_instance, "variables") else {},
+                "config_paths": self.cluster_config_instance.config_paths if hasattr(self.cluster_config_instance, "config_paths") else [],
+                "root_path": self.cluster_config_instance.root_path if hasattr(self.cluster_config_instance, "root_path") else None,
+                "provider": str(self.cluster_config_instance.provider) if hasattr(self.cluster_config_instance, "provider") else None,
+                "flavor": str(self.cluster_config_instance.flavor) if hasattr(self.cluster_config_instance, "flavor") else None,
+            }
         return d
     def to_result_dicts(self):
         """
@@ -1488,31 +1047,32 @@ class TestRunStore:
         return int(self.cfg.opts("system", "list.test_runs.max_results"))
 
 
-# Does not inherit from TestRunStore as it is only a delegator with the same API.
+# NOT USED — retained as placeholder for a future external store (e.g. S3TestRunStore).
 class CompositeTestRunStore:
     """
-    Internal helper class to store test runs as file and to OpenSearch in case users
-    want OpenSearch as a test runs store.
+    Placeholder delegating test-run store for a future external store integration
+    (e.g. S3TestRunStore). Delegates writes to both an external store and the local
+    file store; reads are served from the external store.
 
-    It provides the same API as TestRunStore. It delegates writes to all stores
-    and all read operations only the OpenSearch test run store.
+    Not wired into any active code path. Does not inherit from TestRunStore —
+    it is a delegator with the same API.
     """
-    def __init__(self, os_store, file_store):
-        self.os_store = os_store
+    def __init__(self, external_store, file_store):
+        self.external_store = external_store
         self.file_store = file_store
 
     def find_by_test_run_id(self, test_run_id):
-        return self.os_store.find_by_test_run_id(test_run_id)
+        return self.external_store.find_by_test_run_id(test_run_id)
 
     def store_test_run(self, test_run):
         self.file_store.store_test_run(test_run)
-        self.os_store.store_test_run(test_run)
+        self.external_store.store_test_run(test_run)
 
     def store_html_results(self, test_run):
         self.file_store.store_html_results(test_run)
 
     def list(self):
-        return self.os_store.list()
+        return self.external_store.list()
 
 
 class FileTestRunStore(TestRunStore):
@@ -1607,131 +1167,6 @@ class FileTestRunStore(TestRunStore):
             except BaseException:
                 logging.getLogger(__name__).exception("Could not load test_run file [%s] (incompatible format?) Skipping...", result)
         return sorted(test_runs, key=lambda r: r.test_run_timestamp, reverse=True)
-
-
-class OsTestRunStore(TestRunStore):
-    INDEX_PREFIX = "benchmark-test-runs-"
-    TEST_RUN_DOC_TYPE = "_doc"
-
-    def __init__(self, cfg, client_factory_class=OsClientFactory, index_template_provider_class=IndexTemplateProvider):
-        """
-        Creates a new metrics store.
-
-        :param cfg: The config object. Mandatory.
-        :param client_factory_class: This parameter is optional and needed for testing.
-        :param index_template_provider_class: This parameter is optional
-        and needed for testing.
-        """
-        super().__init__(cfg)
-        self.client = client_factory_class(cfg).create()
-        self.index_template_provider = index_template_provider_class(cfg)
-
-    def store_test_run(self, test_run):
-        doc = test_run.as_dict()
-        # always update the mapping to the latest version
-        self.client.put_template("benchmark-test-runs", self.index_template_provider.test_runs_template())
-        self.client.index(
-            index=self.index_name(test_run),
-            doc_type=OsTestRunStore.TEST_RUN_DOC_TYPE,
-            item=doc,
-            id=test_run.test_run_id)
-
-    def index_name(self, test_run):
-        test_run_timestamp = test_run.test_run_timestamp
-        return f"{OsTestRunStore.INDEX_PREFIX}{test_run_timestamp:%Y-%m}"
-
-    def list(self):
-        filters = [{
-            "term": {
-                "environment": self.environment_name
-            }
-        }]
-
-        query = {
-            "query": {
-                "bool": {
-                    "filter": filters
-                }
-            },
-            "size": self._max_results(),
-            "sort": [
-                {
-                    "test-run-timestamp": {
-                        "order": "desc"
-                    }
-                }
-            ]
-        }
-        result = self.client.search(index="%s*" % OsTestRunStore.INDEX_PREFIX, body=query)
-        hits = result["hits"]["total"]
-        # OpenSearch 1.0+
-        if isinstance(hits, dict):
-            hits = hits["value"]
-        if hits > 0:
-            return [TestRun.from_dict(v["_source"]) for v in result["hits"]["hits"]]
-        else:
-            return []
-
-    def find_by_test_run_id(self, test_run_id):
-        query = {
-            "query": {
-                "bool": {
-                    "filter": [
-                        {
-                            "term": {
-                                "test-run-id": test_run_id
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-        result = self.client.search(index="%s*" % OsTestRunStore.INDEX_PREFIX, body=query)
-        hits = result["hits"]["total"]
-        # OpenSearch 1.0+
-        if isinstance(hits, dict):
-            hits = hits["value"]
-        if hits == 1:
-            return TestRun.from_dict(result["hits"]["hits"][0]["_source"])
-        elif hits > 1:
-            raise exceptions.BenchmarkAssertionError(
-                "Expected one test run to match test ex id [{}] but there were [{}] matches.".format(test_run_id, hits))
-        else:
-            raise exceptions.NotFound("No test_run with test_run id [{}]".format(test_run_id))
-
-
-class OsResultsStore:
-    """
-    Stores the results of a test_run in a format that is
-    better suited for reporting with OpenSearch Dashboards.
-    """
-    INDEX_PREFIX = "benchmark-results-"
-    RESULTS_DOC_TYPE = "_doc"
-
-    def __init__(self, cfg, client_factory_class=OsClientFactory, index_template_provider_class=IndexTemplateProvider):
-        """
-        Creates a new results store.
-
-        :param cfg: The config object. Mandatory.
-        :param client_factory_class: This parameter is optional and needed for testing.
-        :param index_template_provider_class: This parameter is optional and needed for testing.
-        """
-        self.cfg = cfg
-        self.client = client_factory_class(cfg).create()
-        self.index_template_provider = index_template_provider_class(cfg)
-
-    def store_results(self, test_run):
-        # always update the mapping to the latest version
-        self.client.put_template("benchmark-results", self.index_template_provider.results_template())
-        self.client.bulk_index(index=self.index_name(test_run),
-                               doc_type=OsResultsStore.RESULTS_DOC_TYPE,
-                               items=test_run.to_result_dicts())
-
-    def index_name(self, test_run):
-        test_run_timestamp = test_run.test_run_timestamp
-        return f"{OsResultsStore.INDEX_PREFIX}{test_run_timestamp:%Y-%m}"
-
-
 class NoopResultsStore:
     """
     Does not store any results separately as these are stored as part of the test_run on the file system.
@@ -2215,11 +1650,11 @@ class GlobalStats:
             })
 
     def tasks(self):
-        # ensure we can read test_run.json files before OSB 0.8.0
+        # ensure we can read test_run.json files before ASB 0.8.0
         return [v.get("task", v["operation"]) for v in self.op_metrics]
 
     def metrics(self, task):
-        # ensure we can read test_run.json files before OSB 0.8.0
+        # ensure we can read test_run.json files before ASB 0.8.0
         for r in self.op_metrics:
             if r.get("task", r["operation"]) == task:
                 return r

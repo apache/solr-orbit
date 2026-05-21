@@ -4,8 +4,8 @@
 #
 # Takes one of the http_logs corpora files as input and duplicates it
 # as specified; then emits the documents with a modified timestamp
-# sequence.  Also generates the associated offset file to enable OSB
-# to start up faster.
+# sequence.  Also generates the associated offset file to enable
+# solr-benchmark to start up faster.
 #
 # See the help message for more information.
 #
@@ -20,14 +20,14 @@ import configparser
 help_msg = """
 
 This tool is intended for the purpose of expanding the size of the
-data corpus associated with an OSB workload.  Currently, this capability
+data corpus associated with a solr-benchmark workload.  Currently, this capability
 is implemented only for the http_logs workload.
 
 TLDR: to generate a 100 GB corpus and then run a test against it:
 
 $ expand-data-corpus.py --corpus-size 100 --output-file-suffix 100gb
 
-$ opensearch-benchmark run --workload http_logs \\
+$ solr-benchmark run --workload http_logs \\
     --workload_params=generated_corpus:t ...
 
 The script generates new documents by duplicating ones in the existing
@@ -46,7 +46,7 @@ larger scale on, for instance, clusters with multiple data nodes or
 featuring an upgraded instance type.
 
 To carry out an performance test using the generated corpus, the
-following flag needs to be passed to the OSB command:
+following flag needs to be passed to the solr-benchmark command:
 
     --workload-params=generated_corpus:t
 
@@ -63,13 +63,12 @@ Prerequisites:
     a normal run, perhaps by limiting it to indexing-only.
 
   * The input file should be one of the data corpus files downloaded
-    from the http_logs OSB workloads repository.  The script cues off
+    from the http_logs workloads repository.  The script cues off
     the text alignment in those files.
 
 Notes and limitations:
 
-  * This feature is currently available only for OpenSearch clusters
-    and Elasticsearch 7 cluster.
+  * This feature is currently only tested with the http_logs workload.
 
   * The options tagged with "EXPERT" are intended for advanced users
     and should not be needed in normal use.
@@ -80,9 +79,9 @@ Notes and limitations:
     in the http_logs workload directory.  New ones can be regenerated
     subsequently, if desired.
 
-  * OSB runs with and without the 'generated_corpus' flag should not
+  * solr-benchmark runs with and without the 'generated_corpus' flag should not
     generally be interleaved, since they target different
-    indices. However, OSB can be run in ingest-only mode to ingest
+    collections. However, solr-benchmark can be run in ingest-only mode to ingest
     both the generated and default corpora in two separate runs.  Once
     ingested, queries packaged with the workload will operate on the
     entire loaded data set.
@@ -171,7 +170,7 @@ def generate_docs(script_name: str,
     benchmark_home = os.environ.get('BENCHMARK_HOME') or os.environ['HOME']
     benchmark_ini = benchmark_home + '/.benchmark/benchmark.ini'
     if not os.path.isfile(benchmark_ini):
-        error_exit(script_name, f"could not find OSB config file {benchmark_ini}, run a workload first to create it")
+        error_exit(script_name, f"could not find benchmark config file {benchmark_ini}, run a workload first to create it")
     config.read(benchmark_ini)
 
     root_dir = config['node']['root.dir']
@@ -272,7 +271,7 @@ def main(args: list) -> None:
                         default=893964618,
                         help="[EXPERT] start timestamp, default: %(default)d")
     parser.add_argument('-b', '--batch-size', default=50000,
-                        help="[EXPERT] batch size per OSB client thread, "
+                        help="[EXPERT] batch size per benchmark client thread, "
                         "default: %(default)d")
 
     args = parser.parse_args()

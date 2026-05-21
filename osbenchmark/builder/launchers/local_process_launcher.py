@@ -1,3 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+# Modifications Copyright OpenSearch Contributors. See
+# GitHub history for details.
+# Licensed to Elasticsearch B.V. under one or more contributor
+# license agreements. See the NOTICE file distributed with
+# this work for additional information regarding copyright
+# ownership. Elasticsearch B.V. licenses this file to you under
+# the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#	http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 import logging
 import os
 import subprocess
@@ -34,8 +61,7 @@ class LocalProcessLauncher(Launcher):
         binary_path = node_configuration.binary_path
 
         java_major_version, java_home = java_resolver.java_home(node_configuration.cluster_config_runtime_jdks,
-                                                                self.cluster_config.variables["system"]["runtime"]["jdk"],
-                                                                node_configuration.cluster_config_provides_bundled_jdk)
+                                                                self.cluster_config.variables["system"]["runtime"]["jdk"])
         self.logger.info("Java major version: %s", java_major_version)
         self.logger.info("Java home: %s", java_home)
         self.logger.info("Starting node [%s].", node_name)
@@ -77,17 +103,14 @@ class LocalProcessLauncher(Launcher):
                opts.csv_to_list(self.cluster_config.variables["system"]["env"]["passenv"])}
         if java_home:
             self._set_env(env, "PATH", os.path.join(java_home, "bin"), separator=os.pathsep, prepend=True)
-            # This property is the higher priority starting in ES 7.12.0, and is the only supported java home in >=8.0
-            env["OPENSEARCH_JAVA_HOME"] = java_home
-            # TODO remove this when ES <8.0 becomes unsupported by OSB
             env["JAVA_HOME"] = java_home
             self.logger.info("JAVA HOME: %s", env["JAVA_HOME"])
-        if not env.get("OPENSEARCH_JAVA_OPTS"):
-            env["OPENSEARCH_JAVA_OPTS"] = "-XX:+ExitOnOutOfMemoryError"
+        if not env.get("SOLR_JAVA_OPTS"):
+            env["SOLR_JAVA_OPTS"] = "-XX:+ExitOnOutOfMemoryError"
 
         # we just blindly trust telemetry here...
         for jvm_option in telemetry.instrument_candidate_java_opts():
-            self._set_env(env, "OPENSEARCH_JAVA_OPTS", jvm_option)
+            self._set_env(env, "SOLR_JAVA_OPTS", jvm_option)
 
         self.logger.debug("env for [%s]: %s", node_name, str(env))
         return env
@@ -103,14 +126,27 @@ class LocalProcessLauncher(Launcher):
 
     def _start_process(self, host, binary_path, env):
         if os.name == "posix" and os.geteuid() == 0:
-            raise LaunchError("Cannot launch OpenSearch as root. Please run OSB as a non-root user.")
+            raise LaunchError("Cannot launch Solr as root. Please run as a non-root user.")
 
-        cmd = [io.escape_path(os.path.join(binary_path, "bin", "opensearch"))]
-        cmd.extend(["-d", "-p", "pid"])
+        cmd = [io.escape_path(os.path.join(binary_path, "bin", "solr"))]
+        cmd.append("start")
+
+        # Solr 9.x requires --cloud flag for SolrCloud mode; Solr 10+ uses it by default
+        distribution_version = self.cluster_config.variables.get("distribution", {}).get("version")
+        if distribution_version is None:
+            cmd.append("--cloud")
+        else:
+            version_parts = str(distribution_version).split("-", maxsplit=1)[0].split(".")
+            try:
+                if int(version_parts[0]) < 10:
+                    cmd.append("--cloud")
+            except (ValueError, IndexError):
+                cmd.append("--cloud")
 
         self.shell_executor.execute(host, " ".join(cmd), env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, detach=True)
 
-        pid_file_name = io.escape_path(os.path.join(binary_path, "pid"))
+        port = env.get("SOLR_PORT", "8983")
+        pid_file_name = io.escape_path(os.path.join(binary_path, "bin", f"solr-{port}.pid"))
         self._wait_for_pid_file(pid_file_name)
 
         return self._get_pid_from_file(pid_file_name)
@@ -149,10 +185,10 @@ class LocalProcessLauncher(Launcher):
         if self.metrics_store:
             telemetry.add_metadata_for_node(self.metrics_store, node.node_name, node.host_name)
 
-        opensearch_process = self._get_opensearch_process(node)
-        if opensearch_process:
+        node_process = self._get_node_process(node)
+        if node_process:
             node.telemetry.detach_from_node(node, running=True)
-            node_stopped = self._stop_process(opensearch_process, node)
+            node_stopped = self._stop_process(node_process, node)
             node.telemetry.detach_from_node(node, running=False)
         # store system metrics in any case (telemetry devices may derive system metrics while the node is running)
         if self.metrics_store:
@@ -160,29 +196,29 @@ class LocalProcessLauncher(Launcher):
 
         return node_stopped
 
-    def _get_opensearch_process(self, node):
+    def _get_node_process(self, node):
         try:
             return psutil.Process(pid=node.pid)
         except psutil.NoSuchProcess:
             self.logger.warning("No process found with PID [%s] for node [%s].", node.pid, node.node_name)
 
-    def _stop_process(self, opensearch_process, node):
+    def _stop_process(self, node_process, node):
         process_stopped = False
 
         try:
-            opensearch_process.terminate()
-            opensearch_process.wait(10.0)
+            node_process.terminate()
+            node_process.wait(10.0)
             process_stopped = True
         except psutil.NoSuchProcess:
-            self.logger.warning("No process found with PID [%s] for node [%s].", opensearch_process.pid, node.node_name)
+            self.logger.warning("No process found with PID [%s] for node [%s].", node_process.pid, node.node_name)
         except psutil.TimeoutExpired:
             self.logger.info("kill -KILL node [%s]", node.node_name)
             try:
                 # kill -9
-                opensearch_process.kill()
+                node_process.kill()
                 process_stopped = True
             except psutil.NoSuchProcess:
-                self.logger.warning("No process found with PID [%s] for node [%s].", opensearch_process.pid, node.node_name)
+                self.logger.warning("No process found with PID [%s] for node [%s].", node_process.pid, node.node_name)
         self.logger.info("Done shutting down node [%s].", node.node_name)
 
         return process_stopped

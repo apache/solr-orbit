@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -81,8 +84,8 @@ def main():
     console.init(assume_tty=False)
 
     parser = argparse.ArgumentParser(prog=PROGRAM_NAME,
-                                     description=BANNER + "\n\n OSB daemon to support remote benchmarks",
-                                     epilog="Find out more about OSB at {}".format(console.format.link(doc_link())),
+                                     description=BANNER + "\n\n ASB daemon to support remote benchmarks",
+                                     epilog="Find out more about ASB at {}".format(console.format.link(doc_link())),
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--version', action='version', version="%(prog)s " + version.version())
 
@@ -92,8 +95,8 @@ def main():
         help="")
     subparsers.required = True
 
-    start_command = subparsers.add_parser("start", help="Starts the OSB daemon")
-    restart_command = subparsers.add_parser("restart", help="Restarts the OSB daemon")
+    start_command = subparsers.add_parser("start", help="Starts the ASB daemon")
+    restart_command = subparsers.add_parser("restart", help="Restarts the ASB daemon")
     for p in [start_command, restart_command]:
         p.add_argument(
             "--node-ip",
@@ -104,8 +107,8 @@ def main():
             required=True,
             help="The IP of the coordinator node."
         )
-    subparsers.add_parser("stop", help="Stops the OSB daemon")
-    subparsers.add_parser("status", help="Shows the current status of the local OSB daemon")
+    subparsers.add_parser("stop", help="Stops the ASB daemon")
+    subparsers.add_parser("status", help="Shows the current status of the local ASB daemon")
 
     args = parser.parse_args()
 

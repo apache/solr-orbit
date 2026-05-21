@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -45,7 +48,7 @@ def configure_utc_formatter(*args, **kwargs):
 
 def log_config_path():
     """
-    :return: The absolute path to OSB's log configuration file.
+    :return: The absolute path to ASB's log configuration file.
     """
     # print("PATH: ", os.path.join(paths.benchmark_confdir(), "logging.json"))
     return os.path.join(paths.benchmark_confdir(), "logging.json")

@@ -25,9 +25,9 @@
 # Simple helper script to create graphs based on multiple
 # test_run.json files (it's a summary of the results of
 # a single test_run which is
-# stored in ~/.benchmark/benchmarks/test_run/<test_run_id>/).
-# There is no specific integration into OSB and it is also not
-# installed with OSB.
+# stored in ~/.solr-benchmark/results/<test_run_id>/).
+# There is no specific integration into solr-benchmark and it is also not
+# installed with solr-benchmark.
 #
 # It requires matplotlib (install with pip3 install matplotlib).
 #

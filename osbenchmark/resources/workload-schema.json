@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "title": "workload",
-  "description": "Specification of workloads for OSB",
+  "description": "Specification of workloads for ASB",
   "type": "object",
   "definitions": {
     "schedule": {
@@ -97,7 +97,7 @@
                     },
                     "schedule": {
                       "type": "string",
-                      "description": "Defines the scheduling strategy that is used for throughput throttled operations. Out of the box, OSB supports 'deterministic' (default) and 'poisson' but you can implement your own schedules."
+                      "description": "Defines the scheduling strategy that is used for throughput throttled operations. Out of the box, ASB supports 'deterministic' (default) and 'poisson' but you can implement your own schedules."
                     },
                     "target-throughput": {
                       "anyOf": [
@@ -109,7 +109,7 @@
                           "type": "string"
                         }
                       ],
-                      "description": "Defines the number of operations per second that OSB should attempt to run."
+                      "description": "Defines the number of operations per second that ASB should attempt to run."
                     },
                     "target-interval": {
                       "type": "number",
@@ -185,7 +185,7 @@
                 "type": "string"
               }
             ],
-            "description": "Defines the number of operations per second that OSB should attempt to run."
+            "description": "Defines the number of operations per second that ASB should attempt to run."
           },
           "target-interval": {
             "type": "number",
@@ -206,7 +206,7 @@
         },
         "default": {
           "type": "boolean",
-          "description": "If true, OSB should select this test_procedure as the default test_procedure if the user does not specify one on the command line."
+          "description": "If true, ASB should select this test_procedure as the default test_procedure if the user does not specify one on the command line."
         },
         "meta": {
           "type": "object",
@@ -387,11 +387,11 @@
           "base-url": {
             "type": "string",
             "format": "uri",
-            "description": "The default base URL for this document corpus. Has to be a publicly accessible http or https URL. If not specified, OSB will not attempt to download data and assume that it will be available locally."
+            "description": "The default base URL for this document corpus. Has to be a publicly accessible http or https URL. If not specified, ASB will not attempt to download data and assume that it will be available locally."
           },
           "source-format": {
             "type": "string",
-            "description": "Defines in which format OSB should interpret the data file specified by 'source-file'. Currently, only 'bulk' is supported."
+            "description": "Defines in which format ASB should interpret the data file specified by 'source-file'. Currently, only 'bulk' is supported."
           },
           "streaming-ingestion": {
             "type": "string",
@@ -459,7 +459,7 @@
                 },
                 "source-format": {
                   "type": "string",
-                  "description": "Defines in which format OSB should interpret the data file specified by 'source-file'. Currently, only 'bulk' is supported."
+                  "description": "Defines in which format ASB should interpret the data file specified by 'source-file'. Currently, only 'bulk' is supported."
                 },
                 "document-count": {
                   "type": "integer",
@@ -473,7 +473,7 @@
                 "compressed-bytes": {
                   "type": "integer",
                   "minimum": 1,
-                  "description": "The size in bytes of the compressed document file. This number is used to show users how much data will be downloaded by OSB and also to check whether the download is complete."
+                  "description": "The size in bytes of the compressed document file. This number is used to show users how much data will be downloaded by ASB and also to check whether the download is complete."
                 },
                 "uncompressed-bytes": {
                   "type": "integer",
@@ -568,15 +568,15 @@
           },
           "cache": {
             "type": "boolean",
-            "description": "[Only for type 'search']: Whether to use the query request cache. By default, OSB will define no value thus the default depends on the benchmark candidate settings and OpenSearch version."
+            "description": "[Only for type 'search']: Whether to use the query request cache. By default, ASB will define no value thus the default depends on the benchmark candidate settings and Solr version."
           },
           "index": {
             "type": "string",
-            "description": "[Only for type 'search']: The index or index pattern against which the query should be executed. This property is only necessary if there is more than one index or the index contains more than one type. Otherwise, OSB will derive the index and type by itself."
+            "description": "[Only for type 'search']: The index or index pattern against which the query should be executed. This property is only necessary if there is more than one index or the index contains more than one type. Otherwise, ASB will derive the index and type by itself."
           },
           "type": {
             "type": "string",
-            "description": "[Only for type 'search']: The type against which the query should be executed. This property is only necessary if there is more than one index or the index contains more than one type. Otherwise, OSB will derive the index and type by itself."
+            "description": "[Only for type 'search']: The type against which the query should be executed. This property is only necessary if there is more than one index or the index contains more than one type. Otherwise, ASB will derive the index and type by itself."
           },
           "pages": {
             "type": "integer",

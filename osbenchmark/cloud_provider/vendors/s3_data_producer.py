@@ -15,7 +15,11 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from boto3 import client
 
 from osbenchmark import exceptions
-from osbenchmark.data_streaming.data_producer import DataProducer
+try:
+    from osbenchmark.data_streaming.data_producer import DataProducer
+except ImportError:
+    class DataProducer:  # pylint: disable=too-few-public-methods
+        """Fallback when data_streaming package is not available."""
 from osbenchmark.workload.ingestion_manager import IngestionManager
 
 class S3DataProducer(DataProducer):
@@ -123,7 +127,7 @@ class S3DataProducer(DataProducer):
             fh.write(rsl)
 
     def generate_chunked_data(self):
-        "Generate chunked output ready for ingestion by OSB clients."
+        "Generate chunked output ready for ingestion by ASB clients."
         chunk_id = 0
         partial_line = ""
         downloaders = self._get_next_downloader()

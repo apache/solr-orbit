@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -58,10 +61,11 @@ def unittest_pipeline():
 
 def test_finds_available_pipelines():
     expected = [
-        ["from-sources", "Builds and provisions OpenSearch, runs a benchmark and publishes results."],
-        ["from-distribution",
-         "Downloads an OpenSearch distribution, provisions it, runs a benchmark and publishes results."],
-        ["benchmark-only", "Assumes an already running OpenSearch instance, runs a benchmark and publishes results"],
+        ["benchmark-only", "Assumes an already running search engine instance, runs a benchmark and publishes results"],
+        ["from-sources", "Builds Solr from source (git clone + Gradle assemble), provisions it locally, "
+                         "runs a benchmark, and tears down."],
+        ["from-distribution", "Downloads a Solr distribution, provisions it locally, runs a benchmark, and tears down."],
+        ["docker", "Starts Solr via Docker, runs a benchmark, and removes the container on teardown."],
     ]
 
     assert expected == test_run_orchestrator.available_pipelines()
@@ -97,10 +101,10 @@ def test_fails_without_benchmark_only_pipeline_in_docker(running_in_docker, unit
     with pytest.raises(
             exceptions.SystemSetupError,
             match=re.escape(
-                "Only the [benchmark-only] pipeline is supported by the OSB Docker image.\n"
-                "Add --pipeline=benchmark-only in your OSB arguments and try again.\n"
+                "Only the [benchmark-only] pipeline is supported by the Docker image.\n"
+                "Add --pipeline=benchmark-only in your arguments and try again.\n"
                 "For more details read the docs for the benchmark-only pipeline in "
-                "https://opensearch.org/docs\n"
+                "https://solr.apache.org/guide/\n"
             )):
         test_run_orchestrator.run(cfg)
 

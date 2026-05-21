@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -69,15 +72,15 @@ class ProcessTests(TestCase):
                                                                    "org.elasticsearch.bootstrap.Elasticsearch"])
         random_python = ProcessTests.Process(103, "python3", ["/some/django/app"])
         other_process = ProcessTests.Process(104, "init", ["/usr/sbin/init"])
-        benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/opensearch-benchmark"])
-        benchmark_process_e = ProcessTests.Process(107, "opensearch-benchmark", ["/usr/bin/python3", "~/.local/bin/opensearch-benchmark"])
+        benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
+        benchmark_process_e = ProcessTests.Process(107, "solr-benchmark", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
         benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python",
-                                                                     "~/.local/bin/opensearch-benchmark"])
+                                                                     "~/.local/bin/solr-benchmark"])
         # fake own process by determining our pid
         own_benchmark_process = ProcessTests.Process(
             os.getpid(), "Python",
             ["/Python.app/Contents/MacOS/Python",
-            "~/.local/bin/opensearch-benchmark"])
+            "~/.local/bin/solr-benchmark"])
         night_benchmark_process = ProcessTests.Process(110, "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/night_benchmark"])
 
         process_iter.return_value = [
@@ -122,16 +125,16 @@ class ProcessTests(TestCase):
                                                                    "org.elasticsearch.bootstrap.Elasticsearch"])
         random_python = ProcessTests.Process(103, "python3", ["/some/django/app"])
         other_process = ProcessTests.Process(104, "init", ["/usr/sbin/init"])
-        benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/opensearch-benchmark"])
-        # On Linux, the process name is truncated to 15 characters.
-        benchmark_process_l = ProcessTests.Process(106, "opensearch-benc", ["/usr/bin/python3", "~/.local/bin/opensearch-benchmark"])
-        benchmark_process_e = ProcessTests.Process(107, "opensearch-benchmark", ["/usr/bin/python3", "~/.local/bin/opensearch-benchmark"])
+        benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
+        # On Linux, process names up to 15 chars are not truncated; solr-benchmark is exactly 15 chars.
+        benchmark_process_l = ProcessTests.Process(106, "solr-benchmark", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
+        benchmark_process_e = ProcessTests.Process(107, "solr-benchmark", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
         benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python",
-                                                                     "~/.local/bin/opensearch-benchmark"])
+                                                                     "~/.local/bin/solr-benchmark"])
         # fake own process by determining our pid
         own_benchmark_process = ProcessTests.Process(
             os.getpid(), "Python",
-            ["/Python.app/Contents/MacOS/Python", "~/.local/bin/opensearch-benchmark"])
+            ["/Python.app/Contents/MacOS/Python", "~/.local/bin/solr-benchmark"])
         night_benchmark_process = ProcessTests.Process(110, "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/night_benchmark"])
 
         process_iter.return_value = [

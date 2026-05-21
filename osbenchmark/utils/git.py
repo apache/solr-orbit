@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -41,7 +44,7 @@ def probed(f):
             raise exceptions.SystemSetupError("Error invoking 'git', please install (or re-install).")
         match = re.search(VERSION_REGEX, out)
         if not match or int(match.group(1)) < MIN_REQUIRED_MAJOR_VERSION:
-            raise exceptions.SystemSetupError("OpenSearch Benchmark requires at least version 2 of git.  "
+            raise exceptions.SystemSetupError("solr-benchmark requires at least version 2 of git.  "
                                               f"You have {out}.  Please update git.")
         return f(src, *args, **kwargs)
     return probe

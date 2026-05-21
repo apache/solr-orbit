@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -56,11 +59,14 @@ supported_python_versions = [(3, 10), (3, 11), (3, 13)]
 #
 ################################################################################################
 install_requires = [
+    # License: BSD
+    # Solr HTTP client for data operations (indexing, search, commit, optimize)
+    "pysolr>=3.10.0",
     # License: Apache 2.0
+    # HTTP client for Solr V2 API admin operations
     # transitive dependencies:
     #   urllib3: MIT
-    #   aiohttp: Apache 2.0
-    "opensearch-py[async]>=2.5.0,<3.0.0",
+    "requests>=2.28.0",
     # License: BSD
     "psutil>=5.8.0",
     # License: MIT
@@ -107,15 +113,13 @@ install_requires = [
     # License: BSD
     # Required for knnvector workload
     "numpy>=1.24.2,<=1.26.4",
-    # License: Apache 2.0
-    # Required for Kafka message producer
-    "aiokafka>=0.11.0",
     # License: MIT
     "tqdm",
     # License: MIT
     "faker",
+    # License: BSD
+    "pandas>=1.4.3",
     # License: MIT
-    # This version is required for Python 3.8 and 3.9 to work
     "mimesis==11.1.0",
     # Licence: BSD-3-Clause
     "dask",
@@ -127,9 +131,8 @@ install_requires = [
     "pydantic>=2.10.6",
     # License: MIT
     "pydantic_core>=2.27.2",
-    # License: Apache 2.0
-    # gRPC & proto deps
-    "opensearch-protobufs==0.19.0"
+    # License: MIT
+    "PyYAML>=5.4",
 ]
 
 tests_require = [
@@ -139,7 +142,7 @@ tests_require = [
     "pytest-asyncio==0.14.0"
 ]
 
-# These packages are only required when developing OSB
+# These packages are only required when developing solr-benchmark
 develop_require = [
     "tox==3.14.0",
     "coverage==5.5",
@@ -157,28 +160,19 @@ first_supported_version = "{}.{}".format(supported_python_versions[0][0], suppor
 # next minor after the latest supported version
 first_unsupported_version = "{}.{}".format(supported_python_versions[-1][0], supported_python_versions[-1][1] + 1)
 
-setup(name="opensearch-benchmark",
-      author="Ian Hoang, Govind Kamat, Mingyang Shi, Chinmay Gadgil, Rishabh Singh, Vijayan Balasubramanian",
-      author_email="ianhoang16@gmail.com, govind_kamat@yahoo.com, mmyyshi@gmail.com, chinmay5j@gmail.com, rishabhksingh@gmail.com, vijayan.balasubramanian@gmail.com",
-      maintainer="Ian Hoang, Govind Kamat, Mingyang Shi, Chinmay Gadgil, Rishabh Singh, Vijayan Balasubramanian",
-      maintainer_email="ianhoang16@gmail.com, govind_kamat@yahoo.com, mmyyshi@gmail.com, chinmay5j@gmail.com, rishabhksingh@gmail.com, vijayan.balasubramanian@gmail.com",
+setup(name="solr-benchmark",
       version=__versionstr__,
-      description="Macrobenchmarking framework for OpenSearch",
+      description="Macrobenchmarking framework for Apache Solr",
       long_description=long_description,
       long_description_content_type='text/markdown',
-      project_urls={
-        "Documentation": "https://opensearch.org/docs/benchmark",
-        "Source Code": "https://github.com/opensearch-project/OpenSearch-Benchmark",
-        "Issue Tracker": "https://github.com/opensearch-project/OpenSearch-Benchmark/issues",
-      },
-      url="https://github.com/opensearch-project/OpenSearch-Benchmark",
+      url="https://github.com/janhoy/solr-benchmark",
       license="Apache License, Version 2.0",
       packages=find_packages(
           where=".",
           exclude=("tests*", "benchmarks*", "it*")
       ),
       include_package_data=True,
-      # supported Python versions. This will prohibit pip (> 9.0.0) from even installing OSB on an unsupported
+      # supported Python versions. This will prohibit pip (> 9.0.0) from even installing solr-benchmark on an unsupported
       # Python version.
       # See also https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
       #
@@ -191,8 +185,7 @@ setup(name="opensearch-benchmark",
       # However, with the pattern ">=3.5.*,<=3.8.*", the version "3.8.0" is not accepted. Therefore, we match
       # the minor version after the last supported one (i.e. if 3.8 is the last supported, we'll emit "<3.9")
       python_requires=">={},<{}".format(first_supported_version, first_unsupported_version),
-      package_data={"": ["*.json", "*.yml"],
-                    "osbenchmark": ["decompressors/*"]},
+      package_data={"": ["*.json", "*.yml"]},
       install_requires=install_requires,
       test_suite="tests",
       tests_require=tests_require,
@@ -201,13 +194,11 @@ setup(name="opensearch-benchmark",
       },
       entry_points={
           "console_scripts": [
-              "opensearch-benchmark=osbenchmark.benchmark:main",
-              "opensearch-benchmarkd=osbenchmark.benchmarkd:main",
-              "osb=osbenchmark.benchmark:main",
-              "osbd=osbenchmark.benchmarkd:main",
+              "solr-benchmark=osbenchmark.benchmark:main",
+              "solr-benchmarkd=osbenchmark.benchmarkd:main",
           ],
       },
-      scripts=['scripts/expand-data-corpus.py', 'scripts/pbzip2' ],
+      scripts=['scripts/expand-data-corpus.py'],
       classifiers=[
           "Topic :: System :: Benchmark",
           "Development Status :: 5 - Production/Stable",

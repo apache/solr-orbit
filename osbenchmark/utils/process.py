@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -133,11 +136,10 @@ def run_subprocess_with_logging(command_line, header=None, level=logging.INFO, s
 
 def is_benchmark_process(p):
     cmdline = p.cmdline()
-    return p.name() == "opensearch-benchmark" or p.name() == "osb" or \
+    return p.name() == "solr-benchmark" or \
         (len(cmdline) > 1 and
          os.path.basename(cmdline[0].lower()).startswith("python") and
-         (os.path.basename(cmdline[1]) == "opensearch-benchmark" or
-          os.path.basename(cmdline[1]) == "osb"))
+         os.path.basename(cmdline[1]) == "solr-benchmark")
 
 
 def find_all_other_benchmark_processes():

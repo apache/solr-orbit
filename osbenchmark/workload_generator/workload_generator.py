@@ -10,7 +10,7 @@ import logging
 import os
 
 from osbenchmark import PROGRAM_NAME, exceptions
-from osbenchmark.client import OsClientFactory
+from osbenchmark.client import ClientFactory
 from osbenchmark.workload_generator.config import CustomWorkload
 from osbenchmark.workload_generator.helpers import QueryProcessor, CustomWorkloadWriter, process_indices, validate_index_documents_map, validate_sample_frequency_mapping
 from osbenchmark.workload_generator.extractors import IndexExtractor, SequentialCorpusExtractor
@@ -36,10 +36,10 @@ def create_workload(cfg):
     validate_index_documents_map(indices, number_of_docs)
     validate_sample_frequency_mapping(indices, sample_frequency_mapping)
 
-    client = OsClientFactory(hosts=target_hosts.all_hosts[opts.TargetHosts.DEFAULT],
+    client = ClientFactory(hosts=target_hosts.all_hosts[opts.TargetHosts.DEFAULT],
                              client_options=client_options.all_client_options[opts.TargetHosts.DEFAULT]).create()
     info = client.info()
-    console.info(f"Connected to OpenSearch cluster [{info['name']}] version [{info['version']['number']}].\n", logger=logger)
+    console.info(f"Connected to Solr cluster [{info['name']}] version [{info['version']['number']}].\n", logger=logger)
 
     processed_indices = process_indices(indices, sample_frequency_mapping, number_of_docs)
     logger.info("Processed Indices: %s", processed_indices)

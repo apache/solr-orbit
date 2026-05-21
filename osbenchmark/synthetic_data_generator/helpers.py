@@ -82,7 +82,7 @@ def remove_existing_files(existing_files_found: list):
         for file in existing_files_found:
             os.remove(file)
     except OSError as e:
-        raise exceptions.ExecutorError("OSB could not remove existing files for SDG: ", e)
+        raise exceptions.ExecutorError("ASB could not remove existing files for SDG: ", e)
 
 def host_has_available_disk_storage(sdg_metadata: SyntheticDataGeneratorMetadata) -> bool:
     logger = logging.getLogger(__name__)

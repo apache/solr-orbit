@@ -52,7 +52,6 @@ class LocalProcessLauncherTests(TestCase):
         for node in range(2):
             node_configs.append(NodeConfiguration(build_type="tar",
                                                   cluster_config_runtime_jdks="12,11",
-                                                  cluster_config_provides_bundled_jdk=True,
                                                   ip="127.0.0.1",
                                                   node_name=f"testnode-{node}",
                                                   node_root_path="/tmp",
@@ -96,9 +95,8 @@ class LocalProcessLauncherTests(TestCase):
 
         self.assertEqual("/java_home/bin" + os.pathsep + os.environ["PATH"], env["PATH"])
         self.assertEqual("-XX:+ExitOnOutOfMemoryError -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints "
-                         "-XX:+UnlockCommercialFeatures -XX:+FlightRecorder "
-                         "-XX:FlightRecorderOptions=disk=true,maxage=0s,maxsize=0,dumponexit=true,dumponexitpath=/tmp/telemetry/profile.jfr "  # pylint: disable=line-too-long
-                         "-XX:StartFlightRecording=defaultrecording=true", env["OPENSEARCH_JAVA_OPTS"])
+                         "-XX:StartFlightRecording=maxsize=0,maxage=0s,disk=true,dumponexit=true,filename=/tmp/telemetry/profile.jfr",
+                         env["SOLR_JAVA_OPTS"])
 
     def test_bundled_jdk_not_in_path(self):
         os.environ["JAVA_HOME"] = "/path/to/java"
@@ -124,19 +122,19 @@ class LocalProcessLauncherTests(TestCase):
         # unmodified
         self.assertEqual(os.environ["JAVA_HOME"], env["JAVA_HOME"])
         self.assertEqual(os.environ["FOO1"], env["FOO1"])
-        self.assertEqual(env["OPENSEARCH_JAVA_OPTS"], "-XX:+ExitOnOutOfMemoryError")
+        self.assertEqual(env["SOLR_JAVA_OPTS"], "-XX:+ExitOnOutOfMemoryError")
 
     def test_pass_java_opts(self):
-        self.cluster_config.variables["system"]["env"]["passenv"] = "OPENSEARCH_JAVA_OPTS"
+        self.cluster_config.variables["system"]["env"]["passenv"] = "SOLR_JAVA_OPTS"
 
-        os.environ["OPENSEARCH_JAVA_OPTS"] = "-XX:-someJunk"
+        os.environ["SOLR_JAVA_OPTS"] = "-XX:-someJunk"
 
         telem = telemetry.Telemetry()
         # no JAVA_HOME -> use the bundled JDK
         env = self.launcher._prepare_env(node_name="node0", java_home=None, telemetry=telem)
 
         # unmodified
-        self.assertEqual(os.environ["OPENSEARCH_JAVA_OPTS"], env["OPENSEARCH_JAVA_OPTS"])
+        self.assertEqual(os.environ["SOLR_JAVA_OPTS"], env["SOLR_JAVA_OPTS"])
 
     def test_pid_file_not_created(self):
         mo = mock_open()

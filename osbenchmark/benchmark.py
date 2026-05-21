@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -31,6 +34,14 @@ import sys
 import time
 import uuid
 import shutil
+
+# macOS fork-safety: Python programs that use multiprocessing (Thespian) can trigger
+# an Objective-C runtime crash when forking after any thread has started (e.g. from
+# background telemetry polling).  Setting this env-var before any fork suppresses
+# the crash.  This must be done before the actor system (and its admin process) is
+# bootstrapped.  See: https://bugs.python.org/issue33725
+if sys.platform == "darwin":
+    os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
 
 import thespian.actors
 
@@ -68,17 +79,17 @@ def create_arg_parser():
 
     def supported_os_version(v):
         if v:
-            min_os_version = versions.Version.from_string(version.minimum_os_version())
+            min_solr_version = versions.Version.from_string(version.minimum_solr_version())
             specified_version = versions.Version.from_string(v)
-            if specified_version < min_os_version:
-                raise argparse.ArgumentTypeError(f"must be at least {min_os_version} but was {v}")
+            if specified_version < min_solr_version:
+                raise argparse.ArgumentTypeError(f"must be at least {min_solr_version} but was {v}")
         return v
 
     def add_workload_source(subparser):
         workload_source_group = subparser.add_mutually_exclusive_group()
         workload_source_group.add_argument(
             "--workload-repository",
-            help="Define the repository from where OSB will load workloads (default: default).",
+            help="Define the repository from where solr-benchmark will load workloads (default: default).",
             # argparse is smart enough to use this default only if the user did not use --workload-path and also did not specify anything
             default="default"
         )
@@ -87,7 +98,7 @@ def create_arg_parser():
             help="Define the path to a workload.")
         subparser.add_argument(
             "--workload-revision",
-            help="Define a specific revision in the workload repository that OSB should use.",
+            help="Define a specific revision in the workload repository that solr-benchmark should use.",
             default=None)
 
     # try to preload configurable defaults, but this does not work together with `--configuration-name` (which is undocumented anyway)
@@ -99,8 +110,8 @@ def create_arg_parser():
         preserve_install = False
 
     parser = argparse.ArgumentParser(prog=PROGRAM_NAME,
-                                     description=BANNER + "\n\n A benchmarking tool for OpenSearch",
-                                     epilog="Find out more about OSB at {}".format(console.format.link(doc_link())),
+                                     description=BANNER + "\n\n A macrobenchmarking tool for Apache Solr",
+                                     epilog="Find out more at {}".format(console.format.link(doc_link())),
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-v', '--version', action='version', version="%(prog)s " + version.version())
 
@@ -119,10 +130,10 @@ def create_arg_parser():
     list_parser.add_argument(
         "configuration",
         metavar="configuration",
-        help="The configuration for which OSB should show the available options. "
-             "Possible values are: telemetry, workloads, pipelines, test-runs, cluster-configs, opensearch-plugins",
+        help="The configuration for which the tool should show the available options. "
+             "Possible values are: telemetry, workloads, pipelines, test-runs, cluster-configs",
         choices=["telemetry", "workloads", "pipelines", "test-runs", "aggregated-results",
-                 "cluster-configs", "opensearch-plugins"])
+                 "cluster-configs"])
     list_parser.add_argument(
         "--limit",
         help="Limit the number of search results for recent test-runs (default: 10).",
@@ -160,13 +171,13 @@ def create_arg_parser():
 
     synthetic_data_generator_parser = subparsers.add_parser("generate-data",
                                                             help="Generate synthetic data based on existing index mappings or custom module." +
-                                                            "This data can be ported into OSB workloads or ingested into OpenSearch." )
+                                                            "This data can be ported into Solr Benchmark workloads." )
 
     exclusive_file_inputs = synthetic_data_generator_parser.add_mutually_exclusive_group(required=True)
     exclusive_file_inputs.add_argument(
         "--index-mappings",
         "-i",
-        help="OpenSearch index mappings to generate data from."
+        help="Index mappings (JSON) to generate synthetic data from."
     )
     exclusive_file_inputs.add_argument(
         "--custom-module",
@@ -210,7 +221,7 @@ def create_arg_parser():
         help="Generates a single synthetic document and displays it to the console so that users can validate generated values and output."
     )
 
-    create_workload_parser = subparsers.add_parser("create-workload", help="Create a OSB workload from existing data")
+    create_workload_parser = subparsers.add_parser("create-workload", help="Create a workload from existing data")
     create_workload_parser.add_argument(
         "--workload",
         "-w",
@@ -256,6 +267,28 @@ def create_arg_parser():
         help="Map of index name and an integer, representing the sample frequency of docs that should be extracted per index. " +
         "Ensure that index name also exists in --indices parameter. " +
         "To specify several indices and doc counts, use format: <index1>:<sample-frequency-1> <index2>:<sample-frequency-2> ...")
+
+    convert_workload_parser = subparsers.add_parser(
+        "convert-workload",
+        help="Convert an OpenSearch Benchmark workload to Solr-native format"
+    )
+    convert_workload_parser.add_argument(
+        "--workload-path",
+        required=True,
+        help="Path to the source OpenSearch Benchmark workload directory (must contain workload.json)."
+    )
+    convert_workload_parser.add_argument(
+        "--output-path",
+        default=None,
+        help="Path where the converted Solr workload will be written "
+             "(default: <workload-path>-solr)."
+    )
+    convert_workload_parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Overwrite an existing converted workload directory."
+    )
 
     compare_parser = subparsers.add_parser("compare", help="Compare two test_runs")
     compare_parser.add_argument(
@@ -322,17 +355,17 @@ def create_arg_parser():
         default="")
     aggregate_parser.add_argument(
         "--workload-repository",
-        help="Define the repository from where OSB will load workloads (default: default).",
+        help="Define the repository from where solr-benchmark will load workloads (default: default).",
         default="default")
 
     download_parser = subparsers.add_parser("download", help="Downloads an artifact")
     download_parser.add_argument(
         "--cluster-config-repository",
-        help="Define the repository from where OSB will load cluster-configs (default: default).",
+        help="Define the repository from where solr-benchmark will load cluster-configs (default: default).",
         default="default")
     download_parser.add_argument(
         "--cluster-config-revision",
-        help="Define a specific revision in the cluster-config repository that OSB should use.",
+        help="Define a specific revision in the cluster-config repository that solr-benchmark should use.",
         default=None)
     download_parser.add_argument(
         "--cluster-config-path",
@@ -340,12 +373,12 @@ def create_arg_parser():
     download_parser.add_argument(
         "--distribution-version",
         type=supported_os_version,
-        help="Define the version of the OpenSearch distribution to download. "
-             "Check https://opensearch.org/docs/version-history/ for released versions.",
+        help="Define the version of the distribution to download. "
+             "Check https://projects.apache.org/project.html?solr for released versions.",
         default="")
     download_parser.add_argument(
         "--distribution-repository",
-        help="Define the repository from where the OpenSearch distribution should be downloaded (default: release).",
+        help="Define the repository from where the distribution should be downloaded (default: release).",
         default="release")
     download_parser.add_argument(
         "--cluster-config",
@@ -358,16 +391,8 @@ def create_arg_parser():
         help="Define a comma-separated list of key:value pairs that are injected verbatim as variables for the cluster-config.",
         default=""
     )
-    download_parser.add_argument(
-        "--target-os",
-        help="The name of the target operating system for which an artifact should be downloaded (default: current OS)",
-    )
-    download_parser.add_argument(
-        "--target-arch",
-        help="The name of the CPU architecture for which an artifact should be downloaded (default: current architecture)",
-    )
 
-    install_parser = subparsers.add_parser("install", help="Installs an OpenSearch node locally")
+    install_parser = subparsers.add_parser("install", help="Installs a Solr node locally")
     install_parser.add_argument(
         "--revision",
         help="Define the source code revision for building the benchmark candidate. 'current' uses the source tree as is,"
@@ -383,11 +408,11 @@ def create_arg_parser():
         default="tar")
     install_parser.add_argument(
         "--cluster-config-repository",
-        help="Define the repository from where OSB will load cluster-configs (default: default).",
+        help="Define the repository from where solr-benchmark will load cluster-configs (default: default).",
         default="default")
     install_parser.add_argument(
         "--cluster-config-revision",
-        help="Define a specific revision in the cluster-config repository that OSB should use.",
+        help="Define a specific revision in the cluster-config repository that solr-benchmark should use.",
         default=None)
     install_parser.add_argument(
         "--cluster-config-path",
@@ -399,13 +424,13 @@ def create_arg_parser():
         default=None)
     install_parser.add_argument(
         "--distribution-repository",
-        help="Define the repository from where the OpenSearch distribution should be downloaded (default: release).",
+        help="Define the repository from where the distribution should be downloaded (default: release).",
         default="release")
     install_parser.add_argument(
         "--distribution-version",
         type=supported_os_version,
-        help="Define the version of the OpenSearch distribution to download. "
-             "Check https://opensearch.org/docs/version-history/ for released versions.",
+        help="Define the version of the distribution to download. "
+             "Check https://archive.apache.org/dist/solr/solr/ for released versions.",
         default="")
     install_parser.add_argument(
         "--cluster-config",
@@ -419,8 +444,9 @@ def create_arg_parser():
         default=""
     )
     install_parser.add_argument(
-        "--opensearch-plugins",
-        help="Define the OpenSearch plugins to install. (default: install no plugins).",
+        "--solr-modules",
+        help="Comma-separated list of Solr modules to enable (sets SOLR_MODULES). "
+             "Example: --solr-modules=analytics,extraction",
         default="")
     install_parser.add_argument(
         "--plugin-params",
@@ -435,11 +461,11 @@ def create_arg_parser():
     install_parser.add_argument(
         "--http-port",
         help="The port to expose for HTTP traffic",
-        default="39200"
+        default="38983"
     )
     install_parser.add_argument(
         "--node-name",
-        help="The name of this OpenSearch node",
+        help="The name of this Solr node",
         default="benchmark-node-0"
     )
     install_parser.add_argument(
@@ -453,7 +479,7 @@ def create_arg_parser():
         default=""
     )
 
-    start_parser = subparsers.add_parser("start", help="Starts an OpenSearch node locally")
+    start_parser = subparsers.add_parser("start", help="Starts a Solr node locally")
     start_parser.add_argument(
         "--installation-id",
         required=True,
@@ -484,7 +510,7 @@ def create_arg_parser():
         default=""
     )
 
-    stop_parser = subparsers.add_parser("stop", help="Stops an OpenSearch node locally")
+    stop_parser = subparsers.add_parser("stop", help="Stops a Solr node locally")
     stop_parser.add_argument(
         "--installation-id",
         required=True,
@@ -503,19 +529,18 @@ def create_arg_parser():
         p.add_argument(
             "--distribution-version",
             type=supported_os_version,
-            help="Define the version of the OpenSearch distribution to download. "
-                 "Check https://opensearch.org/docs/version-history/ for released versions.",
+            help="Define the version of the distribution to download.",
             default="")
         p.add_argument(
             "--cluster-config-path",
             help="Define the path to the cluster-config and plugin configurations to use.")
         p.add_argument(
             "--cluster-config-repository",
-            help="Define repository from where OSB will load cluster-configs (default: default).",
+            help="Define repository from where solr-benchmark will load cluster-configs (default: default).",
             default="default")
         p.add_argument(
             "--cluster-config-revision",
-            help="Define a specific revision in the cluster-config repository that OSB should use.",
+            help="Define a specific revision in the cluster-config repository that solr-benchmark should use.",
             default=None)
 
     test_run_parser.add_argument(
@@ -569,8 +594,9 @@ def create_arg_parser():
         help="The major version of the runtime JDK to use.",
         default=None)
     test_run_parser.add_argument(
-        "--opensearch-plugins",
-        help="Define the OpenSearch plugins to install. (default: install no plugins).",
+        "--solr-modules",
+        help="Comma-separated list of Solr modules to enable (sets SOLR_MODULES). "
+             "Example: --solr-modules=analytics,extraction",
         default="")
     test_run_parser.add_argument(
         "--plugin-params",
@@ -595,12 +621,12 @@ def create_arg_parser():
     test_run_parser.add_argument(
         "--client-options",
         "-c",
-        help=f"Define a comma-separated list of client options to use. The options will be passed to the OpenSearch "
-             f"Python client (default: {opts.ClientOptions.DEFAULT_CLIENT_OPTIONS}).",
+        help=f"Define a comma-separated list of client options to use. The options will be passed to the benchmark "
+             f"client (default: {opts.ClientOptions.DEFAULT_CLIENT_OPTIONS}).",
         default=opts.ClientOptions.DEFAULT_CLIENT_OPTIONS)
     test_run_parser.add_argument("--on-error",
                              choices=["continue", "abort"],
-                             help="Controls how OSB behaves on response errors (default: continue).",
+                             help="Controls how solr-benchmark behaves on response errors (default: continue).",
                              default="continue")
     test_run_parser.add_argument(
         "--telemetry",
@@ -614,7 +640,7 @@ def create_arg_parser():
     )
     test_run_parser.add_argument(
         "--distribution-repository",
-        help="Define the repository from where the OpenSearch distribution should be downloaded (default: release).",
+        help="Define the repository from where the distribution should be downloaded (default: release).",
         default="release")
 
     task_filter_group = test_run_parser.add_mutually_exclusive_group()
@@ -660,7 +686,7 @@ def create_arg_parser():
         action="store_true")
     test_run_parser.add_argument(
         "--enable-worker-coordinator-profiling",
-        help="Enables a profiler for analyzing the performance of calls in OSB's worker coordinator (default: false).",
+        help="Enables a profiler for analyzing the performance of calls in solr-benchmark's worker coordinator (default: false).",
         default=False,
         action="store_true")
     test_run_parser.add_argument(
@@ -673,7 +699,7 @@ def create_arg_parser():
         "-k",
         action="store_true",
         default=False,
-        help="If any processes is running, it is going to kill them and allow OSB to continue to run."
+        help="If any processes is running, it is going to kill them and allow solr-benchmark to continue to run."
     )
     test_run_parser.add_argument(
         "--latency-percentiles",
@@ -766,7 +792,7 @@ def create_arg_parser():
     test_run_parser.add_argument(
         "--redline-max-cpu-usage",
         type=int,
-        help="Maximum CPU utilization before scaling back client numbers. Used to activate CPU-based feedback in OSB.",
+        help="Maximum CPU utilization before scaling back client numbers. Used to activate CPU-based feedback in solr-benchmark.",
         default=None
     )
     test_run_parser.add_argument(
@@ -798,7 +824,7 @@ def create_arg_parser():
     # The options below are undocumented and can be removed or changed at any time.
     #
     ###############################################################################
-    # This option is intended to tell OSB to assume a different start date than 'now'. This is effectively just useful for things like
+    # This option is intended to tell solr-benchmark to assume a different start date than 'now'. This is effectively just useful for things like
     # backtesting or a benchmark run across environments (think: comparison of EC2 and bare metal) but never for the typical user.
     test_run_parser.add_argument(
         "--effective-start-date",
@@ -814,7 +840,8 @@ def create_arg_parser():
 
     for p in [list_parser, test_run_parser, compare_parser, aggregate_parser,
               download_parser, install_parser, start_parser, stop_parser, info_parser,
-              synthetic_data_generator_parser, create_workload_parser, visualize_parser]:
+              synthetic_data_generator_parser, create_workload_parser, visualize_parser,
+              convert_workload_parser]:
         # This option is needed to support a separate configuration for the integration tests on the same machine
         p.add_argument(
             "--configuration-name",
@@ -827,7 +854,7 @@ def create_arg_parser():
             action="store_true")
         p.add_argument(
             "--offline",
-            help="Assume that OSB has no connection to the Internet (default: false).",
+            help="Assume that solr-benchmark has no connection to the Internet (default: false).",
             default=False,
             action="store_true")
 
@@ -848,8 +875,6 @@ def dispatch_list(cfg):
         metrics.list_aggregated_results(cfg)
     elif what == "cluster-configs":
         cluster_config.list_cluster_configs(cfg)
-    elif what == "opensearch-plugins":
-        cluster_config.list_plugins(cfg)
     else:
         raise exceptions.SystemSetupError("Cannot list unknown configuration option [%s]" % what)
 
@@ -888,7 +913,7 @@ def print_help_on_errors():
     console.println(f"* Check the log files in {paths.logs()} for errors.")
     console.println(f"* Read the documentation at {console.format.link(doc_link())}.")
     console.println(f"* Ask a question on the forum at {console.format.link(FORUM_LINK)}.")
-    console.println(f"* Raise an issue at {console.format.link('https://github.com/opensearch-project/OpenSearch-Benchmark/issues')} "
+    console.println(f"* Raise an issue in the project issue tracker "
                     f"and include the log files in {paths.logs()}.")
 
 
@@ -896,23 +921,23 @@ def run_test(cfg, kill_running_processes=False):
     logger = logging.getLogger(__name__)
 
     if kill_running_processes:
-        logger.info("Killing running OSB processes")
+        logger.info("Killing running solr-benchmark processes")
 
-        # Kill any lingering OSB processes before attempting to continue - the actor system needs to be a singleton on this machine
+        # Kill any lingering solr-benchmark processes before attempting to continue - the actor system needs to be a singleton on this machine
         # noinspection PyBroadException
         try:
             process.kill_running_benchmark_instances()
         except BaseException:
             logger.exception(
-                "Could not terminate potentially running OSB instances correctly. Attempting to go on anyway.")
+                "Could not terminate potentially running solr-benchmark instances correctly. Attempting to go on anyway.")
     else:
         other_benchmark_processes = process.find_all_other_benchmark_processes()
         if other_benchmark_processes:
             pids = [p.pid for p in other_benchmark_processes]
 
-            msg = f"There are other OSB processes running on this machine (PIDs: {pids}) but only one OSB " \
+            msg = f"There are other solr-benchmark processes running on this machine (PIDs: {pids}) but only one " \
                   f"benchmark is allowed to run at the same time.\n\nYou can use --kill-running-processes flag " \
-                  f"to kill running processes automatically and allow OSB to continue to run a new benchmark. " \
+                  f"to kill running processes automatically and allow solr-benchmark to continue to run a new benchmark. " \
                   f"Otherwise, you need to manually kill them."
             raise exceptions.BenchmarkError(msg)
 
@@ -944,7 +969,7 @@ def with_actor_system(runnable, cfg):
     except thespian.actors.InvalidActorAddress:
         logger.info("Falling back to offline actor system.")
         actor.use_offline_actor_system()
-        actors = actor.bootstrap_actor_system(try_join=True)
+        actors = actor.bootstrap_actor_system(try_join=False, prefer_local_only=True)
     except Exception as e:
         logger.exception("Could not bootstrap actor system.")
         if str(e) == "Unable to determine valid external socket address.":
@@ -952,7 +977,7 @@ def with_actor_system(runnable, cfg):
                          logger=logger)
             logger.info("Falling back to offline actor system.")
             actor.use_offline_actor_system()
-            actors = actor.bootstrap_actor_system(try_join=True)
+            actors = actor.bootstrap_actor_system(try_join=False, prefer_local_only=True)
         else:
             raise
     try:
@@ -983,7 +1008,7 @@ def with_actor_system(runnable, cfg):
                 except KeyboardInterrupt:
                     times_interrupted += 1
                     logger.warning("User interrupted shutdown of internal actor system.")
-                    console.info("Please wait a moment for OSB's internal components to shutdown.")
+                    console.info("Please wait a moment for solr-benchmark's internal components to shutdown.")
             if not shutdown_complete and times_interrupted > 0:
                 logger.warning("Terminating after user has interrupted actor system shutdown explicitly for [%d] times.",
                                times_interrupted)
@@ -996,7 +1021,7 @@ def with_actor_system(runnable, cfg):
                 console.println("")
             elif not shutdown_complete:
                 console.warn("Could not terminate all internal processes within timeout. Please check and force-terminate "
-                             "all OSB processes.")
+                             "all solr-benchmark processes.")
 
 
 
@@ -1054,6 +1079,14 @@ def configure_builder_params(args, cfg, command_requires_cluster_config=True):
         cfg.add(config.Scope.applicationOverride, "builder",
         "cluster_config.params", opts.to_dict(
             args.cluster_config_params))
+        cfg.add(config.Scope.applicationOverride, "solr", "modules", getattr(args, "solr_modules", ""))
+        pipeline = getattr(args, "pipeline", None)
+        if pipeline == "benchmark-only" and args.cluster_config != "defaults":
+            raise SystemExit(
+                "ERROR: --cluster-config is only valid for provisioning pipelines "
+                "(from-distribution, docker, from-sources). "
+                "It cannot be used with the 'benchmark-only' pipeline."
+            )
 
 
 def configure_connection_params(arg_parser, args, cfg):
@@ -1147,9 +1180,9 @@ def configure_test(arg_parser, args, cfg):
     configure_builder_params(args, cfg)
     cfg.add(config.Scope.applicationOverride, "builder", "runtime.jdk", args.runtime_jdk)
     cfg.add(config.Scope.applicationOverride, "builder", "source.revision", args.revision)
-    cfg.add(config.Scope.applicationOverride, "builder",
-    "cluster_config_instance.plugins", opts.csv_to_list(
-        args.opensearch_plugins))
+#     cfg.add(config.Scope.applicationOverride, "builder",
+#     "cluster_config_instance.plugins", opts.csv_to_list(
+#         args.opensearch_plugins))
     cfg.add(config.Scope.applicationOverride, "builder", "plugin.params", opts.to_dict(args.plugin_params))
     cfg.add(config.Scope.applicationOverride, "builder", "preserve.install", convert.to_bool(args.preserve_install))
     cfg.add(config.Scope.applicationOverride, "builder", "skip.rest.api.check", convert.to_bool(args.skip_rest_api_check))
@@ -1181,8 +1214,6 @@ def dispatch_sub_command(arg_parser, args, cfg):
             configure_workload_params(arg_parser, args, cfg, command_requires_workload=False)
             dispatch_list(cfg)
         elif sub_command == "download":
-            cfg.add(config.Scope.applicationOverride, "builder", "target.os", args.target_os)
-            cfg.add(config.Scope.applicationOverride, "builder", "target.arch", args.target_arch)
             configure_builder_params(args, cfg)
             builder.download(cfg)
         elif sub_command == "install":
@@ -1195,9 +1226,9 @@ def dispatch_sub_command(arg_parser, args, cfg):
             cfg.add(config.Scope.applicationOverride, "builder", "node.name", args.node_name)
             cfg.add(config.Scope.applicationOverride, "builder", "master.nodes", opts.csv_to_list(args.master_nodes))
             cfg.add(config.Scope.applicationOverride, "builder", "seed.hosts", opts.csv_to_list(args.seed_hosts))
-            cfg.add(config.Scope.applicationOverride, "builder",
-            "cluster_config.plugins", opts.csv_to_list(
-                args.opensearch_plugins))
+#             cfg.add(config.Scope.applicationOverride, "builder",
+#             "cluster_config.plugins", opts.csv_to_list(
+#                 args.opensearch_plugins))
             cfg.add(config.Scope.applicationOverride, "builder", "plugin.params", opts.to_dict(args.plugin_params))
             configure_builder_params(args, cfg)
             builder.install(cfg)
@@ -1266,6 +1297,30 @@ def dispatch_sub_command(arg_parser, args, cfg):
             # Always set visualize to true for the visualize command
             cfg.add(config.Scope.applicationOverride, "workload", "visualize", True)
             dispatch_visualize(cfg)
+        elif sub_command == "convert-workload":
+            from osbenchmark.conversion import workload_converter
+            source_dir = os.path.abspath(args.workload_path)
+            output_dir = os.path.abspath(args.output_path) if args.output_path else source_dir.rstrip("/") + "-solr"
+            force = getattr(args, "force", False)
+
+            if workload_converter.is_already_converted(output_dir) and not force:
+                console.info(
+                    f"Workload already converted at: {output_dir}\n"
+                    "Use --force to overwrite."
+                )
+                return True
+
+            console.info(f"Converting workload: {source_dir} → {output_dir}")
+            result = workload_converter.convert_opensearch_workload(source_dir, output_dir)
+
+            console.println(f"\nConversion complete: {result['output_dir']}")
+            if result["skipped"]:
+                console.println(f"  Skipped operations ({len(result['skipped'])}): {', '.join(result['skipped'])}")
+            if result["issues"]:
+                console.println(f"  Issues ({len(result['issues'])}):")
+                for issue in result["issues"]:
+                    console.println(f"    - {issue}")
+            console.println(f"  See {os.path.join(result['output_dir'], workload_converter.CONVERTED_MARKER)} for details.")
         elif sub_command == "info":
             configure_workload_params(arg_parser, args, cfg)
             workload.workload_info(cfg)
@@ -1305,8 +1360,8 @@ def handle_command_suggestions():
     DEPRECATED_SUBCOMMANDS = ["execute-test", "execute"]
     if len(sys.argv) > 1 and sys.argv[1] in DEPRECATED_SUBCOMMANDS:
         console.info("Did you mean 'run'?")
-        console.info("Example: opensearch-benchmark run --workload=geonames --test-mode")
-        console.info("For more information, run: opensearch-benchmark run --help")
+        console.info(f"Example: {PROGRAM_NAME} run --workload=geonames --test-mode")
+        console.info(f"For more information, run: {PROGRAM_NAME} run --help")
         return True
     return False
 
@@ -1342,7 +1397,7 @@ def main():
 
     logger.info("OS [%s]", str(platform.uname()))
     logger.info("Python [%s]", str(sys.implementation))
-    logger.info("OSB version [%s]", version.version())
+    logger.info("solr-benchmark version [%s]", version.version())
     logger.debug("Command line arguments: %s", args)
     # Configure networking
     net.init()

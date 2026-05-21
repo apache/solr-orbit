@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -22,31 +25,13 @@
 # specific language governing permissions and limitations
 # under the License.
 import os
-from osbenchmark.utils.io import ensure_dir, ensure_symlink
-from osbenchmark.utils import console
+from osbenchmark.utils.io import ensure_dir
 
 def benchmark_confdir():
     default_home = os.path.expanduser("~")
-    old_path = os.path.join(default_home, ".benchmark")
-    new_path = os.path.join(default_home, ".osb")
-
-    try:
-        # Ensure .benchmark directory exists
-        ensure_dir(old_path)
-
-        # Ensure symlink from .osb to .benchmark
-        ensure_symlink(old_path, new_path)
-
-        benchmark_confdir_path = os.path.join(os.getenv("BENCHMARK_HOME", default_home), ".osb")
-
-        return benchmark_confdir_path
-
-    except FileNotFoundError as e:
-        console.print("Error in benchmark_confdir: ", str(e))
-        raise
-    # fallback exception
-    except Exception as e:
-        console.print("Unexpected error in benchmark_confdir: ", str(e))
+    benchmark_confdir_path = os.path.join(os.getenv("BENCHMARK_HOME", default_home), ".solr-benchmark")
+    ensure_dir(benchmark_confdir_path)
+    return benchmark_confdir_path
 
 def benchmark_root():
     return os.path.dirname(os.path.realpath(__file__))
@@ -76,6 +61,6 @@ def install_root(cfg=None):
 # pylint: disable=invalid-docstring-quote
 def logs():
     """
-    :return: The absolute path to the directory that contains OSB's log file.
+    :return: The absolute path to the directory that contains ASB's log file.
     """
     return os.path.join(benchmark_confdir(), "logs")

@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -22,9 +25,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from __future__ import annotations
+
 import os
-import collections
-import copy
 import inspect
 import logging
 import math
@@ -34,16 +37,10 @@ import random
 import re
 import time
 import multiprocessing
-from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Dict, Any, Optional, Tuple
-
-import numpy as np
 
 from osbenchmark import exceptions
 from osbenchmark.utils import io
-from osbenchmark.utils.dataset import DataSet, get_data_set, Context
-from osbenchmark.utils.parse import parse_string_parameter, parse_int_parameter
 from osbenchmark.workload import loader, workload
 from osbenchmark.workload.ingestion_manager import IngestionManager
 
@@ -56,10 +53,14 @@ __QUERY_RANDOMIZATION_INFOS = {}
 
 def param_source_for_operation(op_type, workload, params, task_name):
     try:
-        # we know that this can only be a OSB core parameter source
+        # we know that this can only be a ASB core parameter source
         return __PARAM_SOURCES_BY_OP[op_type](workload, params, operation_name=task_name)
     except KeyError:
-        return ParamSource(workload, params, operation_name=task_name)
+        pass
+    # Also check name-based registry for user-defined operation types (e.g., "bulk-index")
+    if isinstance(op_type, str) and op_type in __PARAM_SOURCES_BY_NAME:
+        return param_source_for_name(op_type, workload, params)
+    return ParamSource(workload, params, operation_name=task_name)
 
 
 def param_source_for_name(name, workload, params):
@@ -156,9 +157,9 @@ def _clear_query_randomization_infos():
 class ParamSource:
     """
     A `ParamSource` captures the parameters for a given operation.
-     OSB will create one global ParamSource for each operation and will then
+     Solr Benchmark will create one global ParamSource for each operation and will then
      invoke `#partition()` to get a `ParamSource` instance for each client. During the benchmark, `#params()` will be called repeatedly
-     before OSB invokes the corresponding runner (that will actually execute the operation against OpenSearch).
+     before invoking the corresponding runner (that will actually execute the operation against Solr).
     """
 
     def __init__(self, workload, params, **kwargs):
@@ -174,7 +175,7 @@ class ParamSource:
 
     def partition(self, partition_index, total_partitions):
         """
-        This method will be invoked by OSB at the beginning of the lifecycle. It splits a parameter source per client. If the
+        This method will be invoked by ASB at the beginning of the lifecycle. It splits a parameter source per client. If the
         corresponding operation is idempotent, return `self` (e.g. for queries). If the corresponding operation has side-effects and it
         matters which client executes which part (e.g. an index operation from a source file), return the relevant part.
 
@@ -201,7 +202,7 @@ class ParamSource:
         * It will either run an operation for a pre-determined number of times or
         * It can run until the parameter source is exhausted.
 
-        In the former case, you should determine the number of times that `#params()` will be invoked. With that number, OSB can show
+        In the former case, you should determine the number of times that `#params()` will be invoked. With that number, ASB can show
         the progress made so far to the user. In the latter case, return ``None``.
 
         :return:  The "size" of this parameter source or ``None`` if should run eternally.
@@ -217,9 +218,9 @@ class ParamSource:
 
     def _client_params(self):
         """
-        For use when a ParamSource does not propagate self._params but does use opensearch client under the hood
+        For use when a ParamSource does not propagate self._params but does use the cluster client under the hood
 
-        :return: all applicable parameters that are global to OSB and apply to the opensearch-py client
+        :return: all applicable parameters that are global to ASB and apply to the cluster client
         """
         return {
             "request-timeout": self._params.get("request-timeout"),
@@ -254,310 +255,82 @@ class SleepParamSource(ParamSource):
         return dict(self._params)
 
 
-class CreateIndexParamSource(ParamSource):
+class DeleteCollectionParamSource(ParamSource):
+    """
+    Param source for the Solr ``delete-collection`` operation.
+
+    Reads collection names from ``workload.collections`` and returns them as
+    ``{"collection": name}`` so that ``SolrDeleteCollection`` knows what to delete.
+    When an explicit ``"collection"`` is in the operation params it is used as-is.
+    """
+
     def __init__(self, workload, params, **kwargs):
         super().__init__(workload, params, **kwargs)
-        self.request_params = params.get("request-params", {})
-        self.index_definitions = []
-        if workload.indices:
-            filter_idx = params.get("index")
-            if isinstance(filter_idx, str):
-                filter_idx = [filter_idx]
-            settings = params.get("settings")
-            for idx in workload.indices:
-                if not filter_idx or idx.name in filter_idx:
-                    body = idx.body
-                    if body and settings:
-                        if "settings" in body:
-                            # merge (and potentially override)
-                            body["settings"].update(settings)
-                            self.validate_index_codec(body["settings"])
-                        else:
-                            body["settings"] = settings
-                    elif not body and settings:
-                        body = {
-                            "settings": settings
-                        }
-                    self.index_definitions.append((idx.name, body))
+        self.collection_names = []
+        target = params.get("collection") or params.get("index")
+        if target:
+            self.collection_names = [target] if isinstance(target, str) else list(target)
+        elif getattr(workload, "collections", []):
+            self.collection_names = [c.name for c in workload.collections]
         else:
-            try:
-                # only 'index' is mandatory, the body is optional (may be ok to create an index without a body)
-                idx = params["index"]
-                body = params.get("body")
-                if body and "settings" in body:
-                    self.validate_index_codec(body["settings"])
-                if isinstance(idx, str):
-                    idx = [idx]
-                for i in idx:
-                    self.index_definitions.append((i, body))
-            except ValueError as e:
-                raise exceptions.InvalidSyntax(f"Please set the value properly for the create-index operation. {e}")
-            except KeyError:
-                raise exceptions.InvalidSyntax("Please set the property 'index' for the create-index operation")
+            raise exceptions.InvalidSyntax("delete-collection operation targets no collection")
 
     def params(self):
         p = {}
-        # ensure we pass all parameters...
         p.update(self._params)
-        p.update({
-            "indices": self.index_definitions,
-            "request-params": self.request_params
-        })
-        return p
-
-    def validate_index_codec(self, settings):
-        if "index.codec" in settings:
-            return workload.IndexCodec.is_codec_valid(settings["index.codec"])
-
-class CreateDataStreamParamSource(ParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        self.request_params = params.get("request-params", {})
-        self.data_stream_definitions = []
-        if workload.data_streams:
-            filter_ds = params.get("data-stream")
-            if isinstance(filter_ds, str):
-                filter_ds = [filter_ds]
-            for ds in workload.data_streams:
-                if not filter_ds or ds.name in filter_ds:
-                    self.data_stream_definitions.append(ds.name)
-        else:
-            try:
-                data_stream = params["data-stream"]
-                data_streams = [data_stream] if isinstance(data_stream, str) else data_stream
-                for ds in data_streams:
-                    self.data_stream_definitions.append(ds)
-            except KeyError:
-                raise exceptions.InvalidSyntax("Please set the property 'data-stream' for the create-data-stream operation")
-
-    def params(self):
-        p = {}
-        # ensure we pass all parameters...
-        p.update(self._params)
-        p.update({
-            "data-streams": self.data_stream_definitions,
-            "request-params": self.request_params
-        })
+        # Pass only the first collection; if multiple are needed the workload should
+        # run separate delete-collection tasks or use an explicit "collection" param.
+        p["collection"] = self.collection_names[0] if self.collection_names else None
         return p
 
 
-class DeleteDataStreamParamSource(ParamSource):
+class CreateCollectionParamSource(ParamSource):
+    """
+    Param source for the Solr ``create-collection`` operation.
+
+    Reads collection definitions from ``workload.collections`` and returns them
+    as ``{"collection": name, "configset": name, "configset-path": path, ...}``
+    so that ``SolrCreateCollection`` can create and upload the collection.
+    """
+
     def __init__(self, workload, params, **kwargs):
         super().__init__(workload, params, **kwargs)
-        self.request_params = params.get("request-params", {})
-        self.only_if_exists = params.get("only-if-exists", True)
-
-        self.data_stream_definitions = []
-        target_data_stream = params.get("data-stream")
-        if target_data_stream:
-            target_data_stream = [target_data_stream] if isinstance(target_data_stream, str) else target_data_stream
-            for ds in target_data_stream:
-                self.data_stream_definitions.append(ds)
-        elif workload.data_streams:
-            for ds in workload.data_streams:
-                self.data_stream_definitions.append(ds.name)
-        else:
-            raise exceptions.InvalidSyntax("delete-data-stream operation targets no data stream")
-
-    def params(self):
-        p = {}
-        # ensure we pass all parameters...
-        p.update(self._params)
-        p.update({
-            "data-streams": self.data_stream_definitions,
-            "request-params": self.request_params,
-            "only-if-exists": self.only_if_exists
-        })
-        return p
-
-
-class DeleteIndexParamSource(ParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        self.request_params = params.get("request-params", {})
-        self.only_if_exists = params.get("only-if-exists", True)
-
-        self.index_definitions = []
-        target_index = params.get("index")
-        if target_index:
-            if isinstance(target_index, str):
-                target_index = [target_index]
-            for idx in target_index:
-                self.index_definitions.append(idx)
-        elif workload.indices:
-            for idx in workload.indices:
-                self.index_definitions.append(idx.name)
-        else:
-            raise exceptions.InvalidSyntax("delete-index operation targets no index")
-
-    def params(self):
-        p = {}
-        # ensure we pass all parameters...
-        p.update(self._params)
-        p.update({
-            "indices": self.index_definitions,
-            "request-params": self.request_params,
-            "only-if-exists": self.only_if_exists
-        })
-        return p
-
-
-class CreateIndexTemplateParamSource(ParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        self.request_params = params.get("request-params", {})
-        self.template_definitions = []
-        if workload.templates:
-            filter_template = params.get("template")
-            settings = params.get("settings")
-            for template in workload.templates:
-                if not filter_template or template.name == filter_template:
-                    body = template.content
-                    if body and settings:
-                        if "settings" in body:
-                            # merge (and potentially override)
-                            body["settings"].update(settings)
-                        else:
-                            body["settings"] = settings
-
-                    self.template_definitions.append((template.name, body))
-        else:
-            try:
-                self.template_definitions.append((params["template"], params["body"]))
-            except KeyError:
-                raise exceptions.InvalidSyntax("Please set the properties 'template' and 'body' for the create-index-template operation")
-
-    def params(self):
-        p = {}
-        # ensure we pass all parameters...
-        p.update(self._params)
-        p.update({
-            "templates": self.template_definitions,
-            "request-params": self.request_params
-        })
-        return p
-
-
-class DeleteIndexTemplateParamSource(ParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        self.only_if_exists = params.get("only-if-exists", True)
-        self.request_params = params.get("request-params", {})
-        self.template_definitions = []
-        if workload.templates:
-            filter_template = params.get("template")
-            for template in workload.templates:
-                if not filter_template or template.name == filter_template:
-                    self.template_definitions.append((template.name, template.delete_matching_indices, template.pattern))
-        else:
-            try:
-                template = params["template"]
-            except KeyError:
-                raise exceptions.InvalidSyntax(f"Please set the property 'template' for the {params.get('operation-type')} operation")
-
-            delete_matching = params.get("delete-matching-indices", False)
-            try:
-                index_pattern = params["index-pattern"] if delete_matching else None
-            except KeyError:
-                raise exceptions.InvalidSyntax("The property 'index-pattern' is required for delete-index-template if "
-                                               "'delete-matching-indices' is true.")
-            self.template_definitions.append((template, delete_matching, index_pattern))
-
-    def params(self):
-        p = {}
-        # ensure we pass all parameters...
-        p.update(self._params)
-        p.update({
-            "templates": self.template_definitions,
-            "only-if-exists": self.only_if_exists,
-            "request-params": self.request_params
-        })
-        return p
-
-
-class DeleteComponentTemplateParamSource(ParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        self.only_if_exists = params.get("only-if-exists", True)
-        self.request_params = params.get("request-params", {})
-        self.template_definitions = []
-        if workload.templates:
-            filter_template = params.get("template")
-            for template in workload.templates:
-                if not filter_template or template.name == filter_template:
-                    self.template_definitions.append(template.name)
-        else:
-            try:
-                template = params["template"]
-                self.template_definitions.append(template)
-            except KeyError:
-                raise exceptions.InvalidSyntax(f"Please set the property 'template' for the {params.get('operation-type')} operation.")
-
-    def params(self):
-        return {
-            "templates": self.template_definitions,
-            "only-if-exists": self.only_if_exists,
-            "request-params": self.request_params
-        }
-
-
-class CreateTemplateParamSource(ABC, ParamSource):
-    def __init__(self, workload, params, templates, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        self.request_params = params.get("request-params", {})
-        self.template_definitions = []
-        if "template" in params and "body" in params:
-            self.template_definitions.append((params["template"], params["body"]))
-        elif templates:
-            filter_template = params.get("template")
-            settings = params.get("settings")
-            for template in templates:
-                if not filter_template or template.name == filter_template:
-                    body = template.content
-                    if body and "template" in body:
-                        body = CreateComposableTemplateParamSource._create_or_merge(template.content,
-                                                                                    ["template", "settings"], settings)
-                        self.template_definitions.append((template.name, body))
-        else:
-            raise exceptions.InvalidSyntax("Please set the properties 'template' and 'body' for the "
-                                           f"{params.get('operation-type')} operation or declare composable and/or component "
-                                           "templates in the workload")
-
-    @staticmethod
-    def _create_or_merge(content, path, new_content):
-        original_content = content
-        if new_content:
-            for sub_path in path:
-                if sub_path not in content:
-                    content[sub_path] = {}
-                content = content[sub_path]
-            CreateTemplateParamSource.__merge(content, new_content)
-        return original_content
-
-    @staticmethod
-    def __merge(dct, merge_dct):
-        for k in merge_dct.keys():
-            if (k in dct and isinstance(dct[k], dict)
-                    and isinstance(merge_dct[k], collections.abc.Mapping)):
-                CreateTemplateParamSource.__merge(dct[k], merge_dct[k])
+        self.collection_def = {}
+        target = params.get("collection") or params.get("index")
+        collections = getattr(workload, "collections", [])
+        if target:
+            col = next((c for c in collections if c.name == target), None)
+            if col:
+                self.collection_def = {
+                    "collection": col.name,
+                    "configset": col.configset,
+                    "configset-path": col.configset_path,
+                    "num-shards": col.num_shards,
+                    "replication-factor": col.replication_factor,
+                    "pull-replicas": col.pull_replicas,
+                    "tlog-replicas": col.tlog_replicas,
+                }
             else:
-                dct[k] = merge_dct[k]
+                self.collection_def = {"collection": target}
+        elif collections:
+            col = collections[0]
+            self.collection_def = {
+                "collection": col.name,
+                "configset": col.configset,
+                "configset-path": col.configset_path,
+                "num-shards": col.num_shards,
+                "replication-factor": col.replication_factor,
+                "pull-replicas": col.pull_replicas,
+                "tlog-replicas": col.tlog_replicas,
+            }
+        else:
+            raise exceptions.InvalidSyntax("create-collection operation targets no collection")
 
     def params(self):
-        return {
-            "templates": self.template_definitions,
-            "request-params": self.request_params
-        }
-
-
-class CreateComposableTemplateParamSource(CreateTemplateParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, workload.composable_templates, **kwargs)
-
-
-class CreateComponentTemplateParamSource(CreateTemplateParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, workload.component_templates, **kwargs)
+        p = {}
+        p.update(self._params)
+        p.update(self.collection_def)
+        return p
 
 
 class SearchParamSource(ParamSource):
@@ -667,7 +440,7 @@ class BulkIndexParamSource(ParamSource):
 
         if len(self.corpora) == 0:
             raise exceptions.InvalidSyntax(f"There is no document corpus definition for workload {workload}. You must add at "
-                                           f"least one before making bulk requests to OpenSearch.")
+                                           f"least one before making bulk requests to the target cluster.")
 
         for corpus in self.corpora:
             for document_set in corpus.documents:
@@ -726,8 +499,7 @@ class BulkIndexParamSource(ParamSource):
         for corpus in t.corpora:
             if corpus.name in corpora_names:
                 filtered_corpus = corpus.filter(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                                target_indices=params.get("indices"),
-                                                target_data_streams=params.get("data-streams"))
+                                                target_collections=params.get("indices"))
                 if filtered_corpus.streaming_ingestion or \
                    filtered_corpus.number_of_documents(source_format=workload.Documents.SOURCE_FORMAT_BULK) > 0:
                     corpora.append(filtered_corpus)
@@ -829,693 +601,13 @@ class PartitionBulkIndexParamSource:
         return (IngestionManager.rd_index.value * IngestionManager.chunk_size/1000, 'GB') if self.streaming_ingestion else (self.current_bulk / self.total_bulks, '%')
 
 
-class OpenPointInTimeParamSource(ParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        target_name = get_target(workload, params)
-        self._index_name = target_name
-        self._keep_alive = params.get("keep-alive")
-
-    def params(self):
-        parsed_params = {
-            "index": self._index_name,
-            "keep-alive": self._keep_alive
-        }
-        parsed_params.update(self._client_params())
-        return parsed_params
-
-
-class ClosePointInTimeParamSource(ParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        self._pit_task_name = params.get("with-point-in-time-from")
-
-    def params(self):
-        parsed_params = {
-            "with-point-in-time-from": self._pit_task_name
-        }
-        parsed_params.update(self._client_params())
-        return parsed_params
-
-
-class ForceMergeParamSource(ParamSource):
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        if len(workload.indices) > 0 or len(workload.data_streams) > 0:
-            # force merge data streams and indices - API call is the same so treat as indices
-            default_target = ','.join(map(str, workload.indices + workload.data_streams))
-        else:
-            default_target = "_all"
-
-        self._target_name = params.get("index")
-        if not self._target_name:
-            self._target_name = params.get("data-stream", default_target)
-
-        self._max_num_segments = params.get("max-num-segments")
-        self._poll_period = params.get("poll-period", 10)
-        self._mode = params.get("mode", "blocking")
-
-    def params(self):
-        parsed_params = {
-            "index": self._target_name,
-            "max-num-segments": self._max_num_segments,
-            "mode": self._mode,
-            "poll-period": self._poll_period
-        }
-        parsed_params.update(self._client_params())
-        return parsed_params
-
-
-class VectorSearchParamSource(SearchParamSource):
-    def __init__(self, workload, params, **kwargs):
-        # print workload
-        logging.getLogger(__name__).info("Workload: [%s], params: [%s]", workload, params)
-        super().__init__(workload, params, **kwargs)
-        self.delegate_param_source = VectorSearchPartitionParamSource(workload, params, self.query_params, **kwargs)
-        self.corpora = self.delegate_param_source.corpora
-
-    def partition(self, partition_index, total_partitions):
-        return self.delegate_param_source.partition(partition_index, total_partitions)
-
-    def params(self):
-        raise exceptions.WorkloadConfigError("Do not use a VectorSearchParamSource without partitioning")
-
-
-class VectorDataSetPartitionParamSource(ParamSource):
-    """ Abstract class that can read vectors from a data set and partition the
-    vectors across multiple clients.
-
-    Attributes:
-        field_name: Name of the field to generate the query for
-        data_set_format: Format data set is serialized with. bigann or hdf5
-        data_set_path: Path to data set
-        context: Context the data set will be used in.
-        data_set: Structure containing meta data about data and ability to read
-        total_num_vectors: Number of vectors to use from the data set
-        num_vectors: Number of vectors to use for given partition
-        total: Number of vectors for the partition
-        current: Current vector offset in data set
-        infinite: Property of param source signalling that it can be exhausted
-        task_progress: Progress indicator for how exhausted data set is
-        offset: Offset into the data set to start at. Relevant when there are
-                multiple partitions
-    """
-    NESTED_FIELD_SEPARATOR = "."
-
-    def __init__(self, workload, params, context: Context, **kwargs):
-        super().__init__(workload, params, **kwargs)
-        self.field_name: str = parse_string_parameter("field", params)
-        self.is_nested = self.NESTED_FIELD_SEPARATOR in self.field_name # in base class because used for both bulk ingest and queries.
-        self.context = context
-        self.data_set_format = parse_string_parameter("data_set_format", params)
-        self.data_set_path = parse_string_parameter("data_set_path", params, "")
-        self.data_set_corpus = parse_string_parameter("data_set_corpus", params, "")
-        self._validate_data_set(self.data_set_path, self.data_set_corpus)
-        self.total_num_vectors: int = parse_int_parameter("num_vectors", params, -1)
-        self.num_vectors = 0
-        self.total = 1
-        self.current = 0
-        self.task_progress = (0, '%')
-        self.offset = 0
-        self.data_set: DataSet = None
-        self.corpora = self.extract_corpora(self.data_set_corpus, self.data_set_format)
-
-    def _get_corpora_file_paths(self, name, source_format):
-        document_files = []
-        for corpus in self.corpora:
-            if corpus.name != name:
-                continue
-            filtered_corpus = corpus.filter(source_format=source_format)
-            document_files.extend([document.document_file for document in filtered_corpus.documents])
-        return document_files
-
-    @property
-    def infinite(self):
-        return False
-
-    @staticmethod
-    def _is_last_partition(partition_index, total_partitions):
-        return partition_index == total_partitions - 1
-
-    @staticmethod
-    def _validate_data_set(file_path, corpus):
-        if not file_path and not corpus:
-            raise exceptions.ConfigurationError(
-                "Dataset is missing. Provide either dataset file path or valid corpus.")
-        if file_path and corpus:
-            raise exceptions.ConfigurationError(
-                "User provided both file path and corpus. "
-                "Provide either dataset file path '%s' or corpus '%s', "
-                "but not both" % (file_path, corpus))
-
-    @staticmethod
-    def _validate_data_set_corpus(data_set_path_list):
-        if not data_set_path_list:
-            raise exceptions.ConfigurationError(
-                "Dataset is missing. Provide either dataset file path or valid corpus.")
-        if data_set_path_list and len(data_set_path_list) > 1:
-            raise exceptions.ConfigurationError(
-                "Vector Search does not support more than one document file path '%s'." % data_set_path_list)
-
-    def partition(self, partition_index, total_partitions):
-        """
-        Splits up the parameters source so that multiple clients can read data
-        from it.
-        Args:
-            partition_index: index of one particular partition
-            total_partitions: total number of partitions data set is split into
-
-        Returns:
-            The parameter source for this particular partition
-        """
-        if self.data_set_corpus and not self.data_set_path:
-            data_set_path = self._get_corpora_file_paths(self.data_set_corpus, self.data_set_format)
-            self._validate_data_set_corpus(data_set_path)
-            self.data_set_path = data_set_path[0]
-        if self.data_set is None:
-            self.data_set: DataSet = get_data_set(
-                self.data_set_format, self.data_set_path, self.context)
-        # if value is -1 or greater than dataset size, use dataset size as num_vectors
-        if self.total_num_vectors < 0 or self.total_num_vectors > self.data_set.size():
-            self.total_num_vectors = self.data_set.size()
-        self.total = self.total_num_vectors
-
-        partition_x = copy.copy(self)
-
-        min_num_vectors_per_partition = int(self.total_num_vectors / total_partitions)
-        partition_x.offset = int(partition_index * min_num_vectors_per_partition)
-        partition_x.num_vectors = min_num_vectors_per_partition
-
-        # if partition is not divided equally, add extra docs to the last partition
-        if self.total_num_vectors % total_partitions != 0 and self._is_last_partition(partition_index, total_partitions):
-            remaining_vectors = self.total_num_vectors - (min_num_vectors_per_partition * total_partitions)
-            partition_x.num_vectors += remaining_vectors
-
-        # We need to create a new instance of the data set for each client
-        partition_x.data_set = get_data_set(
-            self.data_set_format,
-            self.data_set_path,
-            self.context
-        )
-        partition_x.data_set.seek(partition_x.offset)
-        partition_x.current = partition_x.offset
-        return partition_x
-
-    def get_split_fields(self) -> Tuple[str, str]:
-        fields_as_array = self.field_name.split(self.NESTED_FIELD_SEPARATOR)
-
-        # TODO: Add support to multiple levels of nesting if a future benchmark requires it.
-
-        if len(fields_as_array) != 2:
-            raise ValueError(
-                f"Field name {self.field_name} is not a nested field name. Currently we support only 1 level of nesting."
-            )
-        return fields_as_array[0], fields_as_array[1]
-
-
-    @abstractmethod
-    def params(self):
-        """
-        Returns: A single parameter from this source
-        """
-
-    def extract_corpora(self, corpus_name, source_format):
-        """
-        Extracts corpora from available corpora in workload for given name and format.
-
-        @param corpus_name: filter corpora by this name
-        @param source_format: filter corpora by this source format
-        @return: corpora that matches given name and source format
-        """
-        if not corpus_name:
-            return []
-        corpora = []
-        workload_corpora_names = []
-        for corpus in self.workload.corpora:
-            workload_corpora_names.append(corpus.name)
-            if corpus.name != corpus_name:
-                continue
-            filtered_corpus = corpus.filter(source_format=source_format)
-            if filtered_corpus and filtered_corpus.number_of_documents(source_format=source_format) > 0:
-                corpora.append(filtered_corpus)
-            break
-
-        # the workload has corpora but none of them match
-        if workload_corpora_names and not corpora:
-            raise exceptions.ConfigurationError(
-                "The provided corpus %s does not match any of the corpora %s." % (corpus_name, workload_corpora_names))
-        return corpora
-
-
-class VectorSearchPartitionParamSource(VectorDataSetPartitionParamSource):
-    """ Parameter source for k-NN. Queries are created from data set
-    provided.
-
-    Attributes:
-        k: The number of results to return for the search
-        repetitions: Number of times to re-run query dataset from beginning
-        neighbors_data_set_format: neighbor's dataset format type like hdf5, bigann
-        neighbors_data_set_path: neighbor's dataset file path
-        operation-type: search method type
-        id-field-name: field name that will have unique identifier id in document
-        request-params: query parameters that can be passed to search request
-    """
-    PARAMS_NAME_K = "k"
-    PARAMS_NAME_BODY = "body"
-    PARAMS_NAME_SIZE = "size"
-    PARAMS_NAME_QUERY = "query"
-    PARAMS_NAME_FILTER = "filter"
-    PARAMS_NAME_FILTER_TYPE = "filter_type"
-    PARAMS_NAME_FILTER_BODY = "filter_body"
-    PARAMS_NAME_REPETITIONS = "repetitions"
-    PARAMS_NAME_NEIGHBORS_DATA_SET_FORMAT = "neighbors_data_set_format"
-    PARAMS_NAME_NEIGHBORS_DATA_SET_PATH = "neighbors_data_set_path"
-    PARAMS_NAME_NEIGHBORS_DATA_SET_CORPUS = "neighbors_data_set_corpus"
-    PARAMS_NAME_OPERATION_TYPE = "operation-type"
-    PARAMS_VALUE_VECTOR_SEARCH = "vector-search"
-    PARAMS_NAME_ID_FIELD_NAME = "id-field-name"
-    PARAMS_NAME_REQUEST_PARAMS = "request-params"
-    PARAMS_NAME_SOURCE = "_source"
-    PARAMS_NAME_ALLOW_PARTIAL_RESULTS = "allow_partial_search_results"
-
-    def __init__(self, workloads, params, query_params, **kwargs):
-        super().__init__(workloads, params, Context.QUERY, **kwargs)
-        self.logger = logging.getLogger(__name__)
-        self.k = parse_int_parameter(self.PARAMS_NAME_K, params)
-        self.repetitions = parse_int_parameter(self.PARAMS_NAME_REPETITIONS, params, 1)
-        self.current_rep = 1
-        self.neighbors_data_set_format = parse_string_parameter(
-            self.PARAMS_NAME_NEIGHBORS_DATA_SET_FORMAT, params, self.data_set_format)
-        self.neighbors_data_set_path = params.get(self.PARAMS_NAME_NEIGHBORS_DATA_SET_PATH)
-        self.neighbors_data_set_corpus = params.get(self.PARAMS_NAME_NEIGHBORS_DATA_SET_CORPUS)
-        self._validate_neighbors_data_set(self.neighbors_data_set_path, self.neighbors_data_set_corpus)
-        self.neighbors_data_set = None
-        operation_type = parse_string_parameter(self.PARAMS_NAME_OPERATION_TYPE, params,
-                                                self.PARAMS_VALUE_VECTOR_SEARCH)
-        self.query_params = query_params
-        self.query_params.update({
-            self.PARAMS_NAME_K: self.k,
-            self.PARAMS_NAME_OPERATION_TYPE: operation_type,
-            self.PARAMS_NAME_ID_FIELD_NAME: params.get(self.PARAMS_NAME_ID_FIELD_NAME),
-        })
-
-        self.filter_type = self.query_params.get(self.PARAMS_NAME_FILTER_TYPE)
-        self.filter_body = self.query_params.get(self.PARAMS_NAME_FILTER_BODY)
-
-
-        if self.PARAMS_NAME_FILTER in params:
-            self.query_params.update({
-                self.PARAMS_NAME_FILTER:  params.get(self.PARAMS_NAME_FILTER)
-            })
-
-        if self.PARAMS_NAME_FILTER_TYPE in params:
-            self.query_params.update({
-                self.PARAMS_NAME_FILTER_TYPE:  params.get(self.PARAMS_NAME_FILTER_TYPE)
-            })
-
-        if self.PARAMS_NAME_FILTER_BODY in params:
-            self.query_params.update({
-                self.PARAMS_NAME_FILTER_BODY:  params.get(self.PARAMS_NAME_FILTER_BODY)
-            })
-        # if neighbors data set is defined as corpus, extract corresponding corpus from workload
-        # and add it to corpora list
-        if self.neighbors_data_set_corpus:
-            neighbors_corpora = self.extract_corpora(self.neighbors_data_set_corpus, self.neighbors_data_set_format)
-            self.corpora.extend(corpora for corpora in neighbors_corpora if corpora not in self.corpora)
-
-    @staticmethod
-    def _validate_neighbors_data_set(file_path, corpus):
-        if file_path and corpus:
-            raise exceptions.ConfigurationError(
-                "Provide either neighbor's dataset file path '%s' or corpus '%s'." % (file_path, corpus))
-
-    def _update_request_params(self):
-        request_params = self.query_params.get(self.PARAMS_NAME_REQUEST_PARAMS, {})
-        request_params[self.PARAMS_NAME_SOURCE] = request_params.get(
-            self.PARAMS_NAME_SOURCE, "false")
-        request_params[self.PARAMS_NAME_ALLOW_PARTIAL_RESULTS] = request_params.get(
-            self.PARAMS_NAME_ALLOW_PARTIAL_RESULTS, "false")
-        self.query_params.update({self.PARAMS_NAME_REQUEST_PARAMS: request_params})
-
-    def _update_body_params(self, vector):
-        # accept body params if passed from workload, else, create empty dictionary
-        body_params = self.query_params.get(self.PARAMS_NAME_BODY) or dict()
-        if self.PARAMS_NAME_SIZE not in body_params:
-            body_params[self.PARAMS_NAME_SIZE] = self.k
-        filter_type=self.query_params.get(self.PARAMS_NAME_FILTER_TYPE)
-        filter_body=self.query_params.get(self.PARAMS_NAME_FILTER_BODY)
-        efficient_filter = filter_body if filter_type == "efficient" else None
-
-        # override query params with vector search query
-        body_params[self.PARAMS_NAME_QUERY] = self._build_vector_search_query_body(vector, efficient_filter, filter_type, filter_body)
-
-        if filter_type == "post_filter":
-            body_params["post_filter"] = filter_body
-
-        self.query_params.update({self.PARAMS_NAME_BODY: body_params})
-
-    def partition(self, partition_index, total_partitions):
-        partition = super().partition(partition_index, total_partitions)
-        if self.neighbors_data_set_corpus and not self.neighbors_data_set_path:
-            neighbors_data_set_path = self._get_corpora_file_paths(
-                self.neighbors_data_set_corpus, self.neighbors_data_set_format)
-            self._validate_data_set_corpus(neighbors_data_set_path)
-            self.neighbors_data_set_path = neighbors_data_set_path[0]
-        if not self.neighbors_data_set_path:
-            self.neighbors_data_set_path = self.data_set_path
-        # add neighbor instance to partition
-        partition.neighbors_data_set = get_data_set(
-            self.neighbors_data_set_format, self.neighbors_data_set_path, Context.NEIGHBORS)
-        partition.neighbors_data_set.seek(partition.offset)
-        return partition
-
-    def params(self):
-        """
-        Returns: A query parameter with a vector and neighbor from a data set
-        """
-        is_dataset_exhausted = self.current >= self.num_vectors + self.offset
-
-        if is_dataset_exhausted and self.current_rep < self.repetitions:
-            self.data_set.seek(self.offset)
-            self.neighbors_data_set.seek(self.offset)
-            self.current = self.offset
-            self.current_rep += 1
-        elif is_dataset_exhausted:
-            raise StopIteration
-        vector = self.data_set.read(1)[0]
-        neighbor = self.neighbors_data_set.read(1)[0]
-        true_neighbors = list(map(str, neighbor[:self.k]))
-        self.query_params.update({
-            "neighbors": true_neighbors,
-        })
-        self._update_request_params()
-        self._update_body_params(vector)
-        self.current += 1
-        self.task_progress = (self.current / self.total, '%')
-        return self.query_params
-
-    def _build_vector_search_query_body(self, vector, efficient_filter=None, filter_type=None, filter_body=None) -> dict:
-        """Builds a k-NN request that can be used to execute an approximate nearest
-        neighbor search against a k-NN plugin index
-        Args:
-            vector: vector used for query
-        Returns:
-            A dictionary containing the body used for search query
-        """
-        query = {
-            "vector": vector,
-            "k": self.k,
-        }
-        if efficient_filter:
-            query.update({
-                "filter": efficient_filter,
-            })
-
-        knn_search_query = {
-            "knn": {
-                self.field_name: query,
-            },
-        }
-
-        if self.is_nested:
-            outer_field_name, _inner_field_name = self.get_split_fields()
-            return {
-                "nested": {
-                    "path": outer_field_name,
-                    "query": knn_search_query
-                }
-            }
-
-        if filter_type and not efficient_filter and not filter_type == "post_filter":
-            return self._knn_query_with_filter(vector, knn_search_query, filter_type, filter_body)
-
-        return knn_search_query
-
-    def _knn_query_with_filter(self, vector, knn_query, filter_type, filter_body) -> dict:
-        if filter_type == "script":
-            return {
-                "script_score": {
-                    "query": {"bool": {"filter": filter_body}},
-                    "script": {
-                        "source": "knn_score",
-                        "lang": "knn",
-                        "params": {
-                            "field": self.field_name,
-                            "query_value": vector,
-                            "space_type": "l2"
-                        }
-                    }
-                }
-            }
-
-        if filter_type == "boolean":
-            return {
-                "bool": {
-                    "filter": filter_body,
-                    "must": [knn_query]
-            }
-            }
-        raise exceptions.ConfigurationError("Unsupported filter type: %s" % filter_type)
-
-class BulkVectorsFromDataSetParamSource(VectorDataSetPartitionParamSource):
-    """ Create bulk index requests from a data set of vectors.
-
-    Attributes:
-        bulk_size: number of vectors per request
-        retries: number of times to retry the request when it fails
-    """
-
-    DEFAULT_RETRIES = 10
-    PARAMS_NAME_ID_FIELD_NAME = "id-field-name"
-    DEFAULT_ID_FIELD_NAME = "_id"
-
-    def __init__(self, workload, params, **kwargs):
-        super().__init__(workload, params, Context.INDEX, **kwargs)
-        self.bulk_size: int = parse_int_parameter("bulk_size", params)
-        self.retries: int = parse_int_parameter("retries", params, self.DEFAULT_RETRIES)
-        self.index_name: str = parse_string_parameter("index", params)
-        self.id_field_name: str = parse_string_parameter(
-            self.PARAMS_NAME_ID_FIELD_NAME, params, self.DEFAULT_ID_FIELD_NAME
-        )
-        self.filter_attributes: List[Any] = params.get("filter_attributes", [])
-
-        self.action_buffer = None
-        self.num_nested_vectors = 10
-
-        self.parent_data_set_path = parse_string_parameter(
-            "parents_data_set_path", params, self.data_set_path
-        )
-
-        self.parent_data_set_format = self.data_set_format
-
-        self.parent_data_set_corpus = self.data_set_corpus
-
-        self.logger = logging.getLogger(__name__)
-
-    def partition(self, partition_index, total_partitions):
-        partition = super().partition(partition_index, total_partitions)
-        if self.parent_data_set_corpus and not self.parent_data_set_path:
-            parent_data_set_path = self._get_corpora_file_paths(
-                self.parent_data_set_corpus, self.parent_data_set_format
-            )
-            self._validate_data_set_corpus(parent_data_set_path)
-            self.parent_data_set_path = parent_data_set_path[0]
-        if not self.parent_data_set_path:
-            self.parent_data_set_path = self.data_set_path
-        # add neighbor instance to partition
-        if self.is_nested:
-            partition.parent_data_set = get_data_set(
-                self.parent_data_set_format, self.parent_data_set_path, Context.PARENTS
-            )
-            partition.parent_data_set.seek(partition.offset)
-
-        if self.filter_attributes:
-            partition.attributes_data_set = get_data_set(
-                self.parent_data_set_format, self.parent_data_set_path, Context.ATTRIBUTES
-            )
-            partition.attributes_data_set.seek(partition.offset)
-
-        return partition
-
-    def bulk_transform_add_attributes(self, partition: np.ndarray, action, attributes: np.ndarray) ->   List[Dict[str, Any]]:
-        """attributes is a (partition_len x 3) matrix. """
-        actions = []
-
-        _ = [
-                actions.extend([action(self.id_field_name, i + self.current), None])
-                for i in range(len(partition))
-            ]
-        bulk_contents = []
-
-        add_id_field_to_body = self.id_field_name != self.DEFAULT_ID_FIELD_NAME
-        for vec, attribute_list, identifier in zip(
-            partition.tolist(), attributes.tolist(), range(self.current, self.current + len(partition))
-        ):
-            row = {self.field_name: vec}
-            for idx, attribute_name in zip(range(len(self.filter_attributes)), self.filter_attributes):
-                attribute = attribute_list[idx].decode()
-                if attribute != "None":
-                    row.update({attribute_name : attribute})
-            if add_id_field_to_body:
-                row.update({self.id_field_name: identifier})
-            bulk_contents.append(row)
-
-        actions[1::2] = bulk_contents
-        return actions
-
-
-    def bulk_transform_non_nested(self, partition: np.ndarray, action) -> List[Dict[str, Any]]:
-        """
-        Create bulk ingest actions for data with a non-nested field.
-        """
-        actions = []
-
-        _ = [
-                actions.extend([action(self.id_field_name, i + self.current), None])
-                for i in range(len(partition))
-            ]
-        bulk_contents = []
-
-        add_id_field_to_body = self.id_field_name != self.DEFAULT_ID_FIELD_NAME
-        for vec, identifier in zip(
-            partition.tolist(), range(self.current, self.current + len(partition))
-        ):
-            row = {self.field_name: vec}
-            if add_id_field_to_body:
-                row.update({self.id_field_name: identifier})
-            bulk_contents.append(row)
-
-        actions[1::2] = bulk_contents
-        return actions
-
-
-    def bulk_transform(
-        self, partition: np.ndarray, action, parents_ids: Optional[np.ndarray], attributes: Optional[np.ndarray]
-    ) -> List[Dict[str, Any]]:
-        """Partitions and transforms a list of vectors into OpenSearch's bulk
-        injection format.
-        Args:
-            offset: to start counting from
-            partition: An array of vectors to transform.
-            action: Bulk API action.
-        Returns:
-            An array of transformed vectors in bulk format.
-        """
-
-        if not self.is_nested and not self.filter_attributes:
-            return self.bulk_transform_non_nested(partition, action)
-
-        # TODO: Assumption: we won't add attributes if we're also doing a nested query.
-        if self.filter_attributes:
-            return self.bulk_transform_add_attributes(partition, action, attributes)
-        actions = []
-
-        outer_field_name, inner_field_name = self.get_split_fields()
-
-        add_id_field_to_body = self.id_field_name != self.DEFAULT_ID_FIELD_NAME
-
-        if self.action_buffer is None:
-            first_index_of_parent_ids = 0
-            self.action_buffer = {outer_field_name: []}
-            self.action_parent_id = parents_ids[first_index_of_parent_ids]
-            if add_id_field_to_body:
-                self.action_buffer.update({self.id_field_name: self.action_parent_id})
-
-        part_list = partition.tolist()
-        for i in range(len(partition)):
-
-            nested = {inner_field_name: part_list[i]}
-
-            current_parent_id = parents_ids[i]
-
-            if self.action_parent_id == current_parent_id:
-                self.action_buffer[outer_field_name].append(nested)
-            else:
-                # flush action buffer
-                actions.extend(
-                    [
-                        action(self.id_field_name, self.action_parent_id),
-                        self.action_buffer,
-                    ]
-                )
-
-                self.current += len(self.action_buffer[outer_field_name])
-
-                self.action_buffer = {outer_field_name: []}
-                if add_id_field_to_body:
-
-                    self.action_buffer.update({self.id_field_name: current_parent_id})
-
-                self.action_buffer[outer_field_name].append(nested)
-
-                self.action_parent_id = current_parent_id
-
-        max_position = self.offset + self.num_vectors
-        if (
-            self.current + len(self.action_buffer[outer_field_name]) + self.bulk_size
-            >= max_position
-        ):
-            # final flush of remaining vectors in the last partition (for the last client)
-            self.current += len(self.action_buffer[outer_field_name])
-            actions.extend(
-                [action(self.id_field_name, self.action_parent_id), self.action_buffer]
-            )
-
-        return actions
-
-    def params(self):
-        """
-        Returns: A bulk index parameter with vectors from a data set.
-        """
-        if self.current >= self.num_vectors + self.offset:
-            raise StopIteration
-
-        def action(id_field_name, doc_id):
-            # support only index operation
-            bulk_action = "index"
-            metadata = {"_index": self.index_name}
-            # Add id field to metadata only if it is _id
-            if id_field_name == self.DEFAULT_ID_FIELD_NAME:
-                metadata.update({id_field_name: doc_id})
-            return {bulk_action: metadata}
-
-        remaining_vectors_in_partition = self.num_vectors + self.offset - self.current
-
-        bulk_size = min(self.bulk_size, remaining_vectors_in_partition)
-
-        partition = self.data_set.read(bulk_size)
-
-        if self.is_nested:
-            parent_ids = self.parent_data_set.read(bulk_size)
-        else:
-            parent_ids = None
-
-        if self.filter_attributes:
-            attributes = self.attributes_data_set.read(bulk_size)
-        else:
-            attributes = None
-
-        body = self.bulk_transform(partition, action, parent_ids, attributes)
-        size = len(body) // 2
-
-        if not self.is_nested:
-            # in the nested case, we may have irregular number of vectors ingested,
-            # so we calculate self.current within bulk_transform method when self.is_nested.
-            self.current += size
-        self.task_progress = (self.current / self.total, '%')
-
-        return {"body": body, "retries": self.retries, "size": size}
-
 
 def get_target(workload, params):
-    if len(workload.indices) == 1:
-        default_target = workload.indices[0].name
-    elif len(workload.data_streams) == 1:
-        default_target = workload.data_streams[0].name
+    if len(workload.collections) == 1:
+        default_target = workload.collections[0].name
     else:
         default_target = None
-    # indices are preferred but data streams can also be queried the same way
-    target_name = params.get("index")
+    target_name = params.get("index") or params.get("collection")
     if not target_name:
         target_name = params.get("data-stream", default_target)
     return target_name
@@ -1567,14 +659,8 @@ def create_default_reader(corpus, docs, offset, num_lines, num_docs, batch_size,
     source = Slice(io.MmapSource, offset, num_lines, corpus, docs)
     target = None
     use_create = False
-    if docs.target_index:
-        target = docs.target_index
-    elif docs.target_data_stream:
-        target = docs.target_data_stream
-        use_create = True
-        if id_conflicts != IndexIdConflict.NoConflicts:
-            # can only create docs in data streams
-            raise exceptions.BenchmarkError("Conflicts cannot be generated with append only data streams")
+    if docs.target_collection:
+        target = docs.target_collection
 
     if docs.includes_action_and_meta_data:
         return SourceOnlyIndexDataReader(docs.document_file, batch_size, bulk_size, source, target, docs.target_type)
@@ -1599,9 +685,7 @@ def create_readers(num_clients, start_client_index, end_client_index, corpora, b
                 offset, num_docs, num_lines = bounds(docs.number_of_documents, start_client_index, end_client_index,
                                                      num_clients, docs.includes_action_and_meta_data)
                 if num_docs > 0:
-                    target = f"{docs.target_index}/{docs.target_type}" if docs.target_index else "/"
-                    if docs.target_data_stream:
-                        target = docs.target_data_stream
+                    target = f"{docs.target_collection}/{docs.target_type}" if docs.target_collection else "/"
                     logger.info("Task-relative clients at index [%d-%d] will bulk index [%d] docs starting from line offset [%d] for [%s] "
                                 "from corpus [%s].", start_client_index, end_client_index, num_docs, offset,
                                 target, corpus.name)
@@ -2000,24 +1084,114 @@ class SourceOnlyIndexDataReader(IndexDataReader):
 
 
 register_param_source_for_operation(workload.OperationType.Bulk, BulkIndexParamSource)
-register_param_source_for_operation(workload.OperationType.ProtoBulk, BulkIndexParamSource)
-register_param_source_for_operation(workload.OperationType.BulkVectorDataSet, BulkVectorsFromDataSetParamSource)
 register_param_source_for_operation(workload.OperationType.Search, SearchParamSource)
-register_param_source_for_operation(workload.OperationType.VectorSearch, VectorSearchParamSource)
-register_param_source_for_operation(workload.OperationType.ProtoVectorSearch, VectorSearchParamSource)
-register_param_source_for_operation(workload.OperationType.CreateIndex, CreateIndexParamSource)
-register_param_source_for_operation(workload.OperationType.DeleteIndex, DeleteIndexParamSource)
-register_param_source_for_operation(workload.OperationType.CreateDataStream, CreateDataStreamParamSource)
-register_param_source_for_operation(workload.OperationType.DeleteDataStream, DeleteDataStreamParamSource)
-register_param_source_for_operation(workload.OperationType.CreateIndexTemplate, CreateIndexTemplateParamSource)
-register_param_source_for_operation(workload.OperationType.DeleteIndexTemplate, DeleteIndexTemplateParamSource)
-register_param_source_for_operation(workload.OperationType.CreateComponentTemplate, CreateComponentTemplateParamSource)
-register_param_source_for_operation(workload.OperationType.DeleteComponentTemplate, DeleteComponentTemplateParamSource)
-register_param_source_for_operation(workload.OperationType.CreateComposableTemplate, CreateComposableTemplateParamSource)
-register_param_source_for_operation(workload.OperationType.DeleteComposableTemplate, DeleteIndexTemplateParamSource)
 register_param_source_for_operation(workload.OperationType.Sleep, SleepParamSource)
-register_param_source_for_operation(workload.OperationType.ForceMerge, ForceMergeParamSource)
-register_param_source_for_operation(workload.OperationType.ProduceStreamMessage, BulkIndexParamSource)
 
 # Also register by name, so users can use it too
 register_param_source_for_name("file-reader", BulkIndexParamSource)
+
+# Solr collection param sources — registered by op-type string directly
+# (avoids adding CreateCollection/DeleteCollection to the OperationType enum)
+__PARAM_SOURCES_BY_OP["create-collection"] = CreateCollectionParamSource
+__PARAM_SOURCES_BY_OP["delete-collection"] = DeleteCollectionParamSource
+
+
+# ---------------------------------------------------------------------------
+# Solr-specific param sources
+# ---------------------------------------------------------------------------
+
+class SolrSearchParamSource(ParamSource):
+    """
+    Param source for Solr search operations.
+
+    Supports two modes:
+
+    Mode 1 — Classic Solr params (default when no ``body`` key is present):
+      ``q``, ``fl``, ``rows``, ``fq``, ``sort``, ``request-params``
+
+    Mode 2 — JSON Query DSL (when ``body`` key is present):
+      Pass the query body dict directly; it is forwarded as-is to
+      ``POST /solr/{collection}/query``.
+
+    Common params:
+      - ``collection`` — target Solr collection (resolved via get_target() if not explicit)
+      - ``host``, ``port``, ``username``, ``password``, ``tls``, ``timeout``
+      - ``cache``      — ignored for Solr (kept for API compatibility)
+    """
+
+    def __init__(self, workload, params, **kwargs):
+        super().__init__(workload, params, **kwargs)
+        collection = params.get("collection") or get_target(workload, params)
+        if not collection:
+            raise exceptions.InvalidSyntax(
+                f"'collection' is mandatory and is missing for operation '{kwargs.get('operation_name')}'"
+            )
+
+        self.query_params = {
+            "collection": collection,
+            "host": params.get("host", "localhost"),
+            "port": params.get("port", 8983),
+            "tls": params.get("tls", False),
+            "timeout": params.get("timeout", 30),
+        }
+        if params.get("username"):
+            self.query_params["username"] = params["username"]
+        if params.get("password"):
+            self.query_params["password"] = params["password"]
+
+        if "body" in params:
+            # Mode 2: JSON Query DSL
+            self.query_params["body"] = params["body"]
+        else:
+            # Mode 1: Classic Solr params
+            for key in ("q", "fl", "rows", "fq", "sort"):
+                if key in params:
+                    self.query_params[key] = params[key]
+            if "request-params" in params:
+                self.query_params["request-params"] = params["request-params"]
+
+    def params(self):
+        return self.query_params
+
+
+class SolrBulkIndexParamSource(BulkIndexParamSource):
+    """
+    Extends BulkIndexParamSource to inject a default ``collection`` from the workload
+    when the operation does not specify one explicitly.
+
+    This mirrors ASB's own get_target() mechanism used by SearchParamSource, ensuring
+    that bulk-index operations work without an explicit ``collection`` param as long as
+    the workload has exactly one collection defined.
+    """
+
+    def __init__(self, workload, params, **kwargs):
+        if not params.get("collection") and not params.get("index"):
+            target = get_target(workload, params)
+            if target:
+                params = dict(params)
+                params["collection"] = target
+        super().__init__(workload, params, **kwargs)
+
+
+class SolrOptimizeParamSource(ParamSource):
+    """
+    Param source for Solr optimize operations.
+
+    Resolves the target collection via get_target() when not explicitly specified,
+    mirroring ASB's default-index mechanism.
+    """
+
+    def __init__(self, workload, params, **kwargs):
+        super().__init__(workload, params, **kwargs)
+        collection = params.get("collection") or get_target(workload, params)
+        self._resolved_params = dict(params)
+        if collection:
+            self._resolved_params["collection"] = collection
+
+    def params(self):
+        return self._resolved_params
+
+
+register_param_source_for_name("solr-search", SolrSearchParamSource)
+register_param_source_for_name("bulk-index", SolrBulkIndexParamSource)
+register_param_source_for_name("optimize", SolrOptimizeParamSource)

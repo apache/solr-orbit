@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -95,15 +98,6 @@ def load_cluster_config(repo, name, cluster_config_params=None):
     variables.update(all_cluster_config_vars)
 
     return ClusterConfigInstance(name, root_path, all_config_paths, variables=variables)
-
-
-def list_plugins(cfg):
-    plugins = PluginLoader(cluster_config_path(cfg)).plugins()
-    if plugins:
-        console.println("Available OpenSearch plugins:\n")
-        console.println(tabulate.tabulate([[p.name, p.config] for p in plugins], headers=["Name", "Configuration"]))
-    else:
-        console.println("No OpenSearch plugins are available.\n")
 
 
 def load_plugin(repo, name, config, plugin_params=None):
@@ -390,11 +384,11 @@ class PluginLoader:
                 if not io.exists(config_file):
                     if core_plugin:
                         raise exceptions.SystemSetupError("Plugin [%s] does not provide configuration [%s]. List the available plugins "
-                                                          "and configurations with %s list opensearch-plugins "
+                                                          "and configurations with %s list cluster-configs "
                                                           "--distribution-version=VERSION." % (name, config_name, PROGRAM_NAME))
                     else:
                         raise exceptions.SystemSetupError("Unknown plugin [%s]. List the available plugins with %s list "
-                                                          "opensearch-plugins --distribution-version=VERSION." % (name, PROGRAM_NAME))
+                                                          "cluster-configs --distribution-version=VERSION." % (name, PROGRAM_NAME))
 
                 config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
                 # Do not modify the case of option keys but read them as is
@@ -481,8 +475,7 @@ class BootstrapHookHandler:
         :param loader_class: The implementation that loads the provided component's code.
         """
         self.component = component
-        # Don't allow the loader to recurse. The subdirectories may contain OpenSearch specific files which we do not want to add to
-        # OSB's Python load path. We may need to define a more advanced strategy in the future.
+        # Don't allow the loader to recurse.
         self.loader = loader_class(root_path=self.component.root_path, component_entry_point=self.component.entry_point, recurse=False)
         self.hooks = {}
         self.logger = logging.getLogger(__name__)

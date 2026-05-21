@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -31,7 +34,7 @@ bulk_index = runner.BulkIndex()
 BULK_SIZE = 5000
 
 
-class OpenSearchMock:
+class SolrMock:
     def __init__(self, bulk_size):
         self.no_errors = {
             "took": 500,
@@ -61,7 +64,7 @@ class OpenSearchMock:
         return self.no_errors
 
 
-os_mock = OpenSearchMock(bulk_size=BULK_SIZE)
+solr_mock = SolrMock(bulk_size=BULK_SIZE)
 
 
 @pytest.mark.benchmark(
@@ -71,7 +74,7 @@ os_mock = OpenSearchMock(bulk_size=BULK_SIZE)
     disable_gc=True
 )
 def test_bulk_runner_without_errors_no_detailed_results(benchmark):
-    benchmark(bulk_index, os_mock, {
+    benchmark(bulk_index, solr_mock, {
         "action-metadata-present": True,
         "body": "bulk API body",
         "bulk-size": BULK_SIZE
@@ -85,7 +88,7 @@ def test_bulk_runner_without_errors_no_detailed_results(benchmark):
     disable_gc=True
 )
 def test_bulk_runner_without_errors_with_detailed_results(benchmark):
-    benchmark(bulk_index, os_mock, {
+    benchmark(bulk_index, solr_mock, {
         "action-metadata-present": True,
         "body": "bulk API body",
         "bulk-size": BULK_SIZE,

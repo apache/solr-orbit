@@ -1,5 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+# Modifications Copyright OpenSearch Contributors. See
+# GitHub history for details.
+# Licensed to Elasticsearch B.V. under one or more contributor
+# license agreements. See the NOTICE file distributed with
+# this work for additional information regarding copyright
+# ownership. Elasticsearch B.V. licenses this file to you under
+# the Apache License, Version 2.0 (the "License"); you may
+# not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#	http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 from osbenchmark.builder.installers.installer import Installer
-from osbenchmark.builder.installers.preparers.plugin_preparer import PluginPreparer
 from osbenchmark.builder.cluster_config import BootstrapPhase
 from osbenchmark.builder.utils.config_applier import ConfigApplier
 from osbenchmark.builder.utils.java_home_resolver import JavaHomeResolver
@@ -40,12 +66,6 @@ class BareInstaller(Installer):
 
         for preparer, node in preparer_to_node.items():
             config_vars.update(preparer.get_config_vars(host, node, all_node_ips))
-
-        plugin_names = [preparer.get_plugin_name() for preparer in self.preparers if isinstance(preparer, PluginPreparer)]
-        if plugin_names:
-            # as a safety measure, prevent the cluster to startup if something went wrong during plugin installation
-            config_vars["cluster_settings"] = {}
-            config_vars["cluster_settings"]["plugin.mandatory"] = plugin_names
 
         return config_vars
 

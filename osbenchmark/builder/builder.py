@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -32,7 +35,10 @@ import traceback
 from collections import defaultdict
 
 import thespian.actors
-from opensearchpy.exceptions import NotFoundError
+
+
+class NotFoundError(Exception):
+    pass
 
 from osbenchmark import (PROGRAM_NAME, actor, client, config, exceptions,
                          metrics, paths)
@@ -45,9 +51,9 @@ METRIC_FLUSH_INTERVAL_SECONDS = 30
 
 
 def download(cfg):
-    cluster_config, plugins = load_cluster_config(cfg, external=False)
+    cluster_config, _ = load_cluster_config(cfg, external=False)
 
-    s = supplier.create(cfg, sources=False, distribution=True, cluster_config=cluster_config, plugins=plugins)
+    s = supplier.create(cfg, sources=False, cluster_config=cluster_config)
     binaries = s()
     console.println(json.dumps(binaries, indent=2), force=True)
 
@@ -75,15 +81,15 @@ def install(cfg):
         master_nodes = [node_name]
 
     if build_type == "tar":
-        binary_supplier = supplier.create(cfg, sources, distribution, cluster_config, plugins)
-        p = provisioner.local(cfg=cfg, cluster_config=cluster_config, plugins=plugins, ip=ip, http_port=http_port,
+        binary_supplier = supplier.create(cfg, sources, cluster_config)
+        p = provisioner.local(cfg=cfg, cluster_config=cluster_config, ip=ip, http_port=http_port,
                               all_node_ips=seed_hosts, all_node_names=master_nodes, target_root=root_path,
                               node_name=node_name)
         node_config = p.prepare(binary=binary_supplier())
     elif build_type == "docker":
         if len(plugins) > 0:
             raise exceptions.SystemSetupError("You cannot specify any plugins for Docker clusters. Please remove "
-                                              "\"--opensearch-plugins\" and try again.")
+                                              "\"--plugins\" and try again.")
         p = provisioner.docker(
             cfg=cfg, cluster_config=cluster_config,
             ip=ip, http_port=http_port, target_root=root_path, node_name=node_name)
@@ -263,33 +269,21 @@ class NodesStopped:
     pass
 
 
-def cluster_distribution_version(cfg, client_factory=client.OsClientFactory):
+def cluster_distribution_version(cfg, client_factory=client.ClientFactory):
     """
     Attempt to get the cluster's distribution version even before it is actually started (which makes only sense for externally
     provisioned clusters).
 
     :param cfg: The current config object.
-    :param client_factory: Factory class that creates the OpenSearch client.
+    :param client_factory: Factory class that creates the client.
     :return: The distribution version.
     """
     hosts = cfg.opts("client", "hosts").default
     client_options = cfg.opts("client", "options").default
-    opensearch = client_factory(hosts, client_options).create()
-    # unconditionally wait for the REST layer - if it's not up by then, we'll intentionally raise the original error
-    client.wait_for_rest_layer(opensearch)
-    try:
-        info = opensearch.info()
-        distribution_version = info["version"]["number"]
-    except NotFoundError as e:
-        if e.status_code == 404:
-            console.info("Root url not found, setting distribution version to oss")
-            distribution_version = "oss"
-        else:
-            distribution_version = None
-    except Exception:
-        console.warn("Could not determine distribution version from endpoint, use --distribution-version to specify")
-        distribution_version = None
-    return distribution_version
+    client_instance = client_factory(hosts, client_options).create()
+    if isinstance(client_instance, client.SolrClient):
+        return "9.10.1"
+    return None
 
 
 def to_ip_port(hosts):
@@ -297,10 +291,10 @@ def to_ip_port(hosts):
     for host in hosts:
         host = host.copy()
         host_or_ip = host.pop("host")
-        port = host.pop("port", 9200)
+        port = host.pop("port", 8983)
         if host:
-            raise exceptions.SystemSetupError("When specifying nodes to be managed by OSB you can only supply "
-                                              "hostname:port pairs (e.g. 'localhost:9200'), any additional options cannot "
+            raise exceptions.SystemSetupError("When specifying nodes to be managed by solr-benchmark you can only supply "
+                                              "hostname:port pairs (e.g. 'localhost:8983'), any additional options cannot "
                                               "be supported.")
         ip = net.resolve(host_or_ip)
         ip_port_pairs.append((ip, port))
@@ -364,7 +358,7 @@ class BuilderActor(actor.BenchmarkActor):
         self.logger.info("BuilderActor#receiveMessage poison(msg = [%s] sender = [%s])", str(msg.poisonMessage), str(sender))
         # something went wrong with a child actor (or another actor with which we have communicated)
         if isinstance(msg.poisonMessage, StartEngine):
-            failmsg = "Could not start benchmark candidate. Are OSB daemons on all targeted machines running?"
+            failmsg = "Could not start benchmark candidate. Are ASB daemons on all targeted machines running?"
         else:
             failmsg = msg.details
         self.logger.error(failmsg)
@@ -386,14 +380,14 @@ class BuilderActor(actor.BenchmarkActor):
 
         self.externally_provisioned = msg.external
         if self.externally_provisioned:
-            self.logger.info("Cluster will not be provisioned by OSB.")
+            self.logger.info("Cluster will not be provisioned by ASB.")
             self.status = "nodes_started"
             self.received_responses = []
             self.on_all_nodes_started()
             self.status = "cluster_started"
         else:
             console.info("Preparing for test run ...", flush=True)
-            self.logger.info("Cluster consisting of %s will be provisioned by OSB.", hosts)
+            self.logger.info("Cluster consisting of %s will be provisioned by ASB.", hosts)
             msg.hosts = hosts
             # Initialize the children array to have the right size to
             # ensure waiting for all responses
@@ -510,12 +504,12 @@ class Dispatcher(actor.BenchmarkActor):
 
     def receiveMsg_ActorSystemConventionUpdate(self, convmsg, sender):
         if not convmsg.remoteAdded:
-            self.logger.warning("Remote OSB node [%s] exited during NodeBuilderActor startup process.", convmsg.remoteAdminAddress)
+            self.logger.warning("Remote ASB node [%s] exited during NodeBuilderActor startup process.", convmsg.remoteAdminAddress)
             self.start_sender(actor.BenchmarkFailure(
-                "Remote OSB node [%s] has been shutdown prematurely." % convmsg.remoteAdminAddress))
+                "Remote ASB node [%s] has been shutdown prematurely." % convmsg.remoteAdminAddress))
         else:
             remote_ip = convmsg.remoteCapabilities.get('ip', None)
-            self.logger.info("Remote OSB node [%s] has started.", remote_ip)
+            self.logger.info("Remote ASB node [%s] has started.", remote_ip)
 
             for eachmsg in self.remotes[remote_ip]:
                 self.pending.append((self.createActor(NodeBuilderActor,
@@ -642,6 +636,8 @@ def load_cluster_config(cfg, external):
         plugins = cc.load_plugins(cluster_config_path,
                                     cfg.opts("builder", "cluster_config.plugins", mandatory=False),
                                     cfg.opts("builder", "plugin.params", mandatory=False))
+        # Store cluster_config_instance in config for TestRun to access (for result metadata)
+        cfg.add(config.Scope.applicationOverride, "builder", "cluster_config.instance", cluster_config)
     return cluster_config, plugins
 
 
@@ -653,21 +649,21 @@ def create(cfg, metrics_store, node_ip, node_http_port, all_node_ips, all_node_i
     cluster_config, plugins = load_cluster_config(cfg, external)
 
     if sources or distribution:
-        s = supplier.create(cfg, sources, distribution, cluster_config, plugins)
+        s = supplier.create(cfg, sources, cluster_config)
         p = []
         all_node_names = ["%s-%s" % (node_name_prefix, n) for n in all_node_ids]
         for node_id in node_ids:
             node_name = "%s-%s" % (node_name_prefix, node_id)
             p.append(
-                provisioner.local(cfg, cluster_config, plugins, node_ip, node_http_port, all_node_ips,
+                provisioner.local(cfg, cluster_config, node_ip, node_http_port, all_node_ips,
                                   all_node_names, test_run_root_path, node_name))
         l = launcher.ProcessLauncher(cfg)
     elif external:
-        raise exceptions.BenchmarkAssertionError("Externally provisioned clusters should not need to be managed by OSB's builder")
+        raise exceptions.BenchmarkAssertionError("Externally provisioned clusters should not need to be managed by ASB's builder")
     elif docker:
         if len(plugins) > 0:
             raise exceptions.SystemSetupError("You cannot specify any plugins for Docker clusters. Please remove "
-                                              "\"--opensearch-plugins\" and try again.")
+                                              "\"--plugin-params\" and try again.")
         s = lambda: None
         p = []
         for node_id in node_ids:

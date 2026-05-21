@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -98,7 +101,7 @@ def major_version(java_home, sysprop_reader=system_property):
 def is_early_access_release(java_home, sysprop_reader=system_property):
     """
     Determines whether the JVM available at the provided JAVA_HOME directory is an early access release. It mimicks the corresponding
-    bootstrap check in OpenSearch itself.
+    bootstrap check in the upstream project.
 
     :param java_home: The JAVA_HOME directory to check.
     :param sysprop_reader: (Optional) only relevant for testing.

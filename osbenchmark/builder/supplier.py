@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -29,33 +32,27 @@ import os
 import re
 import shutil
 import urllib.error
-import enum
 
 from osbenchmark import exceptions, paths, PROGRAM_NAME
 from osbenchmark.exceptions import BuildError, SystemSetupError
-from osbenchmark.utils import git, io, process, net, jvm, convert, sysstats
+from osbenchmark.utils import git, io, process, net, jvm, convert
 
 # e.g. my-plugin:current - we cannot simply use String#split(":") as this would not work for timestamp-based revisions
 REVISION_PATTERN = r"(\w.*?):(.*)"
 
 
-def create(cfg, sources, distribution, cluster_config, plugins=None):
+def create(cfg, sources, cluster_config):
     logger = logging.getLogger(__name__)
-    if plugins is None:
-        plugins = []
     caching_enabled = cfg.opts("source", "cache", mandatory=False, default_value=True)
     revisions = _extract_revisions(cfg.opts("builder", "source.revision", mandatory=sources))
     distribution_version = cfg.opts("builder", "distribution.version", mandatory=False)
-    supply_requirements = _supply_requirements(sources, distribution, plugins, revisions, distribution_version)
+    supply_requirements = _supply_requirements(sources, revisions, distribution_version)
     build_needed = any([build for _, _, build in supply_requirements.values()])
-    os_supplier_type, os_version, _ = supply_requirements["opensearch"]
+    os_supplier_type, os_version, _ = supply_requirements["solr"]
     src_config = cfg.all_opts("source")
     suppliers = []
 
-    target_os = cfg.opts("builder", "target.os", mandatory=False)
-    target_arch = cfg.opts("builder", "target.arch", mandatory=False)
-
-    template_renderer = TemplateRenderer(version=os_version, os_name=target_os, arch=target_arch)
+    template_renderer = TemplateRenderer(version=os_version)
 
     if build_needed:
         raw_build_jdk = cluster_config.mandatory_var("build.jdk")
@@ -64,19 +61,14 @@ def create(cfg, sources, distribution, cluster_config, plugins=None):
         except ValueError:
             raise exceptions.SystemSetupError(f"ClusterConfigInstance config key [build.jdk] is invalid: [{raw_build_jdk}] (must be int)")
 
-        os_src_dir = os.path.join(_src_dir(cfg), _config_value(src_config, "opensearch.src.subdir"))
+        os_src_dir = os.path.join(_src_dir(cfg), _config_value(src_config, "src.subdir"))
         builder = Builder(os_src_dir, build_jdk, paths.logs())
     else:
         builder = None
 
     distributions_root = os.path.join(cfg.opts("node", "root.dir"), cfg.opts("source", "distribution.dir"))
     dist_cfg = {}
-    # cluster_config / plugin defines defaults...
     dist_cfg.update(cluster_config.variables)
-    for plugin in plugins:
-        for k, v in plugin.variables.items():
-            dist_cfg["plugin_{}_{}".format(plugin.name, k)] = v
-    # ... but the user can override it in benchmark.ini
     dist_cfg.update(cfg.all_opts("distributions"))
 
     if caching_enabled:
@@ -92,9 +84,9 @@ def create(cfg, sources, distribution, cluster_config, plugins=None):
         source_distributions_root = None
 
     if os_supplier_type == "source":
-        os_src_dir = os.path.join(_src_dir(cfg), _config_value(src_config, "opensearch.src.subdir"))
+        os_src_dir = os.path.join(_src_dir(cfg), _config_value(src_config, "src.subdir"))
 
-        source_supplier = OpenSearchSourceSupplier(os_version,
+        source_supplier = SourceSupplier(os_version,
                                                       os_src_dir,
                                                       remote_url=cfg.opts("source", "remote.repo.url"),
                                                       cluster_config=cluster_config,
@@ -102,52 +94,24 @@ def create(cfg, sources, distribution, cluster_config, plugins=None):
                                                       template_renderer=template_renderer)
 
         if caching_enabled:
-            os_file_resolver = OpenSearchFileNameResolver(dist_cfg, template_renderer)
+            os_file_resolver = FileNameResolver(dist_cfg, template_renderer)
             source_supplier = CachedSourceSupplier(source_distributions_root,
                                                    source_supplier,
                                                    os_file_resolver)
 
         suppliers.append(source_supplier)
-        repo = None
     else:
-        os_src_dir = None
         repo = DistributionRepository(name=cfg.opts("builder", "distribution.repository"),
                                       distribution_config=dist_cfg,
                                       template_renderer=template_renderer)
-        suppliers.append(OpenSearchDistributionSupplier(repo, os_version, distributions_root))
-
-    for plugin in plugins:
-        supplier_type, plugin_version, _ = supply_requirements[plugin.name]
-
-        if supplier_type == "source":
-            if CorePluginSourceSupplier.can_handle(plugin):
-                logger.info("Adding core plugin source supplier for [%s].", plugin.name)
-                assert os_src_dir is not None, f"Cannot build core plugin {plugin.name} when OpenSearch is not built from source."
-                plugin_supplier = CorePluginSourceSupplier(plugin, os_src_dir, builder)
-            elif ExternalPluginSourceSupplier.can_handle(plugin):
-                logger.info("Adding external plugin source supplier for [%s].", plugin.name)
-                plugin_supplier = ExternalPluginSourceSupplier(plugin, plugin_version, _src_dir(cfg, mandatory=False), src_config, builder)
-            else:
-                raise exceptions.BenchmarkError("Plugin %s can neither be treated as core nor as external plugin. Requirements: %s" %
-                                            (plugin.name, supply_requirements[plugin.name]))
-
-            if caching_enabled:
-                plugin_file_resolver = PluginFileNameResolver(plugin.name, plugin_version)
-                plugin_supplier = CachedSourceSupplier(source_distributions_root,
-                                                       plugin_supplier,
-                                                       plugin_file_resolver)
-            suppliers.append(plugin_supplier)
-        else:
-            logger.info("Adding plugin distribution supplier for [%s].", plugin.name)
-            assert repo is not None, "Cannot benchmark plugin %s from a distribution version but OpenSearch from sources" % plugin.name
-            suppliers.append(PluginDistributionSupplier(repo, plugin))
+        suppliers.append(DistributionSupplier(repo, os_version, distributions_root))
 
     return CompositeSupplier(suppliers)
 
 
 def _required_version(version):
     if not version or version.strip() == "":
-        raise exceptions.SystemSetupError("Could not determine version. Please specify the OpenSearch distribution "
+        raise exceptions.SystemSetupError("Could not determine version. Please specify the Solr distribution "
                                           "to download with the command line parameter --distribution-version.")
     else:
         return version
@@ -161,41 +125,19 @@ def _required_revision(revisions, key, name=None):
         raise exceptions.SystemSetupError("No revision specified for %s" % n)
 
 
-def _supply_requirements(sources, distribution, plugins, revisions, distribution_version):
-    # per artifact (OpenSearch or a specific plugin):
-    #   * key: artifact
-    #   * value: ("source" | "distribution", distribution_version | revision, build = True | False)
+def _supply_requirements(sources, revisions, distribution_version):
+    # * key: artifact
+    # * value: ("source" | "distribution", distribution_version | revision, build = True | False)
     supply_requirements = {}
 
-    # can only build OpenSearch with source-related pipelines -> ignore revision in that case
-    if "opensearch" in revisions and sources:
-        supply_requirements["opensearch"] = ("source", _required_revision(revisions, "opensearch", "OpenSearch"), True)
+    # can only build Solr with source-related pipelines -> ignore revision in that case
+    if "solr" in revisions and sources:
+        supply_requirements["solr"] = ("source", _required_revision(revisions, "solr", "Solr"), True)
     else:
         # no revision given or explicitly specified that it's from a distribution -> must use a distribution
-        supply_requirements["opensearch"] = ("distribution", _required_version(distribution_version), False)
+        supply_requirements["solr"] = ("distribution", _required_version(distribution_version), False)
 
-    for plugin in plugins:
-        if plugin.core_plugin:
-            # core plugins are entirely dependent upon OpenSearch.
-            supply_requirements[plugin.name] = supply_requirements["opensearch"]
-        else:
-            # allow catch-all only if we're generally building from sources. If it is mixed, the user should tell explicitly.
-            if plugin.name in revisions or ("all" in revisions and sources):
-                # be a bit more lenient when checking for plugin revisions. This allows users to specify `--revision="current"` and
-                # rely on OSB to do the right thing.
-                try:
-                    plugin_revision = revisions[plugin.name]
-                except KeyError:
-                    # maybe we can use the catch-all revision (only if it's not a git revision)
-                    plugin_revision = revisions.get("all")
-                    if not plugin_revision or SourceRepository.is_commit_hash(plugin_revision):
-                        raise exceptions.SystemSetupError("No revision specified for plugin [%s]." % plugin.name)
-                    else:
-                        logging.getLogger(__name__).info("Revision for [%s] is not explicitly defined. Using catch-all revision [%s].",
-                                                         plugin.name, plugin_revision)
-                supply_requirements[plugin.name] = ("source", plugin_revision, True)
-            else:
-                supply_requirements[plugin.name] = (distribution, _required_version(distribution_version), False)
+    # Solr does not support plugin installation via the benchmark tool
     return supply_requirements
 
 
@@ -204,8 +146,8 @@ def _src_dir(cfg, mandatory=True):
     try:
         return cfg.opts("node", "src.root.dir", mandatory=mandatory)
     except exceptions.ConfigError:
-        raise exceptions.SystemSetupError("You cannot benchmark OpenSearch from sources. Did you install Gradle? Please install"
-                                          " all prerequisites and reconfigure OSB with %s configure" % PROGRAM_NAME)
+        raise exceptions.SystemSetupError("You cannot benchmark Solr from sources. Did you install Gradle? Please install"
+                                          " all prerequisites and reconfigure with %s configure" % PROGRAM_NAME)
 
 
 def _prune(root_path, max_age_days):
@@ -236,47 +178,12 @@ def _prune(root_path, max_age_days):
         else:
             logger.info("Skipping [%s] (not a file).", artifact)
 
-class SupportedOS(enum.Enum):
-    # Operating systems that OpenSearch currently supports
-    default = "linux"
-    linux = "linux"
-    docker = "docker"
-    freebsd = "freebsd"
-
-    # Checks if value is in enum. If not, it will use default Linux
-    @classmethod
-    def get_os(cls, value):
-        if value not in cls._value2member_map_:
-            return cls.default.value
-        return value
-
 class TemplateRenderer:
-    def __init__(self, version, os_name=None, arch=None):
+    def __init__(self, version):
         self.version = version
-        if os_name is not None:
-            self.os = os_name
-        else:
-            system_os_name = sysstats.os_name().lower()
-            self.os = SupportedOS.get_os(system_os_name)
-
-        if arch is not None:
-            self.arch = arch
-        else:
-            self.arch = sysstats.cpu_arch().lower()
-            # OpenSearch uses arm64 for the 64b Arm binary name
-            if self.arch == "aarch64":
-                self.arch = "arm64"
 
     def render(self, template):
-        substitutions = {
-            "{{VERSION}}": self.version,
-            "{{OSNAME}}": self.os,
-            "{{ARCH}}": self.arch
-        }
-        r = template
-        for key, replacement in substitutions.items():
-            r = r.replace(key, str(replacement))
-        return r
+        return template.replace("{{VERSION}}", str(self.version))
 
 
 class CompositeSupplier:
@@ -296,10 +203,9 @@ class CompositeSupplier:
         return binaries
 
 
-class OpenSearchFileNameResolver:
+class FileNameResolver:
     def __init__(self, distribution_config, template_renderer):
         self.cfg = distribution_config
-        self.runtime_jdk_bundled = convert.to_bool(self.cfg.get("runtime.jdk.bundled", False))
         self.template_renderer = template_renderer
 
     @property
@@ -312,16 +218,14 @@ class OpenSearchFileNameResolver:
 
     @property
     def file_name(self):
-        if self.runtime_jdk_bundled:
-            url_key = "jdk.bundled.release_url"
-        else:
-            url_key = "jdk.unbundled.release_url"
+        # Solr distributions never include a JDK, so we always use release_url
+        url_key = "release_url"
         url = self.template_renderer.render(self.cfg[url_key])
         return url[url.rfind("/") + 1:]
 
     @property
     def artifact_key(self):
-        return "opensearch"
+        return "solr"
 
     def to_artifact_path(self, file_system_path):
         return file_system_path
@@ -386,7 +290,7 @@ class CachedSourceSupplier:
                 self.logger.info("Not caching [%s] (no revision info).", original_path)
 
 
-class OpenSearchSourceSupplier:
+class SourceSupplier:
     def __init__(self, revision, os_src_dir, remote_url, cluster_config, builder, template_renderer):
         self.revision = revision
         self.src_dir = os_src_dir
@@ -396,7 +300,7 @@ class OpenSearchSourceSupplier:
         self.template_renderer = template_renderer
 
     def fetch(self):
-        return SourceRepository("OpenSearch", self.remote_url, self.src_dir).fetch(self.revision)
+        return SourceRepository("Solr", self.remote_url, self.src_dir).fetch(self.revision)
 
     def prepare(self):
         if self.builder:
@@ -406,7 +310,7 @@ class OpenSearchSourceSupplier:
             ])
 
     def add(self, binaries):
-        binaries["opensearch"] = self.resolve_binary()
+        binaries["solr"] = self.resolve_binary()
 
     def resolve_binary(self):
         try:
@@ -414,111 +318,12 @@ class OpenSearchSourceSupplier:
                                 self.template_renderer.render(self.cluster_config.mandatory_var("system.artifact_path_pattern")))
             return glob.glob(path)[0]
         except IndexError:
-            raise SystemSetupError("Couldn't find a tar.gz distribution. Please run OSB with the pipeline 'from-sources'.")
+            raise SystemSetupError("Couldn't find a tar.gz distribution. Please run ASB with the pipeline 'from-sources'.")
 
 
-class PluginFileNameResolver:
-    def __init__(self, plugin_name, revision=None):
-        self.plugin_name = plugin_name
-        self.revision = revision
-
-    @property
-    def file_name(self):
-        return f"{self.plugin_name}-{self.revision}.zip"
-
-    @property
-    def artifact_key(self):
-        return self.plugin_name
-
-    def to_artifact_path(self, file_system_path):
-        return f"file://{file_system_path}"
-
-    def to_file_system_path(self, artifact_path):
-        return artifact_path[len("file://"):]
 
 
-class ExternalPluginSourceSupplier:
-    def __init__(self, plugin, revision, src_dir, src_config, builder):
-        assert not plugin.core_plugin, "Plugin %s is a core plugin" % plugin.name
-        self.plugin = plugin
-        self.revision = revision
-        # may be None if and only if the user has set an absolute plugin directory
-        self.src_dir = src_dir
-        self.src_config = src_config
-        self.builder = builder
-        subdir_cfg_key = "plugin.%s.src.subdir" % self.plugin.name
-        dir_cfg_key = "plugin.%s.src.dir" % self.plugin.name
-        if dir_cfg_key in self.src_config and subdir_cfg_key in self.src_config:
-            raise exceptions.SystemSetupError("Can only specify one of %s and %s but both are set." % (dir_cfg_key, subdir_cfg_key))
-        elif dir_cfg_key in self.src_config:
-            self.plugin_src_dir = _config_value(self.src_config, dir_cfg_key)
-            # we must build directly in the plugin dir, not relative to OpenSearch
-            self.override_build_dir = self.plugin_src_dir
-        elif subdir_cfg_key in self.src_config:
-            self.plugin_src_dir = os.path.join(self.src_dir, _config_value(self.src_config, subdir_cfg_key))
-            self.override_build_dir = None
-        else:
-            raise exceptions.SystemSetupError("Neither %s nor %s are set for plugin %s." % (dir_cfg_key, subdir_cfg_key, self.plugin.name))
-
-    @staticmethod
-    def can_handle(plugin):
-        return not plugin.core_plugin
-
-    def fetch(self):
-        # optional (but then source code is assumed to be available locally)
-        plugin_remote_url = self.src_config.get("plugin.%s.remote.repo.url" % self.plugin.name)
-        return SourceRepository(self.plugin.name, plugin_remote_url, self.plugin_src_dir).fetch(self.revision)
-
-    def prepare(self):
-        if self.builder:
-            command = _config_value(self.src_config, "plugin.{}.build.command".format(self.plugin.name))
-            self.builder.build([command], override_src_dir=self.override_build_dir)
-
-    def add(self, binaries):
-        binaries[self.plugin.name] = self.resolve_binary()
-
-    def resolve_binary(self):
-        artifact_path = _config_value(self.src_config, "plugin.%s.build.artifact.subdir" % self.plugin.name)
-        try:
-            name = glob.glob("%s/%s/*.zip" % (self.plugin_src_dir, artifact_path))[0]
-            return "file://%s" % name
-        except IndexError:
-            raise SystemSetupError("Couldn't find a plugin zip file for [%s]. Please run OSB with the pipeline 'from-sources'." %
-                                   self.plugin.name)
-
-
-class CorePluginSourceSupplier:
-    def __init__(self, plugin, os_src_dir, builder):
-        assert plugin.core_plugin, "Plugin %s is not a core plugin" % plugin.name
-        self.plugin = plugin
-        self.os_src_dir = os_src_dir
-        self.builder = builder
-
-    @staticmethod
-    def can_handle(plugin):
-        return plugin.core_plugin
-
-    def fetch(self):
-        # Just retrieve the current revision *number* and assume that OpenSearch has prepared the source tree.
-        return SourceRepository("OpenSearch", None, self.os_src_dir).fetch(revision="current")
-
-    def prepare(self):
-        if self.builder:
-            self.builder.build(["./gradlew :plugins:{}:assemble".format(self.plugin.name)])
-
-    def add(self, binaries):
-        binaries[self.plugin.name] = self.resolve_binary()
-
-    def resolve_binary(self):
-        try:
-            name = glob.glob("%s/plugins/%s/build/distributions/*.zip" % (self.os_src_dir, self.plugin.name))[0]
-            return "file://%s" % name
-        except IndexError:
-            raise SystemSetupError("Couldn't find a plugin zip file for [%s]. Please run OSB with the pipeline 'from-sources'." %
-                                   self.plugin.name)
-
-
-class OpenSearchDistributionSupplier:
+class DistributionSupplier:
     def __init__(self, repo, version, distributions_root):
         self.repo = repo
         self.version = version
@@ -534,14 +339,14 @@ class OpenSearchDistributionSupplier:
         self.logger.info("Resolved download URL [%s] for version [%s]", download_url, self.version)
         if not os.path.isfile(distribution_path) or not self.repo.cache:
             try:
-                self.logger.info("Starting download of OpenSearch [%s]", self.version)
-                progress = net.Progress("[INFO] Downloading OpenSearch %s" % self.version)
+                self.logger.info("Starting download of Solr [%s]", self.version)
+                progress = net.Progress("[INFO] Downloading Solr %s" % self.version)
                 net.download(download_url, distribution_path, progress_indicator=progress)
                 progress.finish()
-                self.logger.info("Successfully downloaded OpenSearch [%s].", self.version)
+                self.logger.info("Successfully downloaded Solr [%s].", self.version)
             except urllib.error.HTTPError:
-                self.logger.exception("Cannot download OpenSearch distribution for version [%s] from [%s].", self.version, download_url)
-                raise exceptions.SystemSetupError("Cannot download OpenSearch distribution from [%s]. Please check that the specified "
+                self.logger.exception("Cannot download Solr distribution for version [%s] from [%s].", self.version, download_url)
+                raise exceptions.SystemSetupError("Cannot download Solr distribution from [%s]. Please check that the specified "
                                                   "version [%s] is correct." % (download_url, self.version))
         else:
             self.logger.info("Skipping download for version [%s]. Found an existing binary at [%s].", self.version, distribution_path)
@@ -552,26 +357,8 @@ class OpenSearchDistributionSupplier:
         pass
 
     def add(self, binaries):
-        binaries["opensearch"] = self.distribution_path
+        binaries["solr"] = self.distribution_path
 
-
-class PluginDistributionSupplier:
-    def __init__(self, repo, plugin):
-        self.repo = repo
-        self.plugin = plugin
-
-    def fetch(self):
-        pass
-
-    def prepare(self):
-        pass
-
-    def add(self, binaries):
-        # if we have multiple plugin configurations for a plugin we will override entries here but as this is always the same
-        # key-value pair this is ok.
-        plugin_url = self.repo.plugin_download_url(self.plugin.name)
-        if plugin_url:
-            binaries[self.plugin.name] = plugin_url
 
 
 def _config_value(src_config, key):
@@ -586,8 +373,8 @@ def _extract_revisions(revision):
     revisions = revision.split(",") if revision else []
     if len(revisions) == 1:
         r = revisions[0]
-        if r.startswith("opensearch:"):
-            r = r[len("opensearch:"):]
+        if r.startswith("solr:"):
+            r = r[len("solr:"):]
         # may as well be just a single plugin
         m = re.match(REVISION_PATTERN, r)
         if m:
@@ -596,7 +383,7 @@ def _extract_revisions(revision):
             }
         else:
             return {
-                "opensearch": r,
+                "solr": r,
                 # use a catch-all value
                 "all": r
             }
@@ -721,18 +508,13 @@ class DistributionRepository:
     def __init__(self, name, distribution_config, template_renderer):
         self.name = name
         self.cfg = distribution_config
-        self.runtime_jdk_bundled = convert.to_bool(self.cfg.get("runtime.jdk.bundled", False))
         self.template_renderer = template_renderer
         self.logger = logging.getLogger(__name__)
 
     @property
     def download_url(self):
-        # cluster_config repo
-        self.logger.info("runtime_jdk_bundled? [%s]", self.runtime_jdk_bundled)
-        if self.runtime_jdk_bundled:
-            default_key = "jdk.bundled.{}_url".format(self.name)
-        else:
-            default_key = "jdk.unbundled.{}_url".format(self.name)
+        # Solr distributions never include a JDK, so we always use simple key names
+        default_key = "{}_url".format(self.name)
         # benchmark.ini
         override_key = "{}.url".format(self.name)
         self.logger.info("keys: [%s] and [%s]", override_key, default_key)

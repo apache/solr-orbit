@@ -271,7 +271,7 @@ class MappingConverter:
             **params: Optional parameters:
                 dimension: Vector dimensions. Can be retrieved from field_ef (default: 128)
                 sample_vectors: List of base vectors to add noise to. Helps with realistic clustering.
-                               Without sample_vectors, OSB generates uniform random vectors between -1.0 and 1.0
+                               Without sample_vectors, ASB generates uniform random vectors between -1.0 and 1.0
                 noise_factor: Standard deviation (gaussian) or range (uniform) of noise (default: 0.1)
                              Lower values (0.01-0.05) create tight clusters.
                              Higher values (0.2-0.5) create diverse distributions.

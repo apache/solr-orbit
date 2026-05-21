@@ -1,3 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements. See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import logging
 import os.path
 
@@ -6,7 +23,7 @@ from osbenchmark.builder.utils.binary_keys import BinaryKeys
 from osbenchmark.exceptions import ExecutorError
 
 
-class OpenSearchDistributionDownloader(Downloader):
+class DistributionDownloader(Downloader):
     def __init__(self, cluster_config, executor, path_manager, distribution_repository_provider):
         super().__init__(executor)
         self.logger = logging.getLogger(__name__)
@@ -16,21 +33,21 @@ class OpenSearchDistributionDownloader(Downloader):
 
     def download(self, host):
         binary_path = self._fetch_binary(host)
-        return {BinaryKeys.OPENSEARCH: binary_path}
+        return {BinaryKeys.SOLR: binary_path}
 
     def _fetch_binary(self, host):
         download_url = self.distribution_repository_provider.get_download_url(host)
         distribution_path = self._create_distribution_path(host, download_url)
-        opensearch_version = self.cluster_config.variables["distribution"]["version"]
+        version = self.cluster_config.variables["distribution"]["version"]
 
         is_binary_present = self._is_binary_present(host, distribution_path)
         is_cache_enabled = self.distribution_repository_provider.is_cache_enabled()
 
         if is_binary_present and is_cache_enabled:
-            self.logger.info("Skipping download for version [%s]. Found existing binary at [%s].", opensearch_version,
+            self.logger.info("Skipping download for version [%s]. Found existing binary at [%s].", version,
                              distribution_path)
         else:
-            self._download_opensearch(host, distribution_path, download_url, opensearch_version)
+            self._download(host, distribution_path, download_url, version)
 
         return distribution_path
 
@@ -48,15 +65,15 @@ class OpenSearchDistributionDownloader(Downloader):
         except ExecutorError:
             return False
 
-    def _download_opensearch(self, host, distribution_path, download_url, opensearch_version):
-        self.logger.info("Resolved download URL [%s] for version [%s]", download_url, opensearch_version)
-        self.logger.info("Starting download of OpenSearch [%s]", opensearch_version)
+    def _download(self, host, distribution_path, download_url, version):
+        self.logger.info("Resolved download URL [%s] for version [%s]", download_url, version)
+        self.logger.info("Starting download of distribution [%s]", version)
 
         try:
             self.executor.execute(host, f"curl -o {distribution_path} {download_url}")
         except ExecutorError as e:
-            self.logger.exception("Exception downloading OpenSearch distribution for version [%s] from [%s].",
-                                  opensearch_version, download_url)
+            self.logger.exception("Exception downloading distribution for version [%s] from [%s].",
+                                  version, download_url)
             raise e
 
-        self.logger.info("Successfully downloaded OpenSearch [%s].", opensearch_version)
+        self.logger.info("Successfully downloaded distribution [%s].", version)

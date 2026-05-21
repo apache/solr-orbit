@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -296,7 +299,7 @@ class ConfigMigrationTests(TestCase):
 
         config_file.store(sample_config)
         with self.assertRaisesRegex(exceptions.ConfigError,
-                                    "The config file.*is too old. Please delete it and reconfigure OSB from scratch"):
+                                    "The config file.*is too old. Please delete it and reconfigure from scratch"):
             config.migrate(config_file, config.Config.EARLIEST_SUPPORTED_VERSION - 1, config.Config.CURRENT_CONFIG_VERSION, out=null_output)
 
     # catch all test, migrations are checked in more detail in the other tests

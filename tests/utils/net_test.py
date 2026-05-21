@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -50,7 +53,7 @@ class TestNetUtils:
         with pytest.raises(ImportError, match="no module named 'boto3'"):
             net.download_from_bucket("s3", "s3://mybucket/data", "/tmp/data", None, None)
         console_error.assert_called_once_with(
-            "S3 support is optional. Install it with `python -m pip install opensearch-benchmark[s3]`"
+            "S3 support is optional. Install it with `python -m pip install solr-benchmark[s3]`"
         )
 
     @pytest.mark.parametrize("seed", range(1))

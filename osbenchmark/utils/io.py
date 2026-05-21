@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -274,7 +277,7 @@ def _zipdir(source_directory, archive):
 def is_archive(name):
     """
     :param name: File name to check. Can be either just the file name or optionally also an absolute path.
-    :return: True iff the given file name is an archive that is also recognized for decompression by OSB.
+    :return: True iff the given file name is an archive that is also recognized for decompression by ASB.
     """
     _, ext = splitext(name)
     return ext in [".zip", ".bz2", ".gz", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".zst"]

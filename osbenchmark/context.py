@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -43,19 +46,24 @@ class RequestContextManager:
 
     @property
     def request_start(self):
-        return self.ctx["request_start"]
+        return self.ctx.get("request_start")
 
     @property
     def request_end(self):
-        return max((value for value in self.ctx["request_end_list"] if value < self.client_request_end))
+        end_list = self.ctx.get("request_end_list", [])
+        client_end = self.ctx.get("client_request_end")
+        if not end_list or client_end is None:
+            return None
+        valid = [v for v in end_list if v < client_end]
+        return max(valid) if valid else None
 
     @property
     def client_request_start(self):
-        return self.ctx["client_request_start"]
+        return self.ctx.get("client_request_start")
 
     @property
     def client_request_end(self):
-        return self.ctx["client_request_end"]
+        return self.ctx.get("client_request_end")
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         # propagate earliest request start and most recent request end to parent

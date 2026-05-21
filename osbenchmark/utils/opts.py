@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -24,6 +27,7 @@
 
 import difflib
 import json
+import urllib.parse
 import argparse
 
 from osbenchmark import exceptions
@@ -168,6 +172,43 @@ class ConnectOptions:
         return self.parsed_options
 
 
+def _parse_host_string(arg):
+    """Parse a comma-separated host[:port] string into a list of host dicts.
+
+    Handles forms such as::
+
+        localhost
+        localhost:9200
+        host1:9200,host2:9200
+        https://host1:9200,https://host2:9200
+        localhost:8983   (Solr default port)
+
+    Returns a list of dicts with at least a ``host`` key plus optional
+    ``port`` and ``scheme`` keys — the same shape produced by
+    ``_normalize_hosts``, so existing callers are unaffected.
+    """
+    # arg may be a list (from csv_to_list) or a plain string
+    if isinstance(arg, (list, tuple)):
+        items = arg
+    else:
+        items = str(arg).split(",")
+    results = []
+    for item in items:
+        item = item.strip()
+        if not item:
+            continue
+        if "://" not in item:
+            item = "http://" + item
+        parsed = urllib.parse.urlparse(item)
+        entry = {"host": parsed.hostname or "localhost"}
+        if parsed.port:
+            entry["port"] = parsed.port
+        if parsed.scheme and parsed.scheme != "http":
+            entry["scheme"] = parsed.scheme
+        results.append(entry)
+    return results
+
+
 class TargetHosts(ConnectOptions):
     DEFAULT = "default"
 
@@ -185,9 +226,7 @@ class TargetHosts(ConnectOptions):
             This is needed to support backwards compatible --target-hosts for single clusters that are not
             defined as a json string or file.
             """
-            # pylint: disable=import-outside-toplevel
-            from opensearchpy.client.utils import _normalize_hosts
-            return {TargetHosts.DEFAULT: _normalize_hosts(arg)}
+            return {TargetHosts.DEFAULT: _parse_host_string(arg)}
 
         self.parsed_options = to_dict(self.argvalue, default_parser=normalize_to_dict)
 

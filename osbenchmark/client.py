@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -22,382 +25,532 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import io
 import logging
 import time
+import zipfile
+from pathlib import Path
 
-import certifi
-import opensearchpy
-import urllib3
-from urllib3.util.ssl_ import is_ipaddress
+import requests
 
-import grpc
-from opensearch.protobufs.services.document_service_pb2_grpc import DocumentServiceStub
-from opensearch.protobufs.services.search_service_pb2_grpc import SearchServiceStub
-
-from osbenchmark.kafka_client import KafkaMessageProducer
-from osbenchmark import exceptions, doc_link, async_connection
 from osbenchmark.context import RequestContextHolder
-from osbenchmark.utils import console, convert
-from osbenchmark.cloud_provider import CloudProviderFactory
 
-class OsClientFactory:
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Exceptions
+# ---------------------------------------------------------------------------
+
+class SolrClientError(Exception):
+    """Base exception for all SolrAdminClient errors."""
+
+
+class CollectionAlreadyExistsError(SolrClientError):
+    """Raised when create_collection() targets an existing collection."""
+
+
+class CollectionNotFoundError(SolrClientError):
+    """Raised when delete_collection() targets a non-existent collection."""
+
+
+# ---------------------------------------------------------------------------
+# SolrAdminClient
+# ---------------------------------------------------------------------------
+
+class SolrAdminClient:
     """
-    Abstracts how the OpenSearch client is created. Intended for testing.
+    Thin wrapper around requests.Session for Solr V2 API admin operations.
+
+    Handles collection management, configset upload, version detection,
+    cluster status, and metrics retrieval. High-frequency data operations
+    (indexing, search, commit, optimize) use pysolr directly in runner.py.
+
+    Not thread-safe — each worker process creates its own instance.
     """
-    def __init__(self, hosts, client_options):
-        self.hosts = hosts
-        self.client_options = dict(client_options)
-        self.ssl_context = None
-        self.provider = CloudProviderFactory.get_provider_from_client_options(self.client_options)
-        self.logger = logging.getLogger(__name__)
 
-        masked_client_options = dict(client_options)
-        if "basic_auth_password" in masked_client_options:
-            masked_client_options["basic_auth_password"] = "*****"
-        if "http_auth" in masked_client_options:
-            masked_client_options["http_auth"] = (masked_client_options["http_auth"][0], "*****")
-        if self.provider:
-            self.provider.parse_log_in_params(client_options=self.client_options)
-            self.provider.mask_client_options(masked_client_options, self.client_options)
-            self.logger.info("Masking client options with cloud provider: [%s]", self.provider)
+    def __init__(self, host: str, port: int = 8983,
+                 username: str = None, password: str = None,
+                 tls: bool = False, timeout: int = 30):
+        scheme = "https" if tls else "http"
+        self.base_url = f"{scheme}://{host}:{port}"
+        self.api_url = f"{self.base_url}/api"
+        self.timeout = timeout
+        self._username = username
+        self._password = password
+        self._session = None  # created lazily on first use
 
-        self.logger.info("Creating OpenSearch client connected to %s with options [%s]", hosts, masked_client_options)
-        # we're using an SSL context now and it is not allowed to have use_ssl present in client options anymore
-        if self.client_options.pop("use_ssl", False):
-            # pylint: disable=import-outside-toplevel
-            import ssl
-            self.logger.info("SSL support: on")
-            self.client_options["scheme"] = "https"
+    def _get_session(self) -> requests.Session:
+        """Return the shared session, creating it on first call (lazy init)."""
+        if self._session is None:
+            self._session = requests.Session()
+            # Disable automatic proxy detection (trust_env=False) to avoid hanging
+            # on macOS after fork() — CFNetwork proxy detection is not fork-safe.
+            self._session.trust_env = False
+            if self._username and self._password:
+                self._session.auth = (self._username, self._password)
+            self._session.headers.update({"Accept": "application/json"})
+        return self._session
 
-            self.ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH,
-                                                          cafile=self.client_options.pop("ca_certs", certifi.where()))
+    # ------------------------------------------------------------------
+    # Version detection
+    # ------------------------------------------------------------------
 
-            if not self.client_options.pop("verify_certs", True):
-                self.logger.info("SSL certificate verification: off")
-                # order matters to avoid ValueError: check_hostname needs a SSL context with either CERT_OPTIONAL or CERT_REQUIRED
-                self.ssl_context.check_hostname = False
-                self.ssl_context.verify_mode = ssl.CERT_NONE
+    def info(self) -> dict:
+        """Return parsed JSON from GET /api/node/system."""
+        resp = self._get("/api/node/system")
+        return resp.json()
 
-                self.logger.warning("User has enabled SSL but disabled certificate verification. This is dangerous but may be ok for a "
-                                    "benchmark. Disabling urllib warnings now to avoid a logging storm. "
-                                    "See https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings for details.")
-                # disable:  "InsecureRequestWarning: Unverified HTTPS request is being made. Adding certificate verification is strongly \
-                # advised. See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings"
-                urllib3.disable_warnings()
-            else:
-                # The peer's hostname can be matched if only a hostname is provided.
-                # In other words, hostname checking is disabled if an IP address is
-                # found in the host lists.
-                self.ssl_context.check_hostname = self._has_only_hostnames(hosts)
-                self.ssl_context.verify_mode=ssl.CERT_REQUIRED
-                self.logger.info("SSL certificate verification: on")
+    def get_version(self) -> str:
+        """
+        Detect Solr version via GET /api/node/system.
 
-            # When using SSL_context, all SSL related kwargs in client options get ignored
-            client_cert = self.client_options.pop("client_cert", False)
-            client_key = self.client_options.pop("client_key", False)
-
-            if not client_cert and not client_key:
-                self.logger.info("SSL client authentication: off")
-            elif bool(client_cert) != bool(client_key):
-                self.logger.error(
-                    "Supplied client-options contain only one of client_cert/client_key. "
-                )
-                defined_client_ssl_option = "client_key" if client_key else "client_cert"
-                missing_client_ssl_option = "client_cert" if client_key else "client_key"
-                console.println(
-                    "'{}' is missing from client-options but '{}' has been specified.\n"
-                    "If your OpenSearch setup requires client certificate verification both need to be supplied.\n"
-                    "Read the documentation at {}\n".format(
-                        missing_client_ssl_option,
-                        defined_client_ssl_option,
-                        console.format.link(doc_link("command_line_reference.html#client-options")))
-                )
-                raise exceptions.SystemSetupError(
-                    "Cannot specify '{}' without also specifying '{}' in client-options.".format(
-                        defined_client_ssl_option,
-                        missing_client_ssl_option))
-            elif client_cert and client_key:
-                self.logger.info("SSL client authentication: on")
-                self.ssl_context.load_cert_chain(certfile=client_cert,
-                                                 keyfile=client_key)
-        else:
-            self.logger.info("SSL support: off")
-            self.client_options["scheme"] = "http"
-
-        if self._is_set(self.client_options, "basic_auth_user") and self._is_set(self.client_options, "basic_auth_password"):
-            self.logger.info("HTTP basic authentication: on")
-            self.client_options["http_auth"] = (self.client_options.pop("basic_auth_user"), self.client_options.pop("basic_auth_password"))
-        else:
-            self.logger.info("HTTP basic authentication: off")
-
-        if self._is_set(self.client_options, "compressed"):
-            console.warn("You set the deprecated client option 'compressed'. Please use 'http_compress' instead.", logger=self.logger)
-            self.client_options["http_compress"] = self.client_options.pop("compressed")
-
-        if self._is_set(self.client_options, "http_compress"):
-            self.logger.info("HTTP compression: on")
-        else:
-            self.logger.info("HTTP compression: off")
-
-        if self._is_set(self.client_options, "enable_cleanup_closed"):
-            self.client_options["enable_cleanup_closed"] = convert.to_bool(self.client_options.pop("enable_cleanup_closed"))
-
-    @staticmethod
-    def _has_only_hostnames(hosts):
-        logger = logging.getLogger(__name__)
-        has_ip, has_hostname = False, False
-        for host in hosts:
-            if is_ipaddress(host["host"]):
-                has_ip = True
-            else:
-                has_hostname = True
-
-        if has_ip and has_hostname:
-            console.warn("Although certificate verification is enabled, "
-                "peer hostnames will not be matched since the host list is a mix "
-                "of names and IP addresses", logger=logger)
-            return False
-
-        return has_hostname
-
-    def _is_set(self, client_opts, k):
+        Returns the version string, e.g. "9.7.0".
+        """
+        data = self.info()
         try:
-            return client_opts[k]
-        except KeyError:
-            return False
+            return data["lucene"]["solr-spec-version"]
+        except KeyError as exc:
+            raise SolrClientError(
+                f"Could not parse Solr version from /api/node/system response: {data}"
+            ) from exc
 
-    def create(self):
-        if self.provider:
-            self.logger.info("Creating OpenSearch client with provider %s", self.provider)
-            return self.provider.create_client(self.hosts, self.client_options)
+    def get_major_version(self) -> int:
+        """Return the major version integer (9 or 10)."""
+        version = self.get_version()
+        return int(version.split(".")[0])
 
-        else:
-            return opensearchpy.OpenSearch(hosts=self.hosts, ssl_context=self.ssl_context, **self.client_options)
-
-    def create_async(self):
-        # pylint: disable=import-outside-toplevel
-        import io
-        import aiohttp
-        from opensearchpy.serializer import JSONSerializer
-
-        class BenchmarkAsyncOpenSearch(opensearchpy.AsyncOpenSearch, RequestContextHolder):
-            pass
-
-        class LazyJSONSerializer(JSONSerializer):
-            def loads(self, s):
-                meta = BenchmarkAsyncOpenSearch.request_context.get()
-                if "raw_response" in meta:
-                    return io.BytesIO(s)
-                else:
-                    return super().loads(s)
-
-        async def on_request_start(session, trace_config_ctx, params):
-            BenchmarkAsyncOpenSearch.on_request_start()
-
-        async def on_request_end(session, trace_config_ctx, params):
-            BenchmarkAsyncOpenSearch.on_request_end()
-
-        trace_config = aiohttp.TraceConfig()
-        trace_config.on_request_start.append(on_request_start)
-        trace_config.on_request_end.append(on_request_end)
-        # ensure that we also stop the timer when a request "ends" with an exception (e.g. a timeout)
-        trace_config.on_request_exception.append(on_request_end)
-
-        # override the builtin JSON serializer
-        self.client_options["serializer"] = LazyJSONSerializer()
-        self.client_options["trace_config"] = trace_config
-
-        if self.provider:
-            self.logger.info("Creating OpenSearch Async Client with provider %s", self.provider)
-            return self.provider.create_client(self.hosts, self.client_options,
-                                               client_class=BenchmarkAsyncOpenSearch, use_async=True)
-        else:
-            return BenchmarkAsyncOpenSearch(hosts=self.hosts,
-                                            connection_class=async_connection.AIOHttpConnection,
-                                            ssl_context=self.ssl_context,
-                                            **self.client_options)
-
-
-def wait_for_rest_layer(opensearch, max_attempts=40):
-    """
-    Waits for ``max_attempts`` until OpenSearch's REST API is available.
-
-    :param opensearch: OpenSearch client to use for connecting.
-    :param max_attempts: The maximum number of attempts to check whether the REST API is available.
-    :return: True iff OpenSearch's REST API is available.
-    """
-    # assume that at least the hosts that we expect to contact should be available. Note that this is not 100%
-    # bullet-proof as a cluster could have e.g. dedicated masters which are not contained in our list of target hosts
-    # but this is still better than just checking for any random node's REST API being reachable.
-    expected_node_count = len(opensearch.transport.hosts)
-    logger = logging.getLogger(__name__)
-    for attempt in range(max_attempts):
-        logger.debug("REST API is available after %s attempts", attempt)
-        # pylint: disable=import-outside-toplevel
-        try:
-            # see also WaitForHttpResource in OpenSearch tests. Contrary to the ES tests we consider the API also
-            # available when the cluster status is RED (as long as all required nodes are present)
-            opensearch.cluster.health(wait_for_nodes=">={}".format(expected_node_count))
-            logger.info("REST API is available for >= [%s] nodes after [%s] attempts.", expected_node_count, attempt)
-            return True
-        except opensearchpy.ConnectionError as e:
-            if "SSL: UNKNOWN_PROTOCOL" in str(e):
-                raise exceptions.SystemSetupError("Could not connect to cluster via https. Is this an https endpoint?", e)
-            else:
-                logger.debug("Got connection error on attempt [%s]. Sleeping...", attempt)
-                time.sleep(3)
-        except opensearchpy.TransportError as e:
-            # cluster block, our wait condition is not reached
-            if e.status_code in (503, 401, 408):
-                logger.debug("Got status code [%s] on attempt [%s]. Sleeping...", e.status_code, attempt)
-                time.sleep(3)
-            elif e.status_code == 404:
-                # Serverless does not support the cluster-health API.  Test with _cat/indices for now.
-                catclient = opensearchpy.client.cat.CatClient(opensearch)
-                try:
-                    catclient.indices()
-                    return True
-                except Exception as e:
-                    logger.warning("Encountered exception %s when attempting to probe endpoint health", e)
-                    raise e
-            else:
-                logger.warning("Got unexpected status code [%s] on attempt [%s].", e.status_code, attempt)
-                raise e
-    return False
-
-
-class MessageProducerFactory:
-    @staticmethod
-    async def create(params):
+    def wait_for_cluster_ready(self, timeout: int = 60, **kwargs) -> None:
         """
-        Creates and returns a message producer based on the ingestion source.
-        Currently supports Kafka. Ingestion source should be a dict like:
-            {'type': 'kafka', 'param': {'topic': 'test', 'bootstrap-servers': 'localhost:34803'}}
+        Poll GET /api/node/system until Solr responds or timeout is exceeded.
+
+        Args:
+            timeout: Maximum seconds to wait (default 60).
         """
-        ingestion_source = params.get("ingestion-source", {})
-        producer_type = ingestion_source.get("type", "kafka").lower()
-        if producer_type == "kafka":
-            return await KafkaMessageProducer.create(params)
-        else:
-            raise ValueError(f"Unsupported ingestion source type: {producer_type}")
-
-
-class GrpcClientFactory:
-    """
-    Factory for creating gRPC client stubs.
-    Note gRPC channels must default `use_local_subchannel_pool` to true.
-    Sub channels manage the underlying connection with the server. When the global sub channel pool is used gRPC will
-    re-use sub channels and their underlying connections which does not appropriately reflect a multi client scenario.
-    """
-    def __init__(self, grpc_hosts):
-        self.grpc_hosts = grpc_hosts
-        self.logger = logging.getLogger(__name__)
-        self.grpc_channel_options = [
-            ('grpc.use_local_subchannel_pool', 1),
-            ('grpc.max_send_message_length', 10 * 1024 * 1024),  # 10 MB
-            ('grpc.max_receive_message_length', 10 * 1024 * 1024)  # 10 MB
-        ]
-
-    def create_grpc_stubs(self):
-        """
-        Create gRPC service stubs.
-        Returns a dict of {cluster_name: {service_name: stub}} structure.
-        """
-        stubs = {}
-
-        if len(self.grpc_hosts.all_hosts.items()) > 1:
-            raise NotImplementedError("Only one gRPC cluster is supported.")
-
-        if len(self.grpc_hosts.all_hosts["default"]) > 1:
-            raise NotImplementedError("Only one gRPC host is supported.")
-
-        host = self.grpc_hosts.all_hosts["default"][0]
-        grpc_addr = f"{host['host']}:{host['port']}"
-
-        self.logger.info("Creating gRPC channel for cluster default cluster at %s", grpc_addr)
-        channel = grpc.aio.insecure_channel(
-            target=grpc_addr,
-            options=self.grpc_channel_options,
-            compression=None
+        deadline = time.monotonic() + timeout
+        last_exc = None
+        while time.monotonic() < deadline:
+            try:
+                self.info()
+                return
+            except Exception as exc:
+                last_exc = exc
+            time.sleep(2)
+        raise SolrClientError(
+            f"Solr cluster did not become ready within {timeout}s. Last error: {last_exc}"
         )
 
-        # Retain a reference to underlying channel in our stubs dictionary for graceful shutdown.
-        stubs["default"] = {
-            'document_service': DocumentServiceStub(channel),
-            'search_service': SearchServiceStub(channel),
-            '_channel': channel
+    # ------------------------------------------------------------------
+    # Configset management
+    # ------------------------------------------------------------------
+
+    def upload_configset(self, name: str, configset_dir: str) -> None:
+        """
+        Zip the configset directory and upload it via the Solr V1 API.
+
+        Uses: POST /solr/admin/configs?action=UPLOAD&name={name}
+
+        The directory must contain a conf/ sub-directory with at minimum
+        schema.xml (or managed-schema) and solrconfig.xml.
+
+        Args:
+            name:           Configset name to register on the cluster.
+            configset_dir:  Local path to the directory containing conf/.
+        """
+        zip_bytes = self._build_configset_zip(configset_dir)
+        # Use V1 API for configsets (V2 API not available in Solr 9.x)
+        url = f"{self.base_url}/solr/admin/configs"
+        params = {"action": "UPLOAD", "name": name}
+        resp = self._get_session().post(
+            url,
+            params=params,
+            data=zip_bytes,
+            headers={"Content-Type": "application/zip"},
+            timeout=self.timeout,
+        )
+        self._raise_for_solr_error(resp, f"upload configset '{name}'")
+        logger.info("Uploaded configset '%s' from '%s'", name, configset_dir)
+
+    def delete_configset(self, name: str) -> None:
+        """
+        Delete a configset via the Solr V1 API.
+
+        Uses: POST /solr/admin/configs?action=DELETE&name={name}
+        """
+        # Use V1 API for configsets (V2 API not available in Solr 9.x)
+        url = f"{self.base_url}/solr/admin/configs"
+        params = {"action": "DELETE", "name": name}
+        resp = self._get_session().post(
+            url,
+            params=params,
+            timeout=self.timeout,
+        )
+        self._raise_for_solr_error(resp, f"delete configset '{name}'")
+        logger.info("Deleted configset '%s'", name)
+
+    # ------------------------------------------------------------------
+    # Collection management
+    # ------------------------------------------------------------------
+
+    def create_collection(self, name: str, configset: str,
+                          num_shards: int = 1, replication_factor: int = 1,
+                          tlog_replicas: int = 0, pull_replicas: int = 0,
+                          wait_for_active_shards: int = 1) -> None:
+        """
+        Create a Solr collection via POST /api/collections.
+
+        The configset must already exist on the cluster (call upload_configset first).
+        ``replication_factor`` maps to ``nrtReplicas`` in the Solr V2 API (they are semantically
+        identical: NRT replicas that participate in indexing and serving queries in real time).
+        """
+        payload = {
+            "name": name,
+            "config": configset,
+            "numShards": num_shards,
+            "nrtReplicas": replication_factor,
+            "tlogReplicas": tlog_replicas,
+            "pullReplicas": pull_replicas,
+            "waitForFinalState": True,
+        }
+        resp = self._get_session().post(
+            f"{self.api_url}/collections",
+            json=payload,
+            timeout=self.timeout,
+        )
+        if resp.status_code == 400:
+            body = self._try_parse_json(resp)
+            if "already exists" in str(body).lower():
+                raise CollectionAlreadyExistsError(
+                    f"Collection '{name}' already exists"
+                )
+        self._raise_for_solr_error(resp, f"create collection '{name}'")
+        logger.info("Created collection '%s' (shards=%d, nrt=%d, tlog=%d, pull=%d)",
+                    name, num_shards, replication_factor, tlog_replicas, pull_replicas)
+
+    def delete_collection(self, name: str) -> None:
+        """Delete a Solr collection via DELETE /api/collections/{name}."""
+        resp = self._get_session().delete(
+            f"{self.api_url}/collections/{name}",
+            timeout=self.timeout,
+        )
+        if resp.status_code == 404:
+            raise CollectionNotFoundError(f"Collection '{name}' not found")
+        # Solr 9.x may return 400 with "Could not find collection" instead of 404
+        if resp.status_code == 400:
+            body = self._try_parse_json(resp)
+            msg = body.get("error", {}).get("msg", "") if isinstance(body, dict) else ""
+            if "could not find collection" in msg.lower():
+                raise CollectionNotFoundError(f"Collection '{name}' not found")
+        self._raise_for_solr_error(resp, f"delete collection '{name}'")
+        logger.info("Deleted collection '%s'", name)
+
+    # ------------------------------------------------------------------
+    # Cluster status
+    # ------------------------------------------------------------------
+
+    def get_cluster_status(self) -> dict:
+        """Return cluster state via GET /api/cluster."""
+        resp = self._get("/api/cluster")
+        return resp.json().get("cluster", resp.json())
+
+    def get_clusterstatus(self) -> dict:
+        """Return full CLUSTERSTATUS response dict via V1 Collections API."""
+        resp = self._get_session().get(
+            f"{self.base_url}/solr/admin/collections",
+            params={"action": "CLUSTERSTATUS", "wt": "json"},
+            timeout=self.timeout,
+        )
+        self._raise_for_solr_error(resp, "CLUSTERSTATUS")
+        return resp.json()
+
+    def get_core_status(self, core_name: str) -> dict:
+        """Return Core STATUS for a specific core (leader replica) via V1 Cores API."""
+        resp = self._get_session().get(
+            f"{self.base_url}/solr/admin/cores",
+            params={"action": "STATUS", "core": core_name, "wt": "json"},
+            timeout=self.timeout,
+        )
+        self._raise_for_solr_error(resp, f"Core STATUS for '{core_name}'")
+        return resp.json().get("status", {}).get(core_name, {})
+
+    def list_collections(self) -> list:
+        """Return list of collection names via Collections API LIST action."""
+        resp = self._get_session().get(
+            f"{self.base_url}/solr/admin/collections",
+            params={"action": "LIST", "wt": "json"},
+            timeout=self.timeout,
+        )
+        self._raise_for_solr_error(resp, "LIST collections")
+        return resp.json().get("collections", [])
+
+    def get_luke_stats(self, collection: str) -> dict:
+        """Return Luke index stats for a collection (numDocs, segmentCount, etc.)."""
+        resp = self._get_session().get(
+            f"{self.base_url}/solr/{collection}/admin/luke",
+            params={"numTerms": "0", "wt": "json"},
+            timeout=self.timeout,
+        )
+        self._raise_for_solr_error(resp, f"Luke stats for '{collection}'")
+        return resp.json().get("index", {})
+
+    def count_documents(self, collection: str) -> int:
+        """Return the number of documents in a collection via rows=0 select query."""
+        resp = self._get_session().get(
+            f"{self.base_url}/solr/{collection}/select",
+            params={"q": "*:*", "rows": 0, "wt": "json"},
+            timeout=self.timeout,
+        )
+        self._raise_for_solr_error(resp, f"count documents in '{collection}'")
+        return resp.json()["response"]["numFound"]
+
+    def get_schema(self, collection: str) -> dict:
+        """Return the schema of a collection via GET /solr/{collection}/schema."""
+        resp = self._get(f"/solr/{collection}/schema")
+        return resp.json().get("schema", resp.json())
+
+    # ------------------------------------------------------------------
+    # Metrics
+    # ------------------------------------------------------------------
+
+    def get_node_metrics(self):
+        """
+        Retrieve node metrics via GET /solr/admin/metrics.
+
+        Both Solr 9.x and Solr 10.x use the same endpoint. The response format
+        differs by version and is detected via the Content-Type header:
+          - application/json  → Solr 9.x custom JSON → returns parsed dict
+          - text/plain        → Solr 10.x Prometheus text → returns raw str
+
+        The telemetry device is responsible for parsing the format-specific response.
+        """
+        resp = self._get_session().get(f"{self.base_url}/solr/admin/metrics", timeout=self.timeout)
+        resp.raise_for_status()
+        content_type = resp.headers.get("Content-Type", "")
+        if "text/plain" in content_type:
+            return resp.text
+        return resp.json()
+
+    # ------------------------------------------------------------------
+    # Raw request (for the raw-request workload operation)
+    # ------------------------------------------------------------------
+
+    def raw_request(self, method: str, path: str,
+                    body=None, headers: dict = None) -> requests.Response:
+        """
+        Send an arbitrary HTTP request to a Solr endpoint.
+
+        Args:
+            method:  HTTP method ("GET", "POST", "DELETE", etc.)
+            path:    URL path relative to http://{host}:{port}/ (e.g. "/api/cluster")
+            body:    Request body (dict → serialized as JSON, str → sent as-is)
+            headers: Additional request headers
+        """
+        url = f"{self.base_url}{path}"
+        req_headers = dict(headers or {})
+        kwargs = {"timeout": self.timeout, "headers": req_headers}
+        if isinstance(body, dict):
+            kwargs["json"] = body
+        elif isinstance(body, str):
+            kwargs["data"] = body
+        resp = self._get_session().request(method.upper(), url, **kwargs)
+        return resp
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _get(self, path: str) -> requests.Response:
+        resp = self._get_session().get(f"{self.base_url}{path}", timeout=self.timeout)
+        self._raise_for_solr_error(resp, f"GET {path}")
+        return resp
+
+    def _raise_for_solr_error(self, resp: requests.Response, operation: str) -> None:
+        if resp.ok:
+            return
+        body = self._try_parse_json(resp)
+        msg = body.get("error", {}).get("msg", resp.text) if isinstance(body, dict) else resp.text
+        raise SolrClientError(
+            f"Solr {operation} failed (HTTP {resp.status_code}): {msg}"
+        )
+
+    @staticmethod
+    def _try_parse_json(resp: requests.Response) -> dict:
+        try:
+            return resp.json()
+        except Exception:
+            return {}
+
+    @staticmethod
+    def _build_configset_zip(configset_dir: str) -> bytes:
+        """
+        Walk configset_dir and produce an in-memory ZIP suitable for
+        PUT /api/cluster/configs/{name}.
+        """
+        buf = io.BytesIO()
+        root = Path(configset_dir)
+        with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for file_path in sorted(root.rglob("*")):
+                if file_path.is_file():
+                    arcname = file_path.relative_to(root)
+                    zf.write(file_path, arcname)
+        return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# SolrClient — unified client used by runners and telemetry devices
+# ---------------------------------------------------------------------------
+
+class SolrClient(RequestContextHolder):  # pylint: disable=too-many-public-methods
+    """
+    Single unified Solr client. Wraps SolrAdminClient (admin/HTTP) and pysolr.Solr
+    (indexing/search) as private implementation details.
+
+    All runners and telemetry devices receive a SolrClient and call methods
+    on it directly — SolrAdminClient and pysolr.Solr are never referenced
+    externally.
+    """
+
+    class _NoOpTransport:
+        async def close(self):
+            pass
+
+    def __init__(self, host="localhost", port=8983, username=None, password=None,
+                 tls=False, timeout=30):
+        self._host = host
+        self._port = port
+        self._username = username
+        self._password = password
+        self._tls = tls
+        self._timeout = timeout
+        self._admin = SolrAdminClient(host=host, port=port, username=username,
+                                      password=password, tls=tls, timeout=timeout)
+        self._pysolr_clients = {}  # collection → pysolr.Solr (created lazily)
+        self.transport = SolrClient._NoOpTransport()
+
+    # ------------------------------------------------------------------
+    # Admin / cluster operations  (delegated to _admin)
+    # ------------------------------------------------------------------
+
+    def info(self) -> dict:
+        """Return cluster info in an ASB-compatible shape: {name, version.number}."""
+        data = self._admin.info()
+        return {
+            "name": "Apache Solr",
+            "version": {"number": data["lucene"]["solr-spec-version"]},
         }
 
-        return stubs
+    def get_version(self):
+        return self._admin.get_version()
+
+    def get_major_version(self):
+        return self._admin.get_major_version()
+
+    def get_cluster_status(self):
+        return self._admin.get_cluster_status()
+
+    def get_node_metrics(self):
+        return self._admin.get_node_metrics()
+
+    def get_clusterstatus(self):
+        return self._admin.get_clusterstatus()
+
+    def get_core_status(self, core_name):
+        return self._admin.get_core_status(core_name)
+
+    def list_collections(self):
+        return self._admin.list_collections()
+
+    def get_luke_stats(self, collection):
+        return self._admin.get_luke_stats(collection)
+
+    def upload_configset(self, name, path):
+        return self._admin.upload_configset(name, path)
+
+    def delete_configset(self, name):
+        return self._admin.delete_configset(name)
+
+    def create_collection(self, name, *args, **kwargs):
+        return self._admin.create_collection(name, *args, **kwargs)
+
+    def delete_collection(self, name, **kwargs):
+        return self._admin.delete_collection(name, **kwargs)
+
+    def wait_for_cluster_ready(self, **kwargs):
+        return self._admin.wait_for_cluster_ready(**kwargs)
+
+    def raw_request(self, method, path, body=None, headers=None):
+        return self._admin.raw_request(method, path, body=body, headers=headers)
+
+    def count_documents(self, collection):
+        return self._admin.count_documents(collection)
+
+    def get_schema(self, collection):
+        return self._admin.get_schema(collection)
+
+    # Expose the admin client's internal _get for telemetry devices that
+    # need direct access to /api/node/system and similar endpoints.
+    def _get(self, path: str):
+        return self._admin._get(path)
+
+    # ------------------------------------------------------------------
+    # Data operations  (delegated to pysolr.Solr, per collection)
+    # ------------------------------------------------------------------
+
+    def _get_pysolr(self, collection: str):
+        """Return (lazily-created, cached) pysolr.Solr for the given collection."""
+        import pysolr  # pylint: disable=import-outside-toplevel
+        if collection not in self._pysolr_clients:
+            scheme = "https" if self._tls else "http"
+            url = f"{scheme}://{self._host}:{self._port}/solr/{collection}"
+            session = requests.Session()
+            session.trust_env = False  # fork-safe on macOS (no CFNetwork proxy detection)
+            if self._username and self._password:
+                session.auth = (self._username, self._password)
+            self._pysolr_clients[collection] = pysolr.Solr(
+                url, timeout=self._timeout, always_commit=False, session=session)
+        return self._pysolr_clients[collection]
+
+    def add(self, collection, docs, **kwargs):
+        return self._get_pysolr(collection).add(docs, **kwargs)
+
+    def search(self, collection, q, **kwargs):
+        return self._get_pysolr(collection).search(q, **kwargs)
+
+    def commit(self, collection, **kwargs):
+        return self._get_pysolr(collection).commit(**kwargs)
+
+    def optimize(self, collection, **kwargs):
+        return self._get_pysolr(collection).optimize(**kwargs)
 
 
-class UnifiedClient:
+class ClientFactory:
     """
-    Unified client that wraps both OpenSearch REST client and gRPC stubs.
-    This provides a single interface for runners to access both protocols.
-    Acts as a transparent proxy to the OpenSearch client while adding gRPC capabilities.
+    Factory that creates SolrClient instances from cluster host configuration.
     """
-    def __init__(self, opensearch_client, grpc_stubs=None):
-        self._opensearch = opensearch_client
-        self._grpc_stubs = grpc_stubs
-        self._logger = logging.getLogger(__name__)
 
-    def __getattr__(self, name):
-        """Delegate all unknown attributes to the underlying OpenSearch client."""
-        return getattr(self._opensearch, name)
-
-    def document_service(self, cluster_name="default"):
-        """Get the gRPC DocumentService stub for the specified cluster."""
-        if cluster_name in self._grpc_stubs:
-            return self._grpc_stubs[cluster_name].get('document_service')
-        else:
-            raise exceptions.SystemSetupError(
-                "gRPC DocumentService not available. Please configure --grpc-target-hosts.")
-
-    def search_service(self, cluster_name="default"):
-        """Get the gRPC SearchService stub for the specified cluster."""
-        if cluster_name in self._grpc_stubs:
-            return self._grpc_stubs[cluster_name].get('search_service')
-        else:
-            raise exceptions.SystemSetupError(
-                "gRPC SearchService not available. Please configure --grpc-target-hosts.")
-
-    def __del__(self):
-        """Close all gRPC channels."""
-        for cluster_stubs in self._grpc_stubs.values():
-            if '_channel' in cluster_stubs:
-                try:
-                    cluster_stubs['_channel'].close()
-                except Exception as e:
-                    self._logger.warning("Error closing gRPC channel: %s", e)
-        self._opensearch.close()
-
-    @property
-    def opensearch(self):
-        """Provide access to the underlying OpenSearch client for explicit access."""
-        return self._opensearch
-
-
-class UnifiedClientFactory:
-    """
-    Factory that creates UnifiedClient instances with both REST and gRPC support.
-    """
-    def __init__(self, rest_client_factory, grpc_hosts=None):
-        self.rest_client_factory = rest_client_factory
-        self.grpc_hosts = grpc_hosts
+    def __init__(self, hosts, client_options):
+        self._hosts = hosts
+        self._client_options = dict(client_options)
         self.logger = logging.getLogger(__name__)
 
+    def _parse_host(self):
+        entry = self._hosts[0] if self._hosts else {}
+        if isinstance(entry, dict):
+            return entry.get("host", "localhost"), int(entry.get("port", 8983))
+        parts = str(entry).rsplit(":", 1)
+        host = parts[0] if parts else "localhost"
+        port = int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else 8983
+        return host, port
+
     def create(self):
-        """Non async client is deprecated."""
-        raise NotImplementedError()
+        host, port = self._parse_host()
+        return SolrClient(
+            host=host,
+            port=port,
+            username=self._client_options.get("basic_auth_user"),
+            password=self._client_options.get("basic_auth_password"),
+            tls=self._client_options.get("use_ssl", False),
+        )
 
     def create_async(self):
-        """Create a UnifiedClient with async REST client."""
-        opensearch_client = self.rest_client_factory.create_async()
-        grpc_stubs = None
-
-        if self.grpc_hosts:
-            grpc_factory = GrpcClientFactory(self.grpc_hosts)
-            grpc_stubs = grpc_factory.create_grpc_stubs()
-
-        return UnifiedClient(opensearch_client, grpc_stubs)
+        return self.create()

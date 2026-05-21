@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -25,10 +28,10 @@
 import logging
 
 from osbenchmark import exceptions
-from osbenchmark.utils import jvm, sysstats
+from osbenchmark.utils import jvm
 
 
-def java_home(cluster_config_runtime_jdks, specified_runtime_jdk=None, provides_bundled_jdk=False):
+def java_home(cluster_config_runtime_jdks, specified_runtime_jdk=None):
     def determine_runtime_jdks():
         if specified_runtime_jdk:
             return [specified_runtime_jdk]
@@ -52,25 +55,5 @@ def java_home(cluster_config_runtime_jdks, specified_runtime_jdk=None, provides_
 
     runtime_jdk_versions = determine_runtime_jdks()
 
-    if runtime_jdk_versions[0] == "bundled":
-        if not provides_bundled_jdk:
-            raise exceptions.SystemSetupError("This OpenSearch version does not contain a bundled JDK. "
-                                              "Please specify a different runtime JDK.")
-        logger.info("Using JDK bundled with OpenSearch.")
-
-        os_check = sysstats.os_name()
-        if os_check == "Windows":
-            raise exceptions.SystemSetupError("OpenSearch doesn't provide release artifacts for Windows currently.")
-        if os_check == "Darwin":
-            # OpenSearch does not provide a Darwin version of OpenSearch or a MacOS JDK version
-            logger.info("Using JDK set from JAVA_HOME because OS is MacOS (Darwin).")
-            logger.info("NOTICE: OpenSearch doesn't provide release artifacts for MacOS (Darwin) currently."
-            " Please set JAVA_HOME to JDK 11 or JDK 8 and set the runtime.jdk.bundled to true in config.ini "
-            "in opensearch-benchmark-cluster-configs directory")
-            return detect_jdk(allowed_runtime_jdks)
-
-        # assume that the bundled JDK is the highest available; the path is irrelevant
-        return allowed_runtime_jdks[0], None
-    else:
-        logger.info("Allowed JDK versions are %s.", runtime_jdk_versions)
-        return detect_jdk(runtime_jdk_versions)
+    logger.info("Allowed JDK versions are %s.", runtime_jdk_versions)
+    return detect_jdk(runtime_jdk_versions)

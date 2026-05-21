@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modifications by Apache Solr contributors; see git log for details.
+# Licensed under the Apache License, Version 2.0.
+#
 # The OpenSearch Contributors require contributions made to
 # this file be licensed under the Apache-2.0 license or a
 # compatible open source license.
@@ -197,7 +200,7 @@ class PluginLoaderTests(TestCase):
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             self.loader.load_plugin("my-analysis-plugin", ["missing-config"])
         self.assertRegex(ctx.exception.args[0], r"Plugin \[my-analysis-plugin\] does not provide configuration \[missing-config\]. List the"
-                                                r" available plugins and configurations with [^\s]+ list opensearch-plugins "
+                                                r" available plugins and configurations with [^\s]+ list cluster-configs "
                                                 r"--distribution-version=VERSION.")
 
     def test_loads_community_plugin_without_configuration(self):
@@ -207,7 +210,7 @@ class PluginLoaderTests(TestCase):
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             self.loader.load_plugin("my-community-plugin", "some-configuration")
         self.assertRegex(ctx.exception.args[0], r"Unknown plugin \[my-community-plugin\]. List the available plugins with [^\s]+ list "
-                                                r"opensearch-plugins --distribution-version=VERSION.")
+                                                r"cluster-configs --distribution-version=VERSION.")
 
     def test_loads_configured_plugin(self):
         plugin = self.loader.load_plugin("complex-plugin", ["config-a", "config-b"], plugin_params={"dbg": True})
