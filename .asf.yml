@@ -4,7 +4,7 @@
 github:
   # Repository metadata
   description: "Apache Solr Orbit macrobenchmarking framework"
-  homepage: https://apache.github.io/solr-orbit/
+  homepage: https://solr.apache.org/
   labels:
     - apache
     - solr
