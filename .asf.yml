@@ -5,6 +5,13 @@ github:
   # Repository metadata
   description: "Apache Solr Orbit macrobenchmarking framework"
   homepage: https://apache.github.io/solr-orbit/
+  labels:
+    - apache
+    - solr
+    - benchmarking
+    - performance
+    - macrobenchmark
+    - python
 
   # Enable GitHub Issues; disable unused features
   features:
