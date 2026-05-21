@@ -61,7 +61,7 @@ build: install-deps
 
 # Builds a wheel from source, then installs it.
 install: build
-	PIP_ONLY_BINARY=h5py $(PIP) install dist/opensearch_benchmark-*.whl
+	PIP_ONLY_BINARY=h5py $(PIP) install dist/*.whl
 	rm -rf dist
 
 clean:

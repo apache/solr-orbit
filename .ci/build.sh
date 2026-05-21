@@ -13,15 +13,15 @@ function setup {
   # Init pyenv.
   PATH=$HOME/.pyenv/shims:$PATH:$HOME/.pyenv/bin
 
-  # OpenSearch has different JDK requirements:
-  # - Gradle builds need JDK 21 (after Apache Lucene 10 upgrade)
-  # - OpenSearch runtime operations need JDK 17
-  # Store the current JAVA_HOME (Java 21) for Gradle
+  # Solr JDK requirements:
+  # - Gradle builds need JDK 21 (from-sources pipeline)
+  # - Solr 9.x requires JDK 11+; Solr 10.x requires JDK 17+
+  # Store the current JAVA_HOME (Java 21) for Gradle builds
   export GRADLE_JAVA_HOME=$JAVA_HOME
-  
-  # Set JAVA_HOME to Java 17 for OpenSearch
+
+  # Set JAVA_HOME to Java 17 for Solr runtime operations
   if [ -n "$JAVA17_HOME" ]; then
-    echo "Setting JAVA_HOME to Java 17 for OpenSearch"
+    echo "Setting JAVA_HOME to Java 17 for Solr"
     export JAVA_HOME=$JAVA17_HOME
     java -version
   else

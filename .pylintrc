@@ -180,7 +180,30 @@ disable=print-statement,
         bad-option-value,
         consider-using-dict-items,
         unused-private-member,
-        use-a-generator
+        use-a-generator,
+        protected-access,
+        import-outside-toplevel,
+        wrong-import-position,
+        logging-fstring-interpolation,
+        subprocess-run-check,
+        too-many-return-statements,
+        too-many-nested-blocks,
+        unnecessary-comprehension,
+        multiple-imports,
+        consider-using-f-string,
+        unspecified-encoding,
+        broad-exception-raised,
+        unnecessary-lambda-assignment,
+        consider-using-in,
+        superfluous-parens,
+        use-implicit-booleaness-not-comparison,
+        unnecessary-dunder-call,
+        pointless-exception-statement,
+        use-list-literal,
+        use-dict-literal,
+        consider-using-generator,
+        try-except-raise,
+        consider-iterating-dictionary
 
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -371,13 +394,6 @@ max-line-length=180
 
 # Maximum number of lines in a module.
 max-module-lines=1000
-
-# List of optional constructs for which whitespace checking is disabled. `dict-
-# separator` is used to allow tabulation in dicts, etc.: {1  : 1,\n222: 2}.
-# `trailing-comma` allows a space between comma and closing bracket: (a, ).
-# `empty-line` allows space-only lines.
-no-space-check=trailing-comma,
-               dict-separator
 
 # Allow the body of a class to be on the same line as the declaration if body
 # contains single statement.
