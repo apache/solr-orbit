@@ -36,7 +36,7 @@ make clean            # Remove build artifacts, caches, tox environments
 
 ## Architecture
 
-Apache Solr Orbit (ASB) is a **macrobenchmarking framework** for Apache Solr clusters, using an **actor-based concurrent execution model** via the [Thespian](https://thespianpy.com/) library.
+Apache Solr Orbit is a **macrobenchmarking framework** for Apache Solr clusters, using an **actor-based concurrent execution model** via the [Thespian](https://thespianpy.com/) library.
 
 ### Entry Points
 
@@ -89,7 +89,7 @@ Apache Solr Orbit (ASB) is a **macrobenchmarking framework** for Apache Solr clu
 
 - `tests/` — Unit tests mirroring `osbenchmark/` structure
 - `it/` — Integration tests (spin up real Solr clusters via Docker/provisioning)
-- `benchmarks/` — Performance benchmarks for ASB itself
+- `benchmarks/` — Performance benchmarks for Solr Orbit itself
 
 ### Workload System
 

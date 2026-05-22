@@ -126,7 +126,7 @@ class ProcessTests(TestCase):
         random_python = ProcessTests.Process(103, "python3", ["/some/django/app"])
         other_process = ProcessTests.Process(104, "init", ["/usr/sbin/init"])
         benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
-        # On Linux, process names up to 15 chars are not truncated; solr-orbit is exactly 15 chars.
+        # On Linux, process names are truncated to 15 chars; "solr-orbit" (9 chars) fits within that limit.
         benchmark_process_l = ProcessTests.Process(106, "solr-orbit", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
         benchmark_process_e = ProcessTests.Process(107, "solr-orbit", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
         benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python",
