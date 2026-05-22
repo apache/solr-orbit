@@ -16,10 +16,10 @@
 # limitations under the License.
 
 """
-OpenSearch Benchmark to Solr Benchmark Conversion Package
+OpenSearch Benchmark to Solr Orbit Conversion Package
 
 This package contains all conversion logic for translating OpenSearch Benchmark
-workloads to Solr Benchmark format. Native Solr workloads bypass this package
+workloads to Solr Orbit format. Native Solr workloads bypass this package
 entirely.
 
 Modules:

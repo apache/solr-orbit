@@ -387,7 +387,7 @@ class TestHeapdumpDockerSupport(unittest.TestCase):
     def test_heapdump_docker_calls_docker_exec(self):
         """Heapdump uses docker exec when docker_container is set."""
         with tempfile.TemporaryDirectory() as log_root:
-            device = Heapdump(log_root=log_root, docker_container="solr-benchmark")
+            device = Heapdump(log_root=log_root, docker_container="solr-orbit")
             node = MagicMock()
             node.pid = 12345
             with patch("osbenchmark.utils.process.run_subprocess_with_logging") as mock_run:
@@ -395,7 +395,7 @@ class TestHeapdumpDockerSupport(unittest.TestCase):
                 device.detach_from_node(node, running=True)
                 call_args = mock_run.call_args[0][0]
                 self.assertIn("docker exec", call_args)
-                self.assertIn("solr-benchmark", call_args)
+                self.assertIn("solr-orbit", call_args)
                 self.assertIn("jmap", call_args)
 
     def test_heapdump_not_running_skips(self):

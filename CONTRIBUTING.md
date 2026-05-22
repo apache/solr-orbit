@@ -1,6 +1,6 @@
-# Contributing to Apache Solr Benchmark
+# Contributing to Apache Solr Orbit
 
-Apache Solr Benchmark is a community project built by people like **you**.
+Apache Solr Orbit is a community project built by people like **you**.
 We're glad you're interested in contributing.
 
 ## First Things First
@@ -35,7 +35,7 @@ Open an issue describing the feature, the motivation, and a rough design sketch.
 
 ## Developer Certificate of Origin
 
-Apache Solr Benchmark is released under the Apache 2.0 license. We use a
+Apache Solr Orbit is released under the Apache 2.0 license. We use a
 Developer Certificate of Origin (DCO) to ensure all contributions are properly
 attributed.
 

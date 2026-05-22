@@ -864,7 +864,7 @@ def _get_collection(params):
         raise exceptions.DataError(
             "Operation parameter 'collection' is missing. "
             "Make sure your Solr workload specifies a 'collection' name in the operation params or param source. "
-            "If you are running an OpenSearch workload, convert it first with 'solr-benchmark convert-workload'."
+            "If you are running an OpenSearch workload, convert it first with 'solr-orbit convert-workload'."
         )
     if collection == "_all":
         raise exceptions.DataError(

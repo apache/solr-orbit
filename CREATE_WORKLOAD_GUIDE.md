@@ -1,6 +1,6 @@
 # Create Workload Guide
 
-This guide explains how to create a Solr Benchmark workload.
+This guide explains how to create a Solr Orbit workload.
 
 ## Option 1: Write a workload from scratch
 
@@ -39,7 +39,7 @@ A workload is a JSON file with the following structure:
 Run the workload with:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline=benchmark-only \
   --workload-path=/path/to/workload.json \
   --target-host="localhost:8983"

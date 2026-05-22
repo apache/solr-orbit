@@ -12,7 +12,7 @@ Starts a locally installed Solr node previously created by the [`install`](insta
 ## Syntax
 
 ```bash
-solr-benchmark start --installation-id ID --test-run-id ID [OPTIONS]
+solr-orbit start --installation-id ID --test-run-id ID [OPTIONS]
 ```
 
 ## Options
@@ -29,22 +29,22 @@ solr-benchmark start --installation-id ID --test-run-id ID [OPTIONS]
 
 ```bash
 # Install and capture the installation ID
-solr-benchmark install --distribution-version 9.10.1
+solr-orbit install --distribution-version 9.10.1
 
 # Start the installed node (use the ID printed by install)
-solr-benchmark start \
+solr-orbit start \
   --installation-id <installation-id> \
   --test-run-id my-run-001
 
 # Run the benchmark against the manually started node
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:38983 \
   --workload nyc_taxis \
   --test-run-id my-run-001
 
 # Stop when done
-solr-benchmark stop --installation-id <installation-id>
+solr-orbit stop --installation-id <installation-id>
 ```
 
 ## See also

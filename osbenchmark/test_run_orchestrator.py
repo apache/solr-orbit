@@ -219,14 +219,14 @@ class BenchmarkCoordinator:
             msg = (
                 f"This workload is in OpenSearch Benchmark format and cannot be run directly.\n"
                 f"Convert it first using:\n\n"
-                f"  solr-benchmark convert-workload "
+                f"  solr-orbit convert-workload "
                 f"--workload-path {workload_path} "
                 f"--output-path {workload_path}-solr\n\n"
                 f"Then re-run with --workload-path {workload_path}-solr"
             )
             console.error(msg)
             raise exceptions.SystemSetupError(
-                f"OSB workload detected at '{workload_path}' — convert it first with 'solr-benchmark convert-workload'"
+                f"OSB workload detected at '{workload_path}' — convert it first with 'solr-orbit convert-workload'"
             )
 
     def setup(self, sources=False):
@@ -429,10 +429,10 @@ def solr_from_sources(cfg):
                                    a branch name, a tag, or a commit SHA.
       - source.remote.repo.url   — Solr git remote (default: https://github.com/apache/solr.git)
       - solr.port                — Solr port (default: 8983)
-      - solr.install_dir         — where to extract the built tarball (default: ~/.solr-benchmark/builds)
+      - solr.install_dir         — where to extract the built tarball (default: ~/.solr-orbit/builds)
     """
     logger = logging.getLogger(__name__)
-    base_dir = os.path.expanduser("~/.solr-benchmark")
+    base_dir = os.path.expanduser("~/.solr-orbit")
 
     revision = cfg.opts("builder", "source.revision", mandatory=False, default_value="latest")
     port = int(cfg.opts("solr", "port", mandatory=False, default_value=8983))
@@ -504,13 +504,13 @@ def solr_from_distribution(cfg):
     Config keys read:
       - distribution.version  — Solr version to download (e.g. "9.7.0")
       - solr.port             — port for the Solr instance (default: 8983)
-      - solr.install_dir      — directory for Solr installation (default: ~/.solr-benchmark/installs)
-      - solr.cache_dir        — directory for cached tarballs (default: ~/.solr-benchmark/cache)
+      - solr.install_dir      — directory for Solr installation (default: ~/.solr-orbit/installs)
+      - solr.cache_dir        — directory for cached tarballs (default: ~/.solr-orbit/cache)
     """
     logger = logging.getLogger(__name__)
     version_str = cfg.opts("builder", "distribution.version")
     port = int(cfg.opts("solr", "port", mandatory=False, default_value=8983))
-    base_dir = os.path.expanduser("~/.solr-benchmark")
+    base_dir = os.path.expanduser("~/.solr-orbit")
     install_dir = cfg.opts("solr", "install_dir", mandatory=False,
                            default_value=os.path.join(base_dir, "installs", version_str))
     cache_dir = cfg.opts("solr", "cache_dir", mandatory=False,

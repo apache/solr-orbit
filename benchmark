@@ -40,7 +40,7 @@ cd "${BENCHMARK_SRC_HOME}" >/dev/null 2>&1
 
 # set variables that are needed for run.sh
 __BENCHMARK_INTERNAL_BINARY_NAME="osbenchmark"
-__BENCHMARK_INTERNAL_HUMAN_NAME="Apache Solr Benchmark"
+__BENCHMARK_INTERNAL_HUMAN_NAME="Apache Solr Orbit"
 
 source run.sh
 

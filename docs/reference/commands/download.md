@@ -12,7 +12,7 @@ Downloads a Solr distribution to the local machine without running a benchmark. 
 ## Syntax
 
 ```bash
-solr-benchmark download --distribution-version VERSION [OPTIONS]
+solr-orbit download --distribution-version VERSION [OPTIONS]
 ```
 
 Because Solr is pure Java, the distribution tarball is the same on every operating system and CPU architecture. There are no OS- or architecture-specific variants to select.
@@ -34,7 +34,7 @@ On success, the command prints a JSON object with the path to the downloaded art
 
 ```json
 {
-  "solr": "/Users/yourname/.solr-benchmark/distributions/solr-9.10.1.tgz"
+  "solr": "/Users/yourname/.solr-orbit/distributions/solr-9.10.1.tgz"
 }
 ```
 
@@ -42,7 +42,7 @@ On success, the command prints a JSON object with the path to the downloaded art
 
 ```bash
 # Download Solr 9.10.1
-solr-benchmark download --distribution-version 9.10.1
+solr-orbit download --distribution-version 9.10.1
 ```
 
 ## See also

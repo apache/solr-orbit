@@ -7,13 +7,13 @@ nav_order: 40
 
 # generate-data
 
-Generates synthetic benchmark data from an existing index schema (JSON mappings) or a custom Python module. The generated corpus can be used in Apache Solr Benchmark workloads.
+Generates synthetic benchmark data from an existing index schema (JSON mappings) or a custom Python module. The generated corpus can be used in Apache Solr Orbit workloads.
 
 ## Syntax
 
 ```bash
-solr-benchmark generate-data --index-mappings FILE --total-size N --index-name NAME [OPTIONS]
-solr-benchmark generate-data --custom-module FILE  --total-size N --index-name NAME [OPTIONS]
+solr-orbit generate-data --index-mappings FILE --total-size N --index-name NAME [OPTIONS]
+solr-orbit generate-data --custom-module FILE  --total-size N --index-name NAME [OPTIONS]
 ```
 
 `--index-mappings` and `--custom-module` are mutually exclusive. `--total-size` is required.
@@ -35,7 +35,7 @@ solr-benchmark generate-data --custom-module FILE  --total-size N --index-name N
 Generate 10 GB of synthetic data from an existing schema:
 
 ```bash
-solr-benchmark generate-data \
+solr-orbit generate-data \
   --index-mappings /path/to/mappings.json \
   --index-name my_index \
   --total-size 10 \
@@ -45,7 +45,7 @@ solr-benchmark generate-data \
 Preview a single generated document using a custom module:
 
 ```bash
-solr-benchmark generate-data \
+solr-orbit generate-data \
   --custom-module /path/to/my_generator.py \
   --index-name my_index \
   --total-size 1 \

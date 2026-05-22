@@ -44,7 +44,7 @@ def probed(f):
             raise exceptions.SystemSetupError("Error invoking 'git', please install (or re-install).")
         match = re.search(VERSION_REGEX, out)
         if not match or int(match.group(1)) < MIN_REQUIRED_MAJOR_VERSION:
-            raise exceptions.SystemSetupError("solr-benchmark requires at least version 2 of git.  "
+            raise exceptions.SystemSetupError("solr-orbit requires at least version 2 of git.  "
                                               f"You have {out}.  Please update git.")
         return f(src, *args, **kwargs)
     return probe

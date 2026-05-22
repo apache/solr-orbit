@@ -5,17 +5,17 @@ grand_parent: User Guide
 nav_order: 5
 ---
 
-# Installing Apache Solr Benchmark
+# Installing Apache Solr Orbit
 
-You can install Apache Solr Benchmark directly on a host running Linux or macOS. This page
+You can install Apache Solr Orbit directly on a host running Linux or macOS. This page
 provides general hardware considerations and step-by-step installation instructions.
 
 ## Choosing appropriate hardware
 
 When selecting a host, consider which workloads you want to run. To see a list of available
 benchmark workloads, visit the
-[solr-benchmark-workloads](https://github.com/janhoy/solr-benchmark-workloads) repository on
-GitHub. Make sure that the Solr Benchmark host has enough free storage space to store the
+[solr-orbit-workloads](https://github.com/apache/solr-orbit-workloads) repository on
+GitHub. Make sure that the Solr Orbit host has enough free storage space to store the
 compressed data corpus and the fully decompressed data once benchmarking begins.
 
 Use the following table to estimate the minimum free space required (compressed + uncompressed):
@@ -31,13 +31,13 @@ Use the following table to estimate the minimum free space required (compressed 
 | pmc | 574,199 | 5.5 GB | 21.7 GB |
 | so | 36,062,278 | 8.9 GB | 33.1 GB |
 
-Your Solr Benchmark host should use solid-state drives (SSDs) for storage. Spinning-disk hard
+Your Solr Orbit host should use solid-state drives (SSDs) for storage. Spinning-disk hard
 drives introduce performance bottlenecks that make benchmark results unreliable.
 {: .tip}
 
 ## Prerequisites
 
-Before installing Solr Benchmark, ensure the following software is available on your host:
+Before installing Solr Orbit, ensure the following software is available on your host:
 
 - **Python 3.10 or later** — required for all pipelines.
 - **pip** — Python package manager.
@@ -47,7 +47,7 @@ Before installing Solr Benchmark, ensure the following software is available on 
 - **JDK 21** — required for the `--pipeline=from-distribution` pipeline, which downloads and
   installs a Solr release locally.
 - **pbzip2** *(optional)* — parallel bzip2 decompressor for faster decompression of `.bz2`
-  corpora. Install via `apt install pbzip2` or `brew install pbzip2`. If absent, Solr Benchmark
+  corpora. Install via `apt install pbzip2` or `brew install pbzip2`. If absent, Solr Orbit
   falls back to Python's standard `bz2` library automatically (slower but fully functional).
 
 ### Checking software dependencies
@@ -76,32 +76,32 @@ This is especially useful if your system Python is older than 3.10.
 
 ## Installing on Linux and macOS
 
-Apache Solr Benchmark is not yet published on PyPI. Install it directly from the source
+Apache Solr Orbit is not yet published on PyPI. Install it directly from the source
 repository.
 {: .note}
 
 Clone the repository and install in editable mode:
 
 ```bash
-git clone https://github.com/janhoy/solr-benchmark.git
-cd solr-benchmark
+git clone https://github.com/apache/solr-orbit.git
+cd solr-orbit
 pip install -e .
 ```
 
 After the installation completes, verify it is working:
 
 ```bash
-solr-benchmark --version
+solr-orbit --version
 ```
 
 ### Virtual environment (recommended)
 
-Install Solr Benchmark inside a virtual environment to avoid dependency conflicts with other
+Install Solr Orbit inside a virtual environment to avoid dependency conflicts with other
 Python packages on your system:
 
 ```bash
-git clone https://github.com/janhoy/solr-benchmark.git
-cd solr-benchmark
+git clone https://github.com/apache/solr-orbit.git
+cd solr-orbit
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
@@ -120,14 +120,14 @@ pip install -e ".[develop]"
 To pick up the latest changes, pull from the repository and reinstall:
 
 ```bash
-cd solr-benchmark
+cd solr-orbit
 git pull
 pip install -e .
 ```
 
 ## Starting a Solr cluster for benchmarking
 
-Solr Benchmark can start and stop a Solr cluster for you as part of a benchmark run using two
+Solr Orbit can start and stop a Solr cluster for you as part of a benchmark run using two
 built-in pipelines:
 
 - `--pipeline=docker` — pulls the official `solr` Docker image and starts a single-node Solr
@@ -143,11 +143,11 @@ pipeline options and flags.
 
 ## Directory structure
 
-After running Solr Benchmark for the first time, all related files are stored under
-`~/.solr-benchmark/`:
+After running Solr Orbit for the first time, all related files are stored under
+`~/.solr-orbit/`:
 
 ```
-~/.solr-benchmark/
+~/.solr-orbit/
 ├── benchmark.ini
 ├── benchmarks/
 │   ├── data/

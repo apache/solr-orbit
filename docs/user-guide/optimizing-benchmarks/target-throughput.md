@@ -7,11 +7,11 @@ nav_order: 10
 
 # Target Throughput
 
-`target-throughput` is one of the most important — and most misunderstood — parameters in Apache Solr Benchmark. Getting it right is key to measuring meaningful latency.
+`target-throughput` is one of the most important — and most misunderstood — parameters in Apache Solr Orbit. Getting it right is key to measuring meaningful latency.
 
 ## What target-throughput means
 
-`target-throughput` sets the rate at which Apache Solr Benchmark issues requests, measured in operations per second (ops/s). It does **not** guarantee that Solr will complete requests at that rate — it only controls how fast the benchmark sends them.
+`target-throughput` sets the rate at which Apache Solr Orbit issues requests, measured in operations per second (ops/s). It does **not** guarantee that Solr will complete requests at that rate — it only controls how fast the benchmark sends them.
 
 ## Two benchmark modes
 
@@ -68,7 +68,7 @@ This example issues 20 search requests per second across 4 clients (5 requests p
 You can also override it at runtime without editing the workload file:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --workload-params "search_target_throughput:20"
 ```

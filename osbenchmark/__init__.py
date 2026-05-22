@@ -31,9 +31,9 @@ import urllib
 
 from importlib.metadata import version as get_version
 
-__version__ = get_version("solr-benchmark")
+__version__ = get_version("solr-orbit")
 
-# Allow an alternative program name to be set in case solr-benchmark is invoked via a wrapper script
+# Allow an alternative program name to be set in case solr-orbit is invoked via a wrapper script
 PROGRAM_NAME = os.getenv("BENCHMARK_ALTERNATIVE_BINARY_NAME", os.path.basename(sys.argv[0]))
 
 DOC_LINK = "https://solr.apache.org/guide/"
@@ -47,7 +47,7 @@ BANNER = r"""
  ___/ / /_/ / / /     / /_/ /  __/ / / / /__/ / / / / / / / / /_/ / /  / ,<
 /____/\____/_/_/     /_____/\___/_/ /_/\___/_/ /_/_/ /_/ /_/\__,_/_/  /_/|_|
 
-  Apache Solr Benchmark
+  Apache Solr Orbit
 """
 
 
@@ -84,7 +84,7 @@ $$$$$$$$$$""""           ""$$$$$$$$$$$"
 
 def check_python_version():
     if sys.version_info < (3, 10):
-        raise RuntimeError("solr-benchmark requires at least Python 3.10 but you are using:\n\nPython %s" % str(sys.version))
+        raise RuntimeError("solr-orbit requires at least Python 3.10 but you are using:\n\nPython %s" % str(sys.version))
 
 
 def doc_link(path=None):

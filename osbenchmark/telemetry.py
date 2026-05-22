@@ -204,7 +204,7 @@ class FlightRecorder(TelemetryDevice):
 
     def instrument_java_opts(self):
         if self.telemetry_params.get("pipeline", "") == "benchmark-only":
-            self.logger.warning("jfr: Solr was not provisioned by Solr Benchmark; skipping JFR flags.")
+            self.logger.warning("jfr: Solr was not provisioned by Solr Orbit; skipping JFR flags.")
             return []
 
         io.ensure_dir(self.log_root)
@@ -240,7 +240,7 @@ class JitCompiler(TelemetryDevice):
 
     def instrument_java_opts(self):
         if self.telemetry_params.get("pipeline", "") == "benchmark-only":
-            self.logger.warning("jit: Solr was not provisioned by Solr Benchmark; skipping JIT flags.")
+            self.logger.warning("jit: Solr was not provisioned by Solr Orbit; skipping JIT flags.")
             return []
 
         io.ensure_dir(self.log_root)
@@ -264,7 +264,7 @@ class Gc(TelemetryDevice):
 
     def instrument_java_opts(self):
         if self.telemetry_params.get("pipeline", "") == "benchmark-only":
-            self.logger.warning("gc: Solr was not provisioned by Solr Benchmark; skipping GC flags.")
+            self.logger.warning("gc: Solr was not provisioned by Solr Orbit; skipping GC flags.")
             return []
 
         io.ensure_dir(self.log_root)

@@ -1,15 +1,15 @@
-title: Apache Solr Benchmark
+title: Apache Solr Orbit
 description: >-
   A performance benchmarking tool for Apache Solr clusters,
   derived from OpenSearch Benchmark.
 
 theme: just-the-docs
 
-url: https://janhoy.github.io
+url: https://apache.github.io
 # baseurl is injected automatically by actions/configure-pages during CI
 
 aux_links:
-  "GitHub": https://github.com/janhoy/solr-benchmark
+  "GitHub": https://github.com/apache/solr-orbit
   "Apache Solr": https://solr.apache.org
   "Apache Software Foundation": https://www.apache.org
 

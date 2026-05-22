@@ -7,7 +7,7 @@ has_children: true
 
 # Metrics
 
-Apache Solr Benchmark stores all metrics collected during a benchmark run so that they can be
+Apache Solr Orbit stores all metrics collected during a benchmark run so that they can be
 analyzed and compared across runs. This page describes the available storage options.
 
 ## Storing metrics
@@ -22,7 +22,7 @@ completes. The raw individual samples are not persisted beyond the process lifet
 keeps disk usage minimal and avoids per-sample write overhead.
 
 No configuration is required to use in-memory storage — it is the default. You can also
-set it explicitly in `~/.solr-benchmark/benchmark.ini`:
+set it explicitly in `~/.solr-orbit/benchmark.ini`:
 
 ```ini
 [reporting]
@@ -36,7 +36,7 @@ store) **and** also streams every raw metric document to a `metrics.jsonl` file 
 it arrives. This makes individual samples available for offline analysis even after the
 benchmark process exits, at the cost of additional disk I/O during the run.
 
-To opt in, add the following to `~/.solr-benchmark/benchmark.ini`:
+To opt in, add the following to `~/.solr-orbit/benchmark.ini`:
 
 ```ini
 [reporting]
@@ -46,7 +46,7 @@ datastore.type = filesystem
 Files are written to:
 
 ```
-~/.solr-benchmark/
+~/.solr-orbit/
 └── benchmarks/
     └── test-runs/
         └── <run-id>/
@@ -61,4 +61,4 @@ file layout details, including `jq` and Python examples for inspecting raw sampl
 
 - [Filesystem Metrics Store](filesystem-metrics-store.html) — store configuration and file layout
 - [Metric Records](metric-records.html) — structure of individual metric documents
-- [Metric Keys](metrics-reference.html) — catalog of every metric key Solr Benchmark can record
+- [Metric Keys](metrics-reference.html) — catalog of every metric key Solr Orbit can record

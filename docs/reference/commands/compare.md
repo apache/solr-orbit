@@ -12,7 +12,7 @@ Compares results from two benchmark runs.
 ## Syntax
 
 ```bash
-solr-benchmark compare --baseline BASELINE_ID --contender CONTENDER_ID
+solr-orbit compare --baseline BASELINE_ID --contender CONTENDER_ID
 ```
 
 ## Options
@@ -30,7 +30,7 @@ solr-benchmark compare --baseline BASELINE_ID --contender CONTENDER_ID
 ## Example
 
 ```bash
-solr-benchmark compare \
+solr-orbit compare \
   --baseline 20240101T120000Z \
   --contender 20240115T120000Z
 ```

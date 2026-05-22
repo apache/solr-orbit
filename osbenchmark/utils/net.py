@@ -93,7 +93,7 @@ def _download_from_s3_bucket(bucket_name, bucket_path, local_path, expected_size
         _fake_import_boto3()
         import boto3.s3.transfer
     except ImportError:
-        console.error("S3 support is optional. Install it with `python -m pip install solr-benchmark[s3]`")
+        console.error("S3 support is optional. Install it with `python -m pip install solr-orbit[s3]`")
         raise
 
 

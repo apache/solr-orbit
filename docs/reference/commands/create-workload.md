@@ -12,7 +12,7 @@ Creates a new workload definition from data already indexed in a live Solr insta
 ## Syntax
 
 ```bash
-solr-benchmark create-workload --workload NAME --indices LIST --target-hosts HOSTS [OPTIONS]
+solr-orbit create-workload --workload NAME --indices LIST --target-hosts HOSTS [OPTIONS]
 ```
 
 ## Options
@@ -33,7 +33,7 @@ solr-benchmark create-workload --workload NAME --indices LIST --target-hosts HOS
 Create a workload from two collections on a local Solr instance:
 
 ```bash
-solr-benchmark create-workload \
+solr-orbit create-workload \
   --workload my_workload \
   --indices products,reviews \
   --target-hosts localhost:8983 \
@@ -43,7 +43,7 @@ solr-benchmark create-workload \
 Create a workload extracting a fixed number of documents per collection:
 
 ```bash
-solr-benchmark create-workload \
+solr-orbit create-workload \
   --workload sales_workload \
   --indices orders,customers \
   --target-hosts solr-prod:8983 \

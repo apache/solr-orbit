@@ -7,7 +7,7 @@ nav_order: 20
 
 # Performance Testing Best Practices
 
-Following consistent methodology produces benchmark results you can trust and compare over time. This page summarizes the most important practices for running Apache Solr Benchmark.
+Following consistent methodology produces benchmark results you can trust and compare over time. This page summarizes the most important practices for running Apache Solr Orbit.
 
 ## Use a dedicated, stable environment
 
@@ -41,10 +41,10 @@ A warm-up of 100–500 iterations (or 30–60 seconds) is typical for query task
 
 ## Run multiple iterations and aggregate
 
-A single benchmark run can be influenced by transient noise (GC pause, OS scheduling, network blip). Run the workload three or more times and use `solr-benchmark aggregate` to combine the results:
+A single benchmark run can be influenced by transient noise (GC pause, OS scheduling, network blip). Run the workload three or more times and use `solr-orbit aggregate` to combine the results:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
@@ -60,7 +60,7 @@ The aggregated output includes the mean relative standard deviation (RSD). An RS
 Use `--user-tag` to attach metadata to each run. This makes it easy to filter results when comparing configurations:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --user-tag "heap:4g,gc:g1gc,version:9.10.1"
 ```
@@ -78,7 +78,7 @@ After indexing large datasets, Solr may continue background merging for minutes 
 Enable at least `solr-jvm-stats` and `solr-node-stats` on every run:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --telemetry solr-jvm-stats,solr-node-stats
 ```
@@ -87,10 +87,10 @@ JVM GC pauses are a common explanation for latency spikes. Having telemetry data
 
 ## Compare, don't just measure
 
-A single number is hard to interpret. Use `solr-benchmark compare` to evaluate whether a configuration change improved or regressed performance:
+A single number is hard to interpret. Use `solr-orbit compare` to evaluate whether a configuration change improved or regressed performance:
 
 ```bash
-solr-benchmark compare \
+solr-orbit compare \
   --baseline 20260101_120000_abc12345 \
   --contender 20260220_143052_a34ff090
 ```

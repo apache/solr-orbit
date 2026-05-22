@@ -157,7 +157,7 @@ def _clear_query_randomization_infos():
 class ParamSource:
     """
     A `ParamSource` captures the parameters for a given operation.
-     Solr Benchmark will create one global ParamSource for each operation and will then
+     Solr Orbit will create one global ParamSource for each operation and will then
      invoke `#partition()` to get a `ParamSource` instance for each client. During the benchmark, `#params()` will be called repeatedly
      before invoking the corresponding runner (that will actually execute the operation against Solr).
     """

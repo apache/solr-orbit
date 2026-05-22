@@ -523,7 +523,7 @@ class FeedbackActor(actor.BenchmarkActor):
     def _check_cpu_usage(self):
         raise exceptions.SystemSetupError(
             "CPU-based redline feedback requires an external OpenSearch metrics store "
-            "which is not supported in Solr Benchmark. "
+            "which is not supported in Solr Orbit. "
             "Disable redline testing or remove 'redline.max_cpu_usage' from your config."
         )
 

@@ -300,7 +300,7 @@ services:
     image: solr:1.1.0
     container_name: solr-node1
     labels:
-      io.benchmark.description: "solr-benchmark"
+      io.benchmark.description: "solr-orbit"
     environment:
       - "SOLR_JAVA_OPTS=-Xms512m -Xmx512m"
     ulimits:
@@ -359,7 +359,7 @@ services:
     image: solr:1.1.0
     container_name: solr-node1
     labels:
-      io.benchmark.description: "solr-benchmark"
+      io.benchmark.description: "solr-orbit"
     cpu_count: 2
     mem_limit: 256m
     environment:

@@ -7,7 +7,7 @@ nav_order: 16
 
 # Common Operations
 
-Apache Solr Benchmark provides the following built-in operation types.
+Apache Solr Orbit provides the following built-in operation types.
 
 ## bulk-index
 

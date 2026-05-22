@@ -16,7 +16,7 @@ heap_size: 1g
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config defaults ...
+solr-orbit run --cluster-config defaults ...
 ```
 
 ---
@@ -31,7 +31,7 @@ heap_size: 1g
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config 1gheap ...
+solr-orbit run --cluster-config 1gheap ...
 ```
 
 ---
@@ -46,7 +46,7 @@ heap_size: 2g
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config 2gheap ...
+solr-orbit run --cluster-config 2gheap ...
 ```
 
 ---
@@ -61,7 +61,7 @@ heap_size: 4g
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config 4gheap ...
+solr-orbit run --cluster-config 4gheap ...
 ```
 
 ---
@@ -76,7 +76,7 @@ heap_size: 8g
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config 8gheap ...
+solr-orbit run --cluster-config 8gheap ...
 ```
 
 ---
@@ -91,7 +91,7 @@ heap_size: 16g
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config 16gheap ...
+solr-orbit run --cluster-config 16gheap ...
 ```
 
 ---
@@ -106,7 +106,7 @@ heap_size: 24g
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config 24gheap ...
+solr-orbit run --cluster-config 24gheap ...
 ```
 
 ---
@@ -121,7 +121,7 @@ use_g1_gc: true
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config g1gc ...
+solr-orbit run --cluster-config g1gc ...
 ```
 
 ---
@@ -137,7 +137,7 @@ use_g1_gc: false
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config parallelgc ...
+solr-orbit run --cluster-config parallelgc ...
 ```
 
 Note: `parallelgc` is available in the `main` cluster config bundle but not in `1.0`.
@@ -150,7 +150,7 @@ The base cluster configuration. All other heap and GC configs extend `vanilla`. 
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config vanilla ...
+solr-orbit run --cluster-config vanilla ...
 ```
 
 ---
@@ -161,7 +161,7 @@ Mixin that enables Java assertions (`-ea`). Useful for debugging workload runs.
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config ea ...
+solr-orbit run --cluster-config ea ...
 ```
 
 ---
@@ -172,7 +172,7 @@ Mixin that preserves JVM frame pointers. Required for accurate async-profiler CP
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config fp ...
+solr-orbit run --cluster-config fp ...
 ```
 
 ---
@@ -183,7 +183,7 @@ Mixin that enables more accurate CPU profiling by recording non-safepoint debug 
 
 **Usage:**
 ```bash
-solr-benchmark run --cluster-config debug-non-safepoints ...
+solr-orbit run --cluster-config debug-non-safepoints ...
 ```
 
 ---
@@ -194,21 +194,21 @@ To compare G1GC vs Parallel GC on the same workload:
 
 ```bash
 # Run 1: G1GC
-solr-benchmark run \
+solr-orbit run \
   --pipeline docker \
   --distribution-version 9.10.1 \
   --workload nyc_taxis \
   --cluster-config g1gc
 
 # Run 2: Parallel GC
-solr-benchmark run \
+solr-orbit run \
   --pipeline docker \
   --distribution-version 9.10.1 \
   --workload nyc_taxis \
   --cluster-config parallelgc
 
 # Compare results
-solr-benchmark compare \
+solr-orbit compare \
   --baseline <g1gc-run-id> \
   --contender <parallelgc-run-id>
 ```

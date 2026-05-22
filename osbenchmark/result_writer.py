@@ -159,8 +159,8 @@ class LocalFilesystemResultWriter(ResultWriter):
             return
 
         # Determine test-runs directory from results path
-        # results_path is like ~/.solr-benchmark/results
-        # test-runs path is like ~/.solr-benchmark/benchmarks/test-runs/<run-id>/test_run.json
+        # results_path is like ~/.solr-orbit/results
+        # test-runs path is like ~/.solr-orbit/benchmarks/test-runs/<run-id>/test_run.json
         benchmark_root = os.path.dirname(self._results_path)
         test_runs_dir = os.path.join(benchmark_root, "benchmarks", "test-runs")
         source_path = os.path.join(test_runs_dir, run_id, "test_run.json")

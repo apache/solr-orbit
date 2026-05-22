@@ -4,7 +4,7 @@ services:
     image: {{docker_image}}:{{solr_version}}
     container_name: solr-node1
     labels:
-      io.benchmark.description: "solr-benchmark"
+      io.benchmark.description: "solr-orbit"
     {%- if docker_cpu_count is defined %}
     cpu_count: {{docker_cpu_count}}
     {%- endif %}

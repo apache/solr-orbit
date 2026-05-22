@@ -26,4 +26,4 @@ Example:
 }
 ```
 
-Save it as `params.json` and provide it to Solr Benchmark with `--cluster-config-instance-params="/path/to/params.json"`.
+Save it as `params.json` and provide it to Solr Orbit with `--cluster-config-instance-params="/path/to/params.json"`.

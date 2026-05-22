@@ -8,14 +8,14 @@ nav_order: 3
 
 ## Workloads
 
-A *workload* is the central concept in Apache Solr Benchmark. It defines:
+A *workload* is the central concept in Apache Solr Orbit. It defines:
 
 - The **data** to load (corpora — compressed NDJSON files)
 - The **collections** to create and configure
 - The **operations** to run (bulk indexing, search queries, commits, etc.)
 - The **test procedures** that sequence those operations
 
-Workloads are defined in a `workload.json` file. Pre-built workloads for Apache Solr are at [https://github.com/janhoy/solr-benchmark-workloads](https://github.com/janhoy/solr-benchmark-workloads).
+Workloads are defined in a `workload.json` file. Pre-built workloads for Apache Solr are at [https://github.com/apache/solr-orbit-workloads](https://github.com/apache/solr-orbit-workloads).
 
 ## Test Procedures
 
@@ -62,7 +62,7 @@ A *schedule* controls how an operation executes: number of iterations, target th
 
 ## Corpora
 
-*Corpora* are the datasets used by workloads. Each corpus references one or more data files (gzip-compressed NDJSON). Apache Solr Benchmark downloads corpora from the workload repository or a configured data URL.
+*Corpora* are the datasets used by workloads. Each corpus references one or more data files (gzip-compressed NDJSON). Apache Solr Orbit downloads corpora from the workload repository or a configured data URL.
 
 ## Facets
 
@@ -72,7 +72,7 @@ A *schedule* controls how an operation executes: number of iterations, target th
 
 ## Metrics
 
-At the end of each benchmark run, Apache Solr Benchmark prints a summary table and saves it to disk. The table covers these metrics for every task in the challenge:
+At the end of each benchmark run, Apache Solr Orbit prints a summary table and saves it to disk. The table covers these metrics for every task in the challenge:
 
 | Metric | Description |
 |--------|-------------|
@@ -81,18 +81,18 @@ At the end of each benchmark run, Apache Solr Benchmark prints a summary table a
 | Latency | Service time plus any queue waiting time (differs from service time only when `target-throughput` is set) |
 | Error rate | Fraction of operations that returned an error |
 
-### How Apache Solr Benchmark defines service time and latency
+### How Apache Solr Orbit defines service time and latency
 
-These terms are often used interchangeably in the industry but have distinct meanings in Apache Solr Benchmark:
+These terms are often used interchangeably in the industry but have distinct meanings in Apache Solr Orbit:
 
-| Metric | Common definition | Apache Solr Benchmark definition |
+| Metric | Common definition | Apache Solr Orbit definition |
 |--------|------------------|----------------------------------|
 | **Service time** | Server processing time, excluding network | Time from when the HTTP client sends the request to when it receives the full response — *including* network latency, load balancer overhead, and serialization/deserialization |
 | **Latency** | Service time plus network latency | Service time *plus* any time the request spent waiting in a local queue before being dispatched — only non-zero when `target-throughput` is configured |
 
 ### Processing time
 
-Processing time measures the overhead that Apache Solr Benchmark adds during a request — for example, setting up the request context or dispatching to the client library. It is distinct from and excluded from service time measurements. This value is useful for understanding the benchmarking tool's own footprint.
+Processing time measures the overhead that Apache Solr Orbit adds during a request — for example, setting up the request context or dispatching to the client library. It is distinct from and excluded from service time measurements. This value is useful for understanding the benchmarking tool's own footprint.
 
 ### Service time
 
@@ -111,7 +111,7 @@ When no `target-throughput` is set — or when the cluster can handle every requ
 
 ### Throughput
 
-Throughput is the rate at which Apache Solr Benchmark *issues* requests, assuming that responses are returned instantaneously. It is not a measure of how many requests completed; it is a measure of how quickly requests were dispatched.
+Throughput is the rate at which Apache Solr Orbit *issues* requests, assuming that responses are returned instantaneously. It is not a measure of how many requests completed; it is a measure of how quickly requests were dispatched.
 
 ### The two benchmark modes
 

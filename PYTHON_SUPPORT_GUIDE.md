@@ -1,7 +1,7 @@
 # Python Support Guide
 
 This document walks developers through how to add support for new major and
-minor Python versions in Apache Solr Benchmark.
+minor Python versions in Apache Solr Orbit.
 
 ## Update Python versions supported
 
@@ -32,7 +32,7 @@ Make changes to the following files and open a PR titled
 * `osbenchmark/__init__.py`: Update the minimum version in the error message:
 
   ```python
-  raise RuntimeError("Solr Benchmark requires at least Python <MIN_VERSION> but you are using:\n\nPython %s" % str(sys.version))
+  raise RuntimeError("Solr Orbit requires at least Python <MIN_VERSION> but you are using:\n\nPython %s" % str(sys.version))
   ```
 
 ## Testing new Python versions
@@ -48,7 +48,7 @@ Make changes to the following files and open a PR titled
 
 **Basic run with a local Solr instance (benchmark-only pipeline):**
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline=benchmark-only \
   --workload=<YOUR_WORKLOAD> \
   --target-host="localhost:8983" \
@@ -57,7 +57,7 @@ solr-benchmark run \
 
 **Run without test mode:**
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline=benchmark-only \
   --workload=<YOUR_WORKLOAD> \
   --target-host="<SOLR HOST:PORT>"
@@ -65,7 +65,7 @@ solr-benchmark run \
 
 **Run with distribution provisioning:**
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline=solr-from-distribution \
   --distribution-version=9.7.0 \
   --workload=<YOUR_WORKLOAD> \
@@ -74,8 +74,8 @@ solr-benchmark run \
 
 4. To test the installed binary path explicitly:
    ```bash
-   which solr-benchmark   # e.g. /home/user/.pyenv/shims/solr-benchmark
-   bash /home/user/.pyenv/shims/solr-benchmark run --pipeline=benchmark-only ...
+   which solr-orbit   # e.g. /home/user/.pyenv/shims/solr-orbit
+   bash /home/user/.pyenv/shims/solr-orbit run --pipeline=benchmark-only ...
    ```
 
 ## Creating a pull request

@@ -293,7 +293,7 @@ def to_ip_port(hosts):
         host_or_ip = host.pop("host")
         port = host.pop("port", 8983)
         if host:
-            raise exceptions.SystemSetupError("When specifying nodes to be managed by solr-benchmark you can only supply "
+            raise exceptions.SystemSetupError("When specifying nodes to be managed by solr-orbit you can only supply "
                                               "hostname:port pairs (e.g. 'localhost:8983'), any additional options cannot "
                                               "be supported.")
         ip = net.resolve(host_or_ip)

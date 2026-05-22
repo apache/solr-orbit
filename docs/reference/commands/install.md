@@ -12,7 +12,7 @@ Installs a local Solr node for use with the [`start`](start.html) and [`stop`](s
 ## Syntax
 
 ```bash
-solr-benchmark install [OPTIONS]
+solr-orbit install [OPTIONS]
 ```
 
 ## Options
@@ -58,7 +58,7 @@ solr-benchmark install [OPTIONS]
 Install Solr 9.10.1 locally on the default port:
 
 ```bash
-solr-benchmark install \
+solr-orbit install \
   --distribution-version 9.10.1 \
   --cluster-config defaults
 ```
@@ -66,7 +66,7 @@ solr-benchmark install \
 Install on a custom port with a specific JDK:
 
 ```bash
-solr-benchmark install \
+solr-orbit install \
   --distribution-version 9.10.1 \
   --runtime-jdk 21 \
   --http-port 18983 \

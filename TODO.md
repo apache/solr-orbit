@@ -1,4 +1,4 @@
-# Solr Benchmark TODO List
+# Solr Orbit TODO List
 
 ## Testing
 
@@ -50,7 +50,7 @@ Steps to donate this repository to the Apache Software Foundation under the Solr
 
 ## Codebase Hygiene
 
-- [ ] Rename the product from "Solr Benchmark" to "Solr Orbit" after the porting PRs land in the
+- [x] Rename the product from "Solr Benchmark" to "Solr Orbit" after the porting PRs land in the
   new Apache repos (step 7 of the ASF donation process) — touches the project name, CLI entry
   points (`solr-benchmark` → `solr-orbit`), `setup.py`, README, all docs, and PyPI package name
 - [ ] Rename the `osbenchmark` package and folder to match the new product name — the current
@@ -67,8 +67,8 @@ Steps to donate this repository to the Apache Software Foundation under the Solr
 
 ## Release
 
-- [ ] Publish the tool to PyPI as `solr-benchmark` (or `solr-orbit` once renamed) so users can
-  install with `pip install solr-benchmark` rather than cloning the repo; requires a PyPI
+- [ ] Publish the tool to PyPI as `solr-orbit` so users can
+  install with `pip install solr-orbit` rather than cloning the repo; requires a PyPI
   project, a CI publish workflow triggered on tags, and a `twine`/`build` release step
   (tooling already present in `develop_require`)
 - [ ] Author a release guide documenting the end-to-end release process; evaluate

@@ -9,7 +9,7 @@ nav_order: 12
 
 ## Overview
 
-The [solr-benchmark-workloads](https://github.com/janhoy/solr-benchmark-workloads) repository offers pre-built workloads for performance testing Apache Solr clusters. Selecting a workload that mirrors your cluster's actual use cases streamlines the benchmarking process and reduces custom development overhead.
+The [solr-orbit-workloads](https://github.com/apache/solr-orbit-workloads) repository offers pre-built workloads for performance testing Apache Solr clusters. Selecting a workload that mirrors your cluster's actual use cases streamlines the benchmarking process and reduces custom development overhead.
 
 A practical example: a rideshare company can leverage the `nyc_taxis` workload instead of building a proprietary benchmark, because the taxi trip dataset closely resembles operational geospatial and time-series data.
 
@@ -40,7 +40,7 @@ The dataset contains around 165 million documents and is suitable for small to m
 **Example run:**
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline docker \
   --distribution-version 9.10.1 \
   --workload nyc_taxis \
@@ -67,7 +67,7 @@ The dataset contains around 11.4 million documents and is suitable for small clu
 **Example run:**
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline docker \
   --distribution-version 9.10.1 \
   --workload geonames \

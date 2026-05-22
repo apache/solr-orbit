@@ -7,7 +7,7 @@ nav_order: 3
 
 # Metric Keys
 
-This page lists every metric key that Apache Solr Benchmark can record. Metric keys appear
+This page lists every metric key that Apache Solr Orbit can record. Metric keys appear
 in the `name` field of [metric records](metric-records.html).
 
 Metrics fall into two broad groups:
@@ -22,7 +22,7 @@ Metrics fall into two broad groups:
 ### `latency`
 
 The time period between submitting a request and receiving the complete response, in
-milliseconds. Latency includes any time the operation spent waiting in Solr Benchmark's
+milliseconds. Latency includes any time the operation spent waiting in Solr Orbit's
 internal scheduling queue before being sent to the Solr cluster.
 
 When the workload is not rate-limited (no target throughput), latency and service time are
@@ -37,14 +37,14 @@ in the client-side scheduling queue.
 
 ### `processing_time`
 
-The time period from when Solr Benchmark starts processing the operation (including
+The time period from when Solr Orbit starts processing the operation (including
 client-side serialization, parameter setup, and response parsing) to when it receives the
 complete response from Solr, in milliseconds. Processing time includes all client-side
 overhead and is always greater than or equal to service time.
 
 ### `throughput`
 
-The number of operations that Solr Benchmark completed within a unit of time, expressed
+The number of operations that Solr Orbit completed within a unit of time, expressed
 as operations per second (`ops/s`). For bulk-indexing tasks the unit may instead be
 `docs/s` or `MB/s` depending on workload configuration.
 
@@ -55,7 +55,7 @@ as operations per second (`ops/s`). For bulk-indexing tasks the unit may instead
 ### `disk_io_write_bytes`
 
 The number of bytes written to disk during the benchmark. On Linux, only bytes written by
-the Solr Benchmark process are counted. On macOS, the total is system-wide and may include
+the Solr Orbit process are counted. On macOS, the total is system-wide and may include
 writes from other processes.
 
 ### `disk_io_read_bytes`
@@ -295,7 +295,7 @@ The ratio of cache hits to total lookups (0.0–1.0). Equivalent to
 ## Derived metrics
 
 The following values are not stored as raw records but are computed from raw samples by
-Solr Benchmark when generating the results report.
+Solr Orbit when generating the results report.
 
 ### `error_rate`
 

@@ -7,7 +7,7 @@ has_children: true
 
 # Command Reference
 
-Reference documentation for all `solr-benchmark` subcommands and their flags.
+Reference documentation for all `solr-orbit` subcommands and their flags.
 
 | Command | Description |
 |---------|-------------|
@@ -27,11 +27,11 @@ Reference documentation for all `solr-benchmark` subcommands and their flags.
 
 ## Daemon
 
-The `solr-benchmarkd` binary manages worker daemon processes for distributed load generation. See [solr-benchmarkd](benchmarkd.html) for the full reference.
+The `solr-orbitd` binary manages worker daemon processes for distributed load generation. See [solr-orbitd](benchmarkd.html) for the full reference.
 
 ## Common options
 
-The following flags are accepted by every `solr-benchmark` subcommand.
+The following flags are accepted by every `solr-orbit` subcommand.
 
 | Flag | Short | Description |
 |------|-------|-------------|
