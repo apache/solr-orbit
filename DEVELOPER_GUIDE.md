@@ -15,8 +15,12 @@ Apache Solr Benchmark.
 
 ## Prerequisites
 
-- **Python 3.9+**: Use [pyenv](https://github.com/pyenv/pyenv) to manage
-  Python versions.
+- **Python 3.12+**: Use [pyenv](https://github.com/pyenv/pyenv) to manage
+  Python versions. Python 3.10 and 3.11 are not supported on macOS 15+ due to
+  a CPython bug where `os.stat()` on files with high-precision nanosecond
+  timestamps triggers infinite recursion via big-integer arithmetic signal
+  checks, causing corpus downloads to hang at ~200% CPU. Python 3.12+ does not
+  have this issue.
 
   Debian/Ubuntu:
   ```bash
