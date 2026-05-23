@@ -5,7 +5,7 @@
 #
 # Stage 1: build packages and compile where needed
 #
-FROM python:3.11.2-slim AS build-stage
+FROM python:3.12-slim AS build-stage
 
 RUN apt-get -y update && \
     apt-get install -y curl git gcc pbzip2 pigz make jq && \
@@ -22,7 +22,7 @@ RUN cd solr-orbit; \
 #
 # Stage 2: create image
 #
-FROM python:3.11.2-slim AS image-stage
+FROM python:3.12-slim AS image-stage
 ENV BENCHMARK_RUNNING_IN_DOCKER=True
 
 RUN groupadd --gid 1000 solr-orbit && \
