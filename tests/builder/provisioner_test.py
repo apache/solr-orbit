@@ -316,7 +316,7 @@ services:
     networks:
       - solr-net
     healthcheck:
-          test: curl -f http://localhost:8983/solr/admin/ping
+          test: curl -f http://localhost:8983/solr/admin/info/system
           interval: 5s
           timeout: 2s
           retries: 10
@@ -377,7 +377,7 @@ services:
     networks:
       - solr-net
     healthcheck:
-          test: curl -f http://localhost:8983/solr/admin/ping
+          test: curl -f http://localhost:8983/solr/admin/info/system
           interval: 5s
           timeout: 2s
           retries: 10
