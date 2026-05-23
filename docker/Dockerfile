@@ -13,12 +13,11 @@ RUN apt-get -y update && \
     apt-get -y upgrade && \
     rm -rf /var/lib/apt/lists/*
 
-WORKDIR /build
-COPY . solr-orbit
+WORKDIR /build/solr-orbit
+COPY . .
 
 # There is no binary package currently available for yappi on ARM.
-RUN cd solr-orbit; \
-    make build; \
+RUN make build && \
     if test "$(uname -m)" = aarch64; then pip wheel yappi && cp yappi-*.whl dist; fi
 
 
