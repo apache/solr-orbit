@@ -1,0 +1,22 @@
+name: Check ASF Actions Compliance
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/**"
+  pull_request:
+    paths:
+      - ".github/**"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check actions usage
+    uses: apache/infrastructure-actions/check-project-actions/check-project-actions.yml@main
+    permissions:
+      contents: read
