@@ -46,11 +46,6 @@ suggestion-mode=yes
 # active Python interpreter and may run arbitrary code.
 unsafe-load-any-extension=no
 
-# pylint-quotes
-string-quote=double
-triple-quote=double
-docstring-quote=double
-
 [MESSAGES CONTROL]
 
 # Only show warnings with the listed confidence levels. Leave empty to show
@@ -203,7 +198,14 @@ disable=print-statement,
         use-dict-literal,
         consider-using-generator,
         try-except-raise,
-        consider-iterating-dictionary
+        consider-iterating-dictionary,
+        # pylint 3.x checks not enforced in this codebase
+        too-many-positional-arguments,
+        cyclic-import,
+        possibly-used-before-assignment,
+        consider-using-min-builtin,
+        consider-using-max-builtin,
+        use-yield-from
 
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -636,5 +638,5 @@ min-public-methods=2
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "BaseException, Exception".
-overgeneral-exceptions=BaseException,
-                       Exception
+overgeneral-exceptions=builtins.BaseException,
+                       builtins.Exception
