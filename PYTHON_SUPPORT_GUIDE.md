@@ -19,14 +19,14 @@ Make changes to the following files and open a PR titled
   `pyinst<MIN_VERSION>` target and `check-pip`:
 
   ```makefile
-  VERSION310 = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d' | grep 3\.10)
+  VERSION312 = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d' | grep 3\.12)
 
-  pyinst310:
-      pyenv install --skip-existing $(VERSION310)
-      pyenv local $(VERSION310)
+  pyinst312:
+      pyenv install --skip-existing $(VERSION312)
+      pyenv local $(VERSION312)
 
   check-pip:
-      @if ! $(PIP) > /dev/null 2>&1 || ! $(PIP) install pip > /dev/null 2>&1; then make pyinst310; fi
+      @if ! $(PIP) > /dev/null 2>&1 || ! $(PIP) install pip > /dev/null 2>&1; then make pyinst312; fi
   ```
 
 * `osbenchmark/__init__.py`: Update the minimum version in the error message:

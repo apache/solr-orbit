@@ -30,8 +30,9 @@ github:
     # Auto-delete head branch after a PR is merged
     del_branch_on_merge: true
 
-  autolink_jira:
-    - SOLR
+  # Disabled autolinking of JIRA tickets since it messes up links to GH issues
+  #autolink_jira:
+  #  - SOLR
 
   # Branch protection ruleset
   rulesets:

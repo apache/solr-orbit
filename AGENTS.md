@@ -10,7 +10,7 @@ Optional: `pbzip2` (parallel bzip2 — install via `apt install pbzip2` or `brew
 Without it, `.bz2` corpus decompression falls back to Python stdlib (slower).
 
 ```bash
-make develop          # Install Python 3.10 via pyenv, create .venv, install all deps
+make develop          # Install Python 3.12 via pyenv, create .venv, install all deps
 source .venv/bin/activate  # Activate virtual environment
 ```
 
@@ -21,7 +21,7 @@ make lint             # Run pylint on osbenchmark/, benchmarks/, scripts/, tests
 make test             # Run unit tests (pytest tests/)
 pytest tests/path/to/test_file.py::TestClass::test_method  # Run a single test
 make it               # Run integration tests via tox (requires Java, Docker; ~30 min)
-make it310            # Integration tests for Python 3.10 only
+make it312            # Integration tests for Python 3.12 only
 make benchmark        # Run performance benchmarks (pytest benchmarks/)
 make build            # Build distribution wheel
 make clean            # Remove build artifacts, caches, tox environments
@@ -111,6 +111,6 @@ or from a git workload repository (`--workload-repository`).
 
 ## Key Technologies
 
-- **Python 3.10+** with `pysolr` (data ops), `requests` (HTTP admin), `psutil` (I/O metrics), `thespian` (actor model), `pytest` (tests), `tabulate` (console output)
+- **Python 3.12+** with `pysolr` (data ops), `requests` (HTTP admin), `psutil` (I/O metrics), `thespian` (actor model), `pytest` (tests), `tabulate` (console output)
 - **Metrics store**: local filesystem — JSON/CSV result files at `~/.solr-orbit/`, SQLite test-runs store
 - **Docs**: Jekyll 4.x + just-the-docs gem in `docs/`; deployed to GitHub Pages via `.github/workflows/docs.yml`

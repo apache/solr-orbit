@@ -47,7 +47,7 @@ __versionstr__ = raw_version
 long_description = str_from_file("README.md")
 
 # tuples of (major, minor) of supported Python versions ordered from lowest to highest
-supported_python_versions = [(3, 10), (3, 11), (3, 13)]
+supported_python_versions = [(3, 12), (3, 13)]
 
 ################################################################################################
 #
@@ -149,8 +149,7 @@ develop_require = [
     "twine==6.0.1",
     "wheel>=0.38.4",
     "github3.py==1.3.0",
-    "pylint==2.9.0",
-    "pylint-quotes==0.2.1"
+    "pylint==3.3.9"
 ]
 
 python_version_classifiers = ["Programming Language :: Python :: {}.{}".format(major, minor)

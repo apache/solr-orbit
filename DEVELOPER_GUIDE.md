@@ -15,7 +15,7 @@ Apache Solr Orbit.
 
 ## Prerequisites
 
-- **Python 3.9+**: Use [pyenv](https://github.com/pyenv/pyenv) to manage
+- **Python 3.12+**: Use [pyenv](https://github.com/pyenv/pyenv) to manage
   Python versions.
 
   Debian/Ubuntu:
