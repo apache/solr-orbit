@@ -3,9 +3,9 @@ title: Quickstart
 nav_order: 2
 ---
 
-# Apache Solr Benchmark quickstart
+# Apache Solr Orbit quickstart
 
-This page outlines how to quickly install Apache Solr Benchmark and run your first benchmark workload.
+This page outlines how to quickly install Apache Solr Orbit and run your first benchmark workload.
 
 ## Prerequisites
 
@@ -13,14 +13,14 @@ To perform the quickstart steps, you'll need the following:
 
 - Git 2.3 or later
 - Python 3.10 or later
-- An active Apache Solr cluster, **or** Docker (to let Solr Benchmark start one for you)
+- An active Apache Solr cluster, **or** Docker (to let Solr Orbit start one for you)
 
 ## Set up a Solr cluster
 
 If you don't already have a running Solr cluster, the easiest way to start one is with Docker:
 
 ```bash
-docker run -d --name solr-benchmark -p 8983:8983 solr:9 solr-demo
+docker run -d --name solr-orbit -p 8983:8983 solr:9 solr-demo
 ```
 
 Verify that Solr is running by opening [http://localhost:8983/solr/](http://localhost:8983/solr/) in your browser, or with:
@@ -29,28 +29,28 @@ Verify that Solr is running by opening [http://localhost:8983/solr/](http://loca
 curl http://localhost:8983/solr/admin/info/system?wt=json
 ```
 
-With your cluster running, you can now install Apache Solr Benchmark.
+With your cluster running, you can now install Apache Solr Orbit.
 
-## Installing Apache Solr Benchmark
+## Installing Apache Solr Orbit
 
 {: .note }
-Apache Solr Benchmark is not yet published on PyPI. Install it directly from the source repository.
+Apache Solr Orbit is not yet published on PyPI. Install it directly from the source repository.
 
 Clone the repository and install in editable mode:
 
 ```bash
-git clone https://github.com/janhoy/solr-benchmark.git
-cd solr-benchmark
+git clone https://github.com/apache/solr-orbit.git
+cd solr-orbit
 pip install -e .
 ```
 
-After installation completes, verify that Solr Benchmark is running:
+After installation completes, verify that Solr Orbit is running:
 
 ```bash
-solr-benchmark --version
+solr-orbit --version
 ```
 
-If successful, Solr Benchmark prints its version.
+If successful, Solr Orbit prints its version.
 
 ## Running your first benchmark
 
@@ -63,9 +63,9 @@ Benchmarks are run using the [`run`](reference/commands/run.html) command. Some 
 For the full list of flags, see the [run command reference](reference/commands/run.html) and [command flags reference](reference/commands/command-flags.html).
 {: .tip }
 
-- `--pipeline=benchmark-only` — tells Solr Benchmark that you are providing your own Solr cluster; Solr Benchmark will not start or stop one.
-- `--pipeline=docker` — tells Solr Benchmark to start a Solr cluster in Docker before the run and stop it afterwards.
-- `--pipeline=from-distribution,` - tells Solr Benchmark to download and install Solr from a distribution.
+- `--pipeline=benchmark-only` — tells Solr Orbit that you are providing your own Solr cluster; Solr Orbit will not start or stop one.
+- `--pipeline=docker` — tells Solr Orbit to start a Solr cluster in Docker before the run and stop it afterwards.
+- `--pipeline=from-distribution,` - tells Solr Orbit to download and install Solr from a distribution.
 - `--workload=nyc_taxis` — the name of the workload to run.
 - `--target-hosts=localhost:8983` — the host and port of the Solr cluster to benchmark, if using `benchmark-only` pipeline.
 - `--distribution-version=9.10.1` — the Solr version to use when provisioning a cluster.
@@ -76,17 +76,17 @@ For the full list of flags, see the [run command reference](reference/commands/r
 To run the `nyc_taxis` workload against an existing Solr cluster:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline=benchmark-only \
   --target-hosts=localhost:8983 \
   --workload=nyc_taxis \
   --test-mode
 ```
 
-To instead let Solr Benchmark start a Solr cluster for you using Docker:
+To instead let Solr Orbit start a Solr cluster for you using Docker:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline=docker \
   --distribution-version=9.10.1 \
   --workload=nyc_taxis \
@@ -104,7 +104,7 @@ After the benchmark completes, verify it ran correctly:
 
 ### Understanding the results
 
-Once the benchmark completes, Solr Benchmark prints a summary table to the console:
+Once the benchmark completes, Solr Orbit prints a summary table to the console:
 
 ```
 ------------------------------------------------------
@@ -163,11 +163,11 @@ Each task in the summary corresponds to a specific operation that was performed 
 
 For more details on how the summary report is generated, see [Summary report](reference/summary-report.html).
 
-The computed results are also saved to `~/.solr-benchmark/benchmarks/test-runs/<run-id>/test_run.json` for later comparison with [`solr-benchmark compare`](reference/commands/compare.html).
+The computed results are also saved to `~/.solr-orbit/benchmarks/test-runs/<run-id>/test_run.json` for later comparison with [`solr-orbit compare`](reference/commands/compare.html).
 
-## Running Solr Benchmark on your own cluster
+## Running Solr Orbit on your own cluster
 
-Now that you're familiar with running a benchmark, you can run Solr Benchmark against your own Solr cluster. Use the same `run` command and adjust the following settings:
+Now that you're familiar with running a benchmark, you can run Solr Orbit against your own Solr cluster. Use the same `run` command and adjust the following settings:
 
 - Replace `localhost:8983` with your cluster's host and port.
 - Remove `--test-mode` to run the full workload rather than the abbreviated test.
@@ -175,7 +175,7 @@ Now that you're familiar with running a benchmark, you can run Solr Benchmark ag
 - Use `--include-tasks` or `--exclude-tasks` to run only the operations you care about.
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline=benchmark-only \
   --target-hosts=<your-solr-host>:8983 \
   --workload=nyc_taxis
@@ -183,7 +183,7 @@ solr-benchmark run \
 
 ## Next steps
 
-See the following resources to learn more about Apache Solr Benchmark:
+See the following resources to learn more about Apache Solr Orbit:
 
 - [User guide](user-guide/) — understand workloads, pipelines, challenges, and how to interpret results.
 - [Converter tool](converter/) — convert an existing OpenSearch Benchmark workload to Solr format.

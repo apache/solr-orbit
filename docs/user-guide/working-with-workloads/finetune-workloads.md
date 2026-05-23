@@ -25,7 +25,7 @@ In `workload.json` (or an included operations file):
 Override at runtime:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload my-workload \
@@ -47,7 +47,7 @@ booleans (`true`/`false`), or quoted strings:
 ```
 
 The `default()` Jinja2 filter sets the value used when no override is provided. Omitting
-`default()` makes the parameter mandatory — Solr Benchmark raises an error if it is not
+`default()` makes the parameter mandatory — Solr Orbit raises an error if it is not
 supplied at run time.
 {: .tip}
 
@@ -67,7 +67,7 @@ second across all clients combined**:
 ```
 
 In the example above, all four clients together issue 100 search requests per second (25
-per client). If the operation is slower than the target, Solr Benchmark runs it as fast as
+per client). If the operation is slower than the target, Solr Orbit runs it as fast as
 possible without throttling.
 
 Setting `target-throughput` keeps service-time measurements independent of scheduling
@@ -76,7 +76,7 @@ throughput cap, clients run at full speed and the measured latency includes queu
 inside Solr.
 
 See [Target throughput](../optimizing-benchmarks/target-throughput.html) for a detailed
-explanation of how Solr Benchmark implements throughput control.
+explanation of how Solr Orbit implements throughput control.
 {: .note}
 
 ---
@@ -120,7 +120,7 @@ Use `clients` to set the number of parallel clients per operation:
 
 Each client receives an equal partition of the corpus. Increasing `clients` can improve
 throughput on systems with many CPU cores, but results in higher resource usage on both the
-Solr Benchmark host and the Solr cluster.
+Solr Orbit host and the Solr cluster.
 
 ---
 
@@ -148,14 +148,14 @@ Use `--include-tasks` or `--exclude-tasks` to run only part of a schedule during
 
 ```bash
 # Run only the indexing task
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
   --include-tasks bulk-index,commit
 
 # Skip slow aggregation tasks
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \

@@ -13,7 +13,7 @@ Randomizing queries generates varied parameter values across iterations, so each
 
 ## How it works
 
-Apache Solr Benchmark uses a **Zipf probability distribution** to model realistic cache behavior:
+Apache Solr Orbit uses a **Zipf probability distribution** to model realistic cache behavior:
 
 1. At benchmark startup, N value pairs are generated and stored in an indexed list.
 2. For each operation, the benchmark probabilistically decides whether to reuse a stored pair (cache hit scenario) or generate a new random pair (cache miss scenario).
@@ -77,7 +77,7 @@ def register(registry):
 ## Enabling randomization at runtime
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \

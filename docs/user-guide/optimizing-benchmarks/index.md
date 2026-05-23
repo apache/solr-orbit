@@ -7,7 +7,7 @@ has_children: true
 
 # Optimizing Benchmarks
 
-This section provides guidance for getting the most meaningful and reliable results from Apache Solr Benchmark.
+This section provides guidance for getting the most meaningful and reliable results from Apache Solr Orbit.
 
 | Topic | Description |
 |-------|-------------|

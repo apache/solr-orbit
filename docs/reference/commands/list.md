@@ -12,7 +12,7 @@ Lists available resources such as workloads and telemetry devices.
 ## Syntax
 
 ```bash
-solr-benchmark list [RESOURCE] [OPTIONS]
+solr-orbit list [RESOURCE] [OPTIONS]
 ```
 
 ## Resources
@@ -40,31 +40,31 @@ solr-benchmark list [RESOURCE] [OPTIONS]
 
 ```bash
 # List available workloads
-solr-benchmark list workloads
+solr-orbit list workloads
 
 # List available telemetry devices
-solr-benchmark list telemetry
+solr-orbit list telemetry
 
 # List available pipelines
-solr-benchmark list pipelines
+solr-orbit list pipelines
 
 # List available cluster config presets
-solr-benchmark list cluster-configs
+solr-orbit list cluster-configs
 
 # List recent test runs (shows IDs for use with compare and aggregate)
-solr-benchmark list test-runs
+solr-orbit list test-runs
 
 # List the 20 most recent test runs
-solr-benchmark list test-runs --limit 20
+solr-orbit list test-runs --limit 20
 
 # List aggregated results
-solr-benchmark list aggregated-results
+solr-orbit list aggregated-results
 ```
 
-To list the test procedures available in a workload, use `solr-benchmark info`:
+To list the test procedures available in a workload, use `solr-orbit info`:
 
 ```bash
-solr-benchmark info --workload nyc_taxis
+solr-orbit info --workload nyc_taxis
 ```
 
-The `test-runs` output includes the test run ID, timestamp, workload name, test procedure, pipeline, and any user tags. Use the ID with `solr-benchmark compare` to compare two runs.
+The `test-runs` output includes the test run ID, timestamp, workload name, test procedure, pipeline, and any user tags. Use the ID with `solr-orbit compare` to compare two runs.

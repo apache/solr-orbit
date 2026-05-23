@@ -61,7 +61,7 @@ Test procedures define named benchmark scenarios within a workload. A workload t
 ## Selecting a test procedure at run time
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload my-workload \
@@ -71,5 +71,5 @@ solr-benchmark run \
 ## Listing available test procedures
 
 ```bash
-solr-benchmark info --workload my-workload
+solr-orbit info --workload my-workload
 ```

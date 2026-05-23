@@ -100,7 +100,7 @@ class SolrProvisioner:
     def __init__(self, cache_dir: str = None, port: int = 8983,
                  startup_timeout: int = 120, cluster_config=None, solr_modules: str = "",
                  telemetry_devices: list = None):
-        self.cache_dir = cache_dir or os.path.join(os.path.expanduser("~"), ".solr-benchmark", "cache")
+        self.cache_dir = cache_dir or os.path.join(os.path.expanduser("~"), ".solr-orbit", "cache")
         self.port = port
         self.startup_timeout = startup_timeout
         self.cluster_config = cluster_config
@@ -319,7 +319,7 @@ class SolrDockerLauncher:
         launcher.stop()
     """
 
-    DEFAULT_CONTAINER_NAME = "solr-benchmark"
+    DEFAULT_CONTAINER_NAME = "solr-orbit"
 
     def __init__(self, port: int = 8983, startup_timeout: int = 60,
                  container_name: str = None, cluster_config=None, solr_modules: str = "",

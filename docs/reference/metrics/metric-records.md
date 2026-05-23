@@ -7,10 +7,10 @@ nav_order: 2
 
 # Metric Records
 
-Apache Solr Benchmark stores metrics as individual JSON documents. When the
+Apache Solr Orbit stores metrics as individual JSON documents. When the
 [filesystem metrics store](filesystem-metrics-store.html) is active (the default),
 each document is appended as a single line to
-`~/.solr-benchmark/benchmarks/test-runs/<run-id>/metrics.jsonl`.
+`~/.solr-orbit/benchmarks/test-runs/<run-id>/metrics.jsonl`.
 
 The following example shows a single `service_time` record produced during a bulk-index
 operation on the `nyc_taxis` workload:
@@ -46,7 +46,7 @@ operation on the `nyc_taxis` workload:
 
 | Field | Description |
 |-------|-------------|
-| `@timestamp` | The timestamp of when the sample was taken, in milliseconds since the Unix epoch. For request-related measurements this marks the moment Solr Benchmark issued the request. |
+| `@timestamp` | The timestamp of when the sample was taken, in milliseconds since the Unix epoch. For request-related measurements this marks the moment Solr Orbit issued the request. |
 | `relative-time-ms` | The relative time since the start of the benchmark, in milliseconds. This is useful for aligning time-series data across multiple test runs because it is always measured from the same benchmark-internal zero point. |
 | `test-run-id` | A UUID that uniquely identifies this invocation of the workload. Every metric record from a single run shares the same value. |
 | `test-run-timestamp` | The timestamp of when the workload was invoked, always expressed in UTC (for example `20230810T212711Z`). |

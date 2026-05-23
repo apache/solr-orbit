@@ -9,7 +9,7 @@ nav_order: 2
 ## Basic usage
 
 ```bash
-solr-benchmark convert-workload \
+solr-orbit convert-workload \
   --workload-path /path/to/osb-workload \
   --output-path /path/to/solr-workload
 ```
@@ -56,7 +56,7 @@ If the output directory already contains a `CONVERTED.md` file, the converter wi
 
 ```bash
 # Re-run without losing manual edits
-solr-benchmark convert-workload \
+solr-orbit convert-workload \
   --workload-path /path/to/osb-workload \
   --output-path /path/to/solr-workload \
   --force

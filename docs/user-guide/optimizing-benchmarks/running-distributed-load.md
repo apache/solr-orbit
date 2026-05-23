@@ -7,7 +7,7 @@ nav_order: 30
 
 # Running Distributed Load
 
-By default, Apache Solr Benchmark generates all load from the machine where you run the `solr-benchmark` command. For large clusters or high-throughput benchmarks, a single machine may become the bottleneck before Solr does. Distributed load generation lets you spread the workload across multiple machines.
+By default, Apache Solr Orbit generates all load from the machine where you run the `solr-orbit` command. For large clusters or high-throughput benchmarks, a single machine may become the bottleneck before Solr does. Distributed load generation lets you spread the workload across multiple machines.
 
 ## Architecture
 
@@ -25,7 +25,7 @@ The coordinator and workers communicate over the network. All machines must be a
 
 ## Prerequisites
 
-- The same version of Apache Solr Benchmark must be installed on all coordinator and worker machines
+- The same version of Apache Solr Orbit must be installed on all coordinator and worker machines
 - All machines must have network access to the Solr cluster
 - Workers must have the workload data files available at the same path as the coordinator (or accessible via a shared filesystem)
 
@@ -36,17 +36,17 @@ The coordinator and workers communicate over the network. All machines must be a
 On each worker machine, start the benchmark daemon:
 
 ```bash
-solr-benchmarkd start --node-ip WORKER_IP --coordinator-ip COORDINATOR_IP
+solr-orbitd start --node-ip WORKER_IP --coordinator-ip COORDINATOR_IP
 ```
 
-Replace `WORKER_IP` with the IP address of that worker machine and `COORDINATOR_IP` with the IP address of the machine that will run `solr-benchmark run`.
+Replace `WORKER_IP` with the IP address of that worker machine and `COORDINATOR_IP` with the IP address of the machine that will run `solr-orbit run`.
 
 ### Run the benchmark from the coordinator
 
 On the coordinator machine, pass the worker IPs via `--worker-ips`:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --pipeline benchmark-only \
   --target-hosts solr1:8983,solr2:8983,solr3:8983 \
@@ -63,16 +63,16 @@ The corpus is partitioned by line ranges in the NDJSON data files. Each worker r
 
 ```bash
 # On worker-1 (192.168.1.10):
-solr-benchmarkd start --node-ip 192.168.1.10 --coordinator-ip 192.168.1.1
+solr-orbitd start --node-ip 192.168.1.10 --coordinator-ip 192.168.1.1
 
 # On worker-2 (192.168.1.11):
-solr-benchmarkd start --node-ip 192.168.1.11 --coordinator-ip 192.168.1.1
+solr-orbitd start --node-ip 192.168.1.11 --coordinator-ip 192.168.1.1
 
 # On worker-3 (192.168.1.12):
-solr-benchmarkd start --node-ip 192.168.1.12 --coordinator-ip 192.168.1.1
+solr-orbitd start --node-ip 192.168.1.12 --coordinator-ip 192.168.1.1
 
 # On the coordinator (192.168.1.1):
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --pipeline benchmark-only \
   --target-hosts solr1:8983,solr2:8983 \
@@ -85,16 +85,16 @@ solr-benchmark run \
 When the benchmark is complete, stop each worker daemon:
 
 ```bash
-solr-benchmarkd stop --node-ip 192.168.1.10 --coordinator-ip 192.168.1.1
+solr-orbitd stop --node-ip 192.168.1.10 --coordinator-ip 192.168.1.1
 ```
 
 Check daemon status on any worker:
 
 ```bash
-solr-benchmarkd status
+solr-orbitd status
 ```
 
-See the [solr-benchmarkd reference](../../reference/commands/benchmarkd.html) for full daemon documentation.
+See the [solr-orbitd reference](../../reference/commands/benchmarkd.html) for full daemon documentation.
 
 ## When to use distributed load
 

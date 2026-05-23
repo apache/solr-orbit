@@ -89,7 +89,7 @@ def create_arg_parser():
         workload_source_group = subparser.add_mutually_exclusive_group()
         workload_source_group.add_argument(
             "--workload-repository",
-            help="Define the repository from where solr-benchmark will load workloads (default: default).",
+            help="Define the repository from where solr-orbit will load workloads (default: default).",
             # argparse is smart enough to use this default only if the user did not use --workload-path and also did not specify anything
             default="default"
         )
@@ -98,7 +98,7 @@ def create_arg_parser():
             help="Define the path to a workload.")
         subparser.add_argument(
             "--workload-revision",
-            help="Define a specific revision in the workload repository that solr-benchmark should use.",
+            help="Define a specific revision in the workload repository that solr-orbit should use.",
             default=None)
 
     # try to preload configurable defaults, but this does not work together with `--configuration-name` (which is undocumented anyway)
@@ -171,7 +171,7 @@ def create_arg_parser():
 
     synthetic_data_generator_parser = subparsers.add_parser("generate-data",
                                                             help="Generate synthetic data based on existing index mappings or custom module." +
-                                                            "This data can be ported into Solr Benchmark workloads." )
+                                                            "This data can be ported into Solr Orbit workloads." )
 
     exclusive_file_inputs = synthetic_data_generator_parser.add_mutually_exclusive_group(required=True)
     exclusive_file_inputs.add_argument(
@@ -355,17 +355,17 @@ def create_arg_parser():
         default="")
     aggregate_parser.add_argument(
         "--workload-repository",
-        help="Define the repository from where solr-benchmark will load workloads (default: default).",
+        help="Define the repository from where solr-orbit will load workloads (default: default).",
         default="default")
 
     download_parser = subparsers.add_parser("download", help="Downloads an artifact")
     download_parser.add_argument(
         "--cluster-config-repository",
-        help="Define the repository from where solr-benchmark will load cluster-configs (default: default).",
+        help="Define the repository from where solr-orbit will load cluster-configs (default: default).",
         default="default")
     download_parser.add_argument(
         "--cluster-config-revision",
-        help="Define a specific revision in the cluster-config repository that solr-benchmark should use.",
+        help="Define a specific revision in the cluster-config repository that solr-orbit should use.",
         default=None)
     download_parser.add_argument(
         "--cluster-config-path",
@@ -408,11 +408,11 @@ def create_arg_parser():
         default="tar")
     install_parser.add_argument(
         "--cluster-config-repository",
-        help="Define the repository from where solr-benchmark will load cluster-configs (default: default).",
+        help="Define the repository from where solr-orbit will load cluster-configs (default: default).",
         default="default")
     install_parser.add_argument(
         "--cluster-config-revision",
-        help="Define a specific revision in the cluster-config repository that solr-benchmark should use.",
+        help="Define a specific revision in the cluster-config repository that solr-orbit should use.",
         default=None)
     install_parser.add_argument(
         "--cluster-config-path",
@@ -536,11 +536,11 @@ def create_arg_parser():
             help="Define the path to the cluster-config and plugin configurations to use.")
         p.add_argument(
             "--cluster-config-repository",
-            help="Define repository from where solr-benchmark will load cluster-configs (default: default).",
+            help="Define repository from where solr-orbit will load cluster-configs (default: default).",
             default="default")
         p.add_argument(
             "--cluster-config-revision",
-            help="Define a specific revision in the cluster-config repository that solr-benchmark should use.",
+            help="Define a specific revision in the cluster-config repository that solr-orbit should use.",
             default=None)
 
     test_run_parser.add_argument(
@@ -626,7 +626,7 @@ def create_arg_parser():
         default=opts.ClientOptions.DEFAULT_CLIENT_OPTIONS)
     test_run_parser.add_argument("--on-error",
                              choices=["continue", "abort"],
-                             help="Controls how solr-benchmark behaves on response errors (default: continue).",
+                             help="Controls how solr-orbit behaves on response errors (default: continue).",
                              default="continue")
     test_run_parser.add_argument(
         "--telemetry",
@@ -686,7 +686,7 @@ def create_arg_parser():
         action="store_true")
     test_run_parser.add_argument(
         "--enable-worker-coordinator-profiling",
-        help="Enables a profiler for analyzing the performance of calls in solr-benchmark's worker coordinator (default: false).",
+        help="Enables a profiler for analyzing the performance of calls in solr-orbit's worker coordinator (default: false).",
         default=False,
         action="store_true")
     test_run_parser.add_argument(
@@ -699,7 +699,7 @@ def create_arg_parser():
         "-k",
         action="store_true",
         default=False,
-        help="If any processes is running, it is going to kill them and allow solr-benchmark to continue to run."
+        help="If any processes is running, it is going to kill them and allow solr-orbit to continue to run."
     )
     test_run_parser.add_argument(
         "--latency-percentiles",
@@ -792,7 +792,7 @@ def create_arg_parser():
     test_run_parser.add_argument(
         "--redline-max-cpu-usage",
         type=int,
-        help="Maximum CPU utilization before scaling back client numbers. Used to activate CPU-based feedback in solr-benchmark.",
+        help="Maximum CPU utilization before scaling back client numbers. Used to activate CPU-based feedback in solr-orbit.",
         default=None
     )
     test_run_parser.add_argument(
@@ -824,7 +824,7 @@ def create_arg_parser():
     # The options below are undocumented and can be removed or changed at any time.
     #
     ###############################################################################
-    # This option is intended to tell solr-benchmark to assume a different start date than 'now'. This is effectively just useful for things like
+    # This option is intended to tell solr-orbit to assume a different start date than 'now'. This is effectively just useful for things like
     # backtesting or a benchmark run across environments (think: comparison of EC2 and bare metal) but never for the typical user.
     test_run_parser.add_argument(
         "--effective-start-date",
@@ -854,7 +854,7 @@ def create_arg_parser():
             action="store_true")
         p.add_argument(
             "--offline",
-            help="Assume that solr-benchmark has no connection to the Internet (default: false).",
+            help="Assume that solr-orbit has no connection to the Internet (default: false).",
             default=False,
             action="store_true")
 
@@ -921,23 +921,23 @@ def run_test(cfg, kill_running_processes=False):
     logger = logging.getLogger(__name__)
 
     if kill_running_processes:
-        logger.info("Killing running solr-benchmark processes")
+        logger.info("Killing running solr-orbit processes")
 
-        # Kill any lingering solr-benchmark processes before attempting to continue - the actor system needs to be a singleton on this machine
+        # Kill any lingering solr-orbit processes before attempting to continue - the actor system needs to be a singleton on this machine
         # noinspection PyBroadException
         try:
             process.kill_running_benchmark_instances()
         except BaseException:
             logger.exception(
-                "Could not terminate potentially running solr-benchmark instances correctly. Attempting to go on anyway.")
+                "Could not terminate potentially running solr-orbit instances correctly. Attempting to go on anyway.")
     else:
         other_benchmark_processes = process.find_all_other_benchmark_processes()
         if other_benchmark_processes:
             pids = [p.pid for p in other_benchmark_processes]
 
-            msg = f"There are other solr-benchmark processes running on this machine (PIDs: {pids}) but only one " \
+            msg = f"There are other solr-orbit processes running on this machine (PIDs: {pids}) but only one " \
                   f"benchmark is allowed to run at the same time.\n\nYou can use --kill-running-processes flag " \
-                  f"to kill running processes automatically and allow solr-benchmark to continue to run a new benchmark. " \
+                  f"to kill running processes automatically and allow solr-orbit to continue to run a new benchmark. " \
                   f"Otherwise, you need to manually kill them."
             raise exceptions.BenchmarkError(msg)
 
@@ -1008,7 +1008,7 @@ def with_actor_system(runnable, cfg):
                 except KeyboardInterrupt:
                     times_interrupted += 1
                     logger.warning("User interrupted shutdown of internal actor system.")
-                    console.info("Please wait a moment for solr-benchmark's internal components to shutdown.")
+                    console.info("Please wait a moment for solr-orbit's internal components to shutdown.")
             if not shutdown_complete and times_interrupted > 0:
                 logger.warning("Terminating after user has interrupted actor system shutdown explicitly for [%d] times.",
                                times_interrupted)
@@ -1021,7 +1021,7 @@ def with_actor_system(runnable, cfg):
                 console.println("")
             elif not shutdown_complete:
                 console.warn("Could not terminate all internal processes within timeout. Please check and force-terminate "
-                             "all solr-benchmark processes.")
+                             "all solr-orbit processes.")
 
 
 
@@ -1397,7 +1397,7 @@ def main():
 
     logger.info("OS [%s]", str(platform.uname()))
     logger.info("Python [%s]", str(sys.implementation))
-    logger.info("solr-benchmark version [%s]", version.version())
+    logger.info("solr-orbit version [%s]", version.version())
     logger.debug("Command line arguments: %s", args)
     # Configure networking
     net.init()

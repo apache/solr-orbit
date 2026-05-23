@@ -824,7 +824,7 @@ def _write_converted_marker(output_dir: str, source_dir: str, skipped: list, iss
     content = f"""# Workload Conversion Record
 
 This workload was automatically converted from OpenSearch Benchmark format to
-Solr Benchmark format by `osbenchmark.conversion.workload_converter`.
+Solr Orbit format by `osbenchmark.conversion.workload_converter`.
 
 ## Metadata
 

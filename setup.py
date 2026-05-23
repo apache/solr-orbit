@@ -142,7 +142,7 @@ tests_require = [
     "pytest-asyncio==0.14.0"
 ]
 
-# These packages are only required when developing solr-benchmark
+# These packages are only required when developing solr-orbit
 develop_require = [
     "tox==3.14.0",
     "coverage==5.5",
@@ -160,19 +160,19 @@ first_supported_version = "{}.{}".format(supported_python_versions[0][0], suppor
 # next minor after the latest supported version
 first_unsupported_version = "{}.{}".format(supported_python_versions[-1][0], supported_python_versions[-1][1] + 1)
 
-setup(name="solr-benchmark",
+setup(name="solr-orbit",
       version=__versionstr__,
       description="Macrobenchmarking framework for Apache Solr",
       long_description=long_description,
       long_description_content_type='text/markdown',
-      url="https://github.com/janhoy/solr-benchmark",
+      url="https://github.com/apache/solr-orbit",
       license="Apache License, Version 2.0",
       packages=find_packages(
           where=".",
           exclude=("tests*", "benchmarks*", "it*")
       ),
       include_package_data=True,
-      # supported Python versions. This will prohibit pip (> 9.0.0) from even installing solr-benchmark on an unsupported
+      # supported Python versions. This will prohibit pip (> 9.0.0) from even installing solr-orbit on an unsupported
       # Python version.
       # See also https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
       #
@@ -194,8 +194,8 @@ setup(name="solr-benchmark",
       },
       entry_points={
           "console_scripts": [
-              "solr-benchmark=osbenchmark.benchmark:main",
-              "solr-benchmarkd=osbenchmark.benchmarkd:main",
+              "solr-orbit=osbenchmark.benchmark:main",
+              "solr-orbitd=osbenchmark.benchmarkd:main",
           ],
       },
       scripts=['scripts/expand-data-corpus.py'],

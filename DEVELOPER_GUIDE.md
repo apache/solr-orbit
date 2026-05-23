@@ -1,7 +1,7 @@
 # Developer Guide
 
 This document walks you through what's needed to start contributing code to
-Apache Solr Benchmark.
+Apache Solr Orbit.
 
 ### Table of Contents
 - [Prerequisites](#prerequisites)
@@ -41,7 +41,7 @@ Apache Solr Benchmark.
 Fork and clone the repository, then install in development mode:
 
 ```bash
-cd solr-benchmark   # (or your fork directory)
+cd solr-orbit   # (or your fork directory)
 make develop
 ```
 
@@ -84,7 +84,7 @@ curl http://localhost:8983/api/node/system | python3 -m json.tool
 ### Running a workload against a local Solr cluster
 
 ```bash
-solr-benchmark execute-test \
+solr-orbit execute-test \
   --pipeline=benchmark-only \
   --workload=<your-workload> \
   --target-host=localhost:8983

@@ -42,7 +42,7 @@ from osbenchmark.utils import process
 CONFIG_NAMES = ["in-memory-it"]
 DISTRIBUTIONS = ["9.10.1", "10.1.0"]
 WORKLOADS = ["geonames", "nyc_taxis"]
-BASE_COMMANDS = ["solr-benchmark"]
+BASE_COMMANDS = ["solr-orbit"]
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
@@ -92,7 +92,7 @@ def osbenchmark(cfg, command_line):
     These commands may have different CLI options than test_run.
     """
     cmd = osbenchmark_command_line_for(cfg, command_line)
-    print(f'\n{datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")} Invoking solr-benchmark: {cmd}')
+    print(f'\n{datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")} Invoking solr-orbit: {cmd}')
     err, retcode = process.run_subprocess_with_stderr(cmd)
     if retcode != 0:
         print(err)
@@ -174,7 +174,7 @@ class TestCluster:
         transport_port = http_port + 100
         try:
             err, retcode = process.run_subprocess_with_stderr(
-                "solr-benchmark install --configuration-name={cfg} --distribution-version={dist} --build-type=tar "
+                "solr-orbit install --configuration-name={cfg} --distribution-version={dist} --build-type=tar "
                 "--http-port={http_port} --node={node_name} --master-nodes="
                 "{node_name} --cluster-config={cluster_config} "
                 "--seed-hosts=\"127.0.0.1:{transport_port}\"".format(cfg=self.cfg,
@@ -252,7 +252,7 @@ def build_docker_image():
     env_variables['BENCHMARK_VERSION'] = benchmark_version
     env_variables['BENCHMARK_LICENSE'] = get_license()
 
-    command = f"docker build -t apache/solr-benchmark:{benchmark_version}" \
+    command = f"docker build -t apache/solr-orbit:{benchmark_version}" \
         f" --build-arg BENCHMARK_VERSION --build-arg BENCHMARK_LICENSE " \
               f"-f {ROOT_DIR}/docker/Dockerfiles/Dockerfile-dev {ROOT_DIR}"
 

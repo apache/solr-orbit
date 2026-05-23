@@ -888,7 +888,7 @@ class SchedulerTests(TestCase):
     class CustomComplexScheduler:
         def __init__(self, task):
             self.task = task
-            # will be injected by solr-benchmark
+            # will be injected by solr-orbit
             self.parameter_source = None
 
         def before_request(self, now):
@@ -2143,7 +2143,7 @@ class FeedbackActorTests(TestCase):
         assert self.actor.total_active_client_count < 4
 
     def test_check_cpu_usage_raises_system_setup_error(self):
-        # CPU-based redline feedback is not supported in Solr Benchmark;
+        # CPU-based redline feedback is not supported in Solr Orbit;
         # _check_cpu_usage must raise SystemSetupError immediately.
         from osbenchmark.exceptions import SystemSetupError
         with self.assertRaises(SystemSetupError):

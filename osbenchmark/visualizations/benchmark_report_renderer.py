@@ -147,7 +147,7 @@ def render_results_html(test_run, cfg) -> str:
         <html lang="en">
         <head>
           <meta charset="utf-8" />
-          <title>Solr Benchmark Report &mdash; {test_id}</title>
+          <title>Solr Orbit Report &mdash; {test_id}</title>
           <style>
             /* ───────────────────────────────────────────────────────────────── */
             /* Base Styles + Resets */
@@ -268,7 +268,7 @@ def render_results_html(test_run, cfg) -> str:
         <body>
           <!-- ─── Header Bar ───────────────────────────────────────────────── -->
           <header>
-            <h1>Solr Benchmark Report: <code>{test_id}</code></h1>
+            <h1>Solr Orbit Report: <code>{test_id}</code></h1>
           </header>
 
           <!-- ─── Main Content ──────────────────────────────────────────────── -->

@@ -63,7 +63,7 @@ class HostHandlingTests(TestCase):
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             builder.to_ip_port(hosts)
         self.assertEqual("When specifying nodes to be managed by "
-                         "solr-benchmark you can only supply hostname:port pairs (e.g. 'localhost:8983'), "
+                         "solr-orbit you can only supply hostname:port pairs (e.g. 'localhost:8983'), "
                          "any additional options cannot be supported.", ctx.exception.args[0])
 
     def test_groups_nodes_by_host(self):

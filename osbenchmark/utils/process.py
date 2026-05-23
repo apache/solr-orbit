@@ -136,10 +136,10 @@ def run_subprocess_with_logging(command_line, header=None, level=logging.INFO, s
 
 def is_benchmark_process(p):
     cmdline = p.cmdline()
-    return p.name() == "solr-benchmark" or \
+    return p.name() == "solr-orbit" or \
         (len(cmdline) > 1 and
          os.path.basename(cmdline[0].lower()).startswith("python") and
-         os.path.basename(cmdline[1]) == "solr-benchmark")
+         os.path.basename(cmdline[1]) == "solr-orbit")
 
 
 def find_all_other_benchmark_processes():

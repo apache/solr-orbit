@@ -72,15 +72,15 @@ class ProcessTests(TestCase):
                                                                    "org.elasticsearch.bootstrap.Elasticsearch"])
         random_python = ProcessTests.Process(103, "python3", ["/some/django/app"])
         other_process = ProcessTests.Process(104, "init", ["/usr/sbin/init"])
-        benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
-        benchmark_process_e = ProcessTests.Process(107, "solr-benchmark", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
+        benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
+        benchmark_process_e = ProcessTests.Process(107, "solr-orbit", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
         benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python",
-                                                                     "~/.local/bin/solr-benchmark"])
+                                                                     "~/.local/bin/solr-orbit"])
         # fake own process by determining our pid
         own_benchmark_process = ProcessTests.Process(
             os.getpid(), "Python",
             ["/Python.app/Contents/MacOS/Python",
-            "~/.local/bin/solr-benchmark"])
+            "~/.local/bin/solr-orbit"])
         night_benchmark_process = ProcessTests.Process(110, "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/night_benchmark"])
 
         process_iter.return_value = [
@@ -125,16 +125,16 @@ class ProcessTests(TestCase):
                                                                    "org.elasticsearch.bootstrap.Elasticsearch"])
         random_python = ProcessTests.Process(103, "python3", ["/some/django/app"])
         other_process = ProcessTests.Process(104, "init", ["/usr/sbin/init"])
-        benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
-        # On Linux, process names up to 15 chars are not truncated; solr-benchmark is exactly 15 chars.
-        benchmark_process_l = ProcessTests.Process(106, "solr-benchmark", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
-        benchmark_process_e = ProcessTests.Process(107, "solr-benchmark", ["/usr/bin/python3", "~/.local/bin/solr-benchmark"])
+        benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
+        # On Linux, process names are truncated to 15 chars; "solr-orbit" (9 chars) fits within that limit.
+        benchmark_process_l = ProcessTests.Process(106, "solr-orbit", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
+        benchmark_process_e = ProcessTests.Process(107, "solr-orbit", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
         benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python",
-                                                                     "~/.local/bin/solr-benchmark"])
+                                                                     "~/.local/bin/solr-orbit"])
         # fake own process by determining our pid
         own_benchmark_process = ProcessTests.Process(
             os.getpid(), "Python",
-            ["/Python.app/Contents/MacOS/Python", "~/.local/bin/solr-benchmark"])
+            ["/Python.app/Contents/MacOS/Python", "~/.local/bin/solr-orbit"])
         night_benchmark_process = ProcessTests.Process(110, "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/night_benchmark"])
 
         process_iter.return_value = [

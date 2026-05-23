@@ -7,7 +7,7 @@ nav_order: 30
 
 # Enabling Telemetry
 
-Apache Solr Benchmark can collect server-side metrics from your Solr cluster during a benchmark
+Apache Solr Orbit can collect server-side metrics from your Solr cluster during a benchmark
 run using *telemetry devices*. Devices are split into two groups:
 
 - **Always-enabled devices** — active on every run, no flag needed.
@@ -31,7 +31,7 @@ These six devices are active on every benchmark run:
 Enable optional devices by passing `--telemetry` with a comma-separated list of device names:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \

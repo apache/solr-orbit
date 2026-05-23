@@ -29,7 +29,7 @@ from osbenchmark.utils.io import ensure_dir
 
 def benchmark_confdir():
     default_home = os.path.expanduser("~")
-    benchmark_confdir_path = os.path.join(os.getenv("BENCHMARK_HOME", default_home), ".solr-benchmark")
+    benchmark_confdir_path = os.path.join(os.getenv("BENCHMARK_HOME", default_home), ".solr-orbit")
     ensure_dir(benchmark_confdir_path)
     return benchmark_confdir_path
 

@@ -5,7 +5,7 @@
 # Takes one of the http_logs corpora files as input and duplicates it
 # as specified; then emits the documents with a modified timestamp
 # sequence.  Also generates the associated offset file to enable
-# solr-benchmark to start up faster.
+# solr-orbit to start up faster.
 #
 # See the help message for more information.
 #
@@ -20,14 +20,14 @@ import configparser
 help_msg = """
 
 This tool is intended for the purpose of expanding the size of the
-data corpus associated with a solr-benchmark workload.  Currently, this capability
+data corpus associated with a solr-orbit workload.  Currently, this capability
 is implemented only for the http_logs workload.
 
 TLDR: to generate a 100 GB corpus and then run a test against it:
 
 $ expand-data-corpus.py --corpus-size 100 --output-file-suffix 100gb
 
-$ solr-benchmark run --workload http_logs \\
+$ solr-orbit run --workload http_logs \\
     --workload_params=generated_corpus:t ...
 
 The script generates new documents by duplicating ones in the existing
@@ -46,7 +46,7 @@ larger scale on, for instance, clusters with multiple data nodes or
 featuring an upgraded instance type.
 
 To carry out an performance test using the generated corpus, the
-following flag needs to be passed to the solr-benchmark command:
+following flag needs to be passed to the solr-orbit command:
 
     --workload-params=generated_corpus:t
 
@@ -79,9 +79,9 @@ Notes and limitations:
     in the http_logs workload directory.  New ones can be regenerated
     subsequently, if desired.
 
-  * solr-benchmark runs with and without the 'generated_corpus' flag should not
+  * solr-orbit runs with and without the 'generated_corpus' flag should not
     generally be interleaved, since they target different
-    collections. However, solr-benchmark can be run in ingest-only mode to ingest
+    collections. However, solr-orbit can be run in ingest-only mode to ingest
     both the generated and default corpora in two separate runs.  Once
     ingested, queries packaged with the workload will operate on the
     entire loaded data set.

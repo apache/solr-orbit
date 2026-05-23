@@ -12,7 +12,7 @@ Runs a benchmark workload.
 ## Syntax
 
 ```bash
-solr-benchmark run [OPTIONS]
+solr-orbit run [OPTIONS]
 ```
 
 ## Workload selection
@@ -40,7 +40,7 @@ solr-benchmark run [OPTIONS]
 
 ### Pipeline auto-selection
 
-If `--pipeline` is omitted, Solr Benchmark selects a pipeline automatically:
+If `--pipeline` is omitted, Solr Orbit selects a pipeline automatically:
 
 - `from-distribution` — when `--distribution-version` is specified
 - `benchmark-only` — otherwise (connects to an already-running cluster)
@@ -87,7 +87,7 @@ If `--pipeline` is omitted, Solr Benchmark selects a pipeline automatically:
 | `--test-mode` | Run a shortened version of the workload (≤1,000 docs) for quick validation |
 | `--on-error` | Error handling: `continue` (default), `abort` |
 | `--client-options` / `-c` | Comma-separated client options (default: `timeout:60`) |
-| `--kill-running-processes` / `-k` | Kill other running `solr-benchmark` processes before starting |
+| `--kill-running-processes` / `-k` | Kill other running `solr-orbit` processes before starting |
 | `--preserve-install` | Keep the Solr installation after the run (provisioned pipelines only) |
 
 The `--quiet` flag is accepted by all subcommands; see [Command Flags](command-flags.html#global-flags).
@@ -106,7 +106,7 @@ Workload files can contain Jinja2 template variables, for example:
 Override these at run time with `--workload-params` as a comma-separated list of `key:value` pairs:
 
 ```bash
-solr-benchmark run --workload-params "bulk_size:1000,clients:8" ...
+solr-orbit run --workload-params "bulk_size:1000,clients:8" ...
 ```
 
 Related parameter flags:
@@ -122,34 +122,34 @@ Related parameter flags:
 
 ```bash
 # Benchmark an existing cluster
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
   --test-mode
 
 # Docker pipeline with Solr 9.10.1
-solr-benchmark run \
+solr-orbit run \
   --pipeline docker \
   --distribution-version 9.10.1 \
   --workload nyc_taxis
 
 # Custom workload with parameter overrides
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload-path /path/to/my-workload \
   --workload-params "bulk_size:1000,clients:8"
 
 # With optional telemetry devices
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
   --telemetry shard-stats,cluster-environment-info
 
 # Run 3 iterations and aggregate results
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \

@@ -19,7 +19,7 @@
 Workload Format Detection
 
 Determines whether a workload is OpenSearch Benchmark format (requiring conversion)
-or native Solr Benchmark format (no conversion needed).
+or native Solr Orbit format (no conversion needed).
 """
 
 import json

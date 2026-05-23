@@ -45,7 +45,7 @@ class GitTests(TestCase):
         run_subprocess_with_out_and_err.return_value = ("git version 1.4.0", None, 0)
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             git.head_revision("/src")
-        self.assertEqual("solr-benchmark requires at least version 2 of git.  You have git version 1.4.0.  Please update git.",
+        self.assertEqual("solr-orbit requires at least version 2 of git.  You have git version 1.4.0.  Please update git.",
                          ctx.exception.args[0])
         run_subprocess_with_out_and_err.assert_called_with("git --version")
 

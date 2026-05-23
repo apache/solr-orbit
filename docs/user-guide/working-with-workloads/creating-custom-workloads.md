@@ -76,10 +76,10 @@ my-benchmark/
 
 ## Invoking your custom workload
 
-Point Solr Benchmark at the workload directory with `--workload-path`:
+Point Solr Orbit at the workload directory with `--workload-path`:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload-path /path/to/my-benchmark
@@ -88,7 +88,7 @@ solr-benchmark run \
 Use `--test-mode` to do a quick validation pass before running the full workload:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload-path /path/to/my-benchmark \
@@ -126,9 +126,9 @@ it, create a companion `-1k` file alongside the main corpus:
 zcat files/my_data.json.gz | head -n 1000 | gzip > files/my_data-1k.json.gz
 ```
 
-Solr Benchmark automatically uses the `-1k` variant when `--test-mode` is passed — no
+Solr Orbit automatically uses the `-1k` variant when `--test-mode` is passed — no
 changes to `workload.json` are required. The `document-count` in the corpus definition
-should reflect the **full** dataset; Solr Benchmark adjusts internally for test mode.
+should reflect the **full** dataset; Solr Orbit adjusts internally for test mode.
 
 Test mode is not a substitute for a full run. Always verify results against the complete
 corpus before drawing conclusions.
@@ -163,7 +163,7 @@ Workload files are Jinja2 templates. Add parameters to allow runtime overrides:
 Then override at runtime:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload-path my-benchmark \
@@ -217,7 +217,7 @@ procedures that can be selected at run time with `--test-procedure`:
 Run a specific test procedure:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload-path my-benchmark \

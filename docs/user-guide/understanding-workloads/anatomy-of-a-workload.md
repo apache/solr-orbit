@@ -128,14 +128,14 @@ describes a Solr collection and the configset to use when creating it.
 
 ### `corpora`
 
-The `corpora` element lists the datasets that Solr Benchmark downloads and indexes. Each corpus
+The `corpora` element lists the datasets that Solr Orbit downloads and indexes. Each corpus
 entry names the dataset and lists one or more document files.
 
 | Field | Type | Description |
 | :---- | :---- | :---- |
 | `name` | string | The name of the data corpus, used to match against a collection when indexing. |
 | `source-file` | string | The relative path to the data file inside the workload directory. Must be a gzip-compressed NDJSON file (one JSON document per line). |
-| `document-count` | integer | The number of documents in the source file. Solr Benchmark uses this to divide the corpus evenly among indexing clients. |
+| `document-count` | integer | The number of documents in the source file. Solr Orbit uses this to divide the corpus evenly among indexing clients. |
 | `uncompressed-bytes` | integer | The decompressed size in bytes. Used to estimate required disk space. |
 | `compressed-bytes` | integer | The compressed size in bytes. Used to estimate download time. |
 
@@ -150,7 +150,7 @@ following walkthrough describes how the example schedule above executes:
 2. **`bulk-index`** indexes documents from the corpus into the collection.
    - The `clients` field (set to `8`) specifies how many concurrent indexing clients Solr
      Benchmark runs. Each client receives an equal share of the corpus.
-   - The `warmup-time-period` field (set to `120`) tells Solr Benchmark to index for 120 seconds
+   - The `warmup-time-period` field (set to `120`) tells Solr Orbit to index for 120 seconds
      before starting to record metrics. Warmup traffic heats up JVM JIT compilation and caches
      so that measurements are not skewed by cold-start effects.
    - The `bulk-size` field (set to `5000`) controls how many documents are sent per HTTP request.
@@ -162,7 +162,7 @@ following walkthrough describes how the example schedule above executes:
      query. To generate precise percentile figures in the summary report, run at least 1,000
      iterations.
    - The `target-throughput` field (set to `100`) defines the number of query requests per second
-     across all clients combined. Solr Benchmark throttles requests to stay at this target, which
+     across all clients combined. Solr Orbit throttles requests to stay at this target, which
      keeps service-time measurements independent of scheduling overhead. See
      [Target throughput](../optimizing-benchmarks/target-throughput.html) for details.
 
@@ -184,7 +184,7 @@ selected at run time with `--test-procedure=<name>`. For details see
 ## Configsets
 
 Instead of an `index.json` mapping file (as used by OpenSearch Benchmark), Solr workloads
-provide a **configset** — a directory that Solr Benchmark uploads to the Solr cluster before
+provide a **configset** — a directory that Solr Orbit uploads to the Solr cluster before
 creating a collection.
 
 A minimal configset directory contains:
@@ -245,7 +245,7 @@ optimistic concurrency control in SolrCloud and must have `indexed="true"` and `
 ## files.txt
 
 When a workload's corpus files are hosted on a remote server, the `files.txt` file lists the
-files that belong to the corpus, one per line. Solr Benchmark downloads each listed file from
+files that belong to the corpus, one per line. Solr Orbit downloads each listed file from
 the configured `base_url` before the benchmark starts.
 
 ```
@@ -264,7 +264,7 @@ typically split into separate directories.
 ### `operations/default.json`
 
 Defines the full set of named operations that test procedures can reference. The following
-example shows a realistic set of Solr Benchmark operations from an `nyc_taxis`-style workload:
+example shows a realistic set of Solr Orbit operations from an `nyc_taxis`-style workload:
 
 ```json
 [
@@ -395,7 +395,7 @@ values:
 Override any parameter at run time with the `--workload-params` flag:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --workload=nyc_taxis \
   --pipeline=benchmark-only \
   --workload-params="bulk_size:10000,bulk_indexing_clients:4"
@@ -405,7 +405,7 @@ Multiple parameters are separated by commas. Parameter values can be integers, f
 booleans, or strings.
 
 The `default()` Jinja2 filter sets the value used when no override is provided. To make a
-parameter mandatory (no default), omit the filter — Solr Benchmark raises a clear error if
+parameter mandatory (no default), omit the filter — Solr Orbit raises a clear error if
 the parameter is missing.
 {: .tip}
 

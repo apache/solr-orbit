@@ -36,12 +36,12 @@ make clean            # Remove build artifacts, caches, tox environments
 
 ## Architecture
 
-Apache Solr Benchmark (ASB) is a **macrobenchmarking framework** for Apache Solr clusters, using an **actor-based concurrent execution model** via the [Thespian](https://thespianpy.com/) library.
+Apache Solr Orbit is a **macrobenchmarking framework** for Apache Solr clusters, using an **actor-based concurrent execution model** via the [Thespian](https://thespianpy.com/) library.
 
 ### Entry Points
 
-- `solr-benchmark` / `sb` → `osbenchmark/benchmark.py:main` — CLI for running benchmarks
-- `solr-benchmarkd` / `sbd` → `osbenchmark/benchmarkd.py:main` — Daemon for distributed worker nodes
+- `solr-orbit` / `sb` → `osbenchmark/benchmark.py:main` — CLI for running benchmarks
+- `solr-orbitd` / `sbd` → `osbenchmark/benchmarkd.py:main` — Daemon for distributed worker nodes
 
 ### Core Package (`osbenchmark/`)
 
@@ -89,7 +89,7 @@ Apache Solr Benchmark (ASB) is a **macrobenchmarking framework** for Apache Solr
 
 - `tests/` — Unit tests mirroring `osbenchmark/` structure
 - `it/` — Integration tests (spin up real Solr clusters via Docker/provisioning)
-- `benchmarks/` — Performance benchmarks for ASB itself
+- `benchmarks/` — Performance benchmarks for Solr Orbit itself
 
 ### Workload System
 
@@ -98,7 +98,7 @@ Workloads are defined as JSON/YAML files with:
 - **Test procedures**: sequences of operations with parameters and schedules
 - **Corpora**: dataset files (compatible with OpenSearch Benchmark format)
 
-Workloads must be in Solr format. Use `solr-benchmark convert-workload` to convert from
+Workloads must be in Solr format. Use `solr-orbit convert-workload` to convert from
 OpenSearch Benchmark format. Workloads can be loaded from a local path (`--workload-path`)
 or from a git workload repository (`--workload-repository`).
 
@@ -112,5 +112,5 @@ or from a git workload repository (`--workload-repository`).
 ## Key Technologies
 
 - **Python 3.10+** with `pysolr` (data ops), `requests` (HTTP admin), `psutil` (I/O metrics), `thespian` (actor model), `pytest` (tests), `tabulate` (console output)
-- **Metrics store**: local filesystem — JSON/CSV result files at `~/.solr-benchmark/`, SQLite test-runs store
+- **Metrics store**: local filesystem — JSON/CSV result files at `~/.solr-orbit/`, SQLite test-runs store
 - **Docs**: Jekyll 4.x + just-the-docs gem in `docs/`; deployed to GitHub Pages via `.github/workflows/docs.yml`

@@ -12,7 +12,7 @@ Stops a locally running Solr node that was started with the [`start`](start.html
 ## Syntax
 
 ```bash
-solr-benchmark stop --installation-id ID [OPTIONS]
+solr-orbit stop --installation-id ID [OPTIONS]
 ```
 
 ## Options
@@ -27,13 +27,13 @@ solr-benchmark stop --installation-id ID [OPTIONS]
 Stop a node and clean up:
 
 ```bash
-solr-benchmark stop --installation-id <installation-id>
+solr-orbit stop --installation-id <installation-id>
 ```
 
 Stop a node but keep the installation files:
 
 ```bash
-solr-benchmark stop --installation-id <installation-id> --preserve-install
+solr-orbit stop --installation-id <installation-id> --preserve-install
 ```
 
 ## See also

@@ -6,7 +6,7 @@ has_children: true
 
 # Cluster Config
 
-The `--cluster-config` flag selects a preset JVM and garbage collector configuration applied to Solr nodes provisioned by Apache Solr Benchmark.
+The `--cluster-config` flag selects a preset JVM and garbage collector configuration applied to Solr nodes provisioned by Apache Solr Orbit.
 
 {: .note }
 > `--cluster-config` is only valid with provisioning pipelines: `docker`, `from-distribution`, and `from-sources`. It is **not** applicable to the `benchmark-only` pipeline, which connects to an already-running cluster without modifying it.
@@ -14,7 +14,7 @@ The `--cluster-config` flag selects a preset JVM and garbage collector configura
 ## Usage
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline docker \
   --distribution-version 9.10.1 \
   --workload nyc_taxis \
@@ -31,7 +31,7 @@ Cluster configs are predefined sets of environment variables injected into the S
 | `GC_TUNE` | JVM garbage collector arguments |
 | `SOLR_OPTS` | Additional JVM options |
 
-Apache Solr Benchmark applies these variables when starting a provisioned Solr node so you can benchmark different JVM configurations without modifying the Solr installation.
+Apache Solr Orbit applies these variables when starting a provisioned Solr node so you can benchmark different JVM configurations without modifying the Solr installation.
 
 ## Available configs
 

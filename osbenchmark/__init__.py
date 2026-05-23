@@ -31,9 +31,9 @@ import urllib
 
 from importlib.metadata import version as get_version
 
-__version__ = get_version("solr-benchmark")
+__version__ = get_version("solr-orbit")
 
-# Allow an alternative program name to be set in case solr-benchmark is invoked via a wrapper script
+# Allow an alternative program name to be set in case solr-orbit is invoked via a wrapper script
 PROGRAM_NAME = os.getenv("BENCHMARK_ALTERNATIVE_BINARY_NAME", os.path.basename(sys.argv[0]))
 
 DOC_LINK = "https://solr.apache.org/guide/"
@@ -41,13 +41,13 @@ DOC_LINK = "https://solr.apache.org/guide/"
 FORUM_LINK = "https://solr.apache.org/community.html#mailing-lists-chat"
 
 BANNER = r"""
-   _____       __        ____                  __                         __
-  / ___/____  / /____   / __ )___  ____  _____/ /_  ____ ___  ____ ______/ /__
-  \__ \/ __ \/ / ___/  / __  / _ \/ __ \/ ___/ __ \/ __ `__ \/ __ `/ ___/ //_/
- ___/ / /_/ / / /     / /_/ /  __/ / / / /__/ / / / / / / / / /_/ / /  / ,<
-/____/\____/_/_/     /_____/\___/_/ /_/\___/_/ /_/_/ /_/ /_/\__,_/_/  /_/|_|
+   _____       __        ____       __    _ __
+  / ___/____  / /____   / __ \_____/ /_  (_) /_
+  \__ \/ __ \/ / ___/  / / / / ___/ __ \/ / __/
+ ___/ / /_/ / / /     / /_/ / /  / /_/ / / /_
+/____/\____/_/_/      \____/_/  /_.___/_/\__/
 
-  Apache Solr Benchmark
+  Apache Solr Orbit
 """
 
 

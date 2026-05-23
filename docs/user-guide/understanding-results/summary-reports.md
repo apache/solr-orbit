@@ -7,7 +7,7 @@ nav_order: 22
 
 # Understanding the Summary Report
 
-At the end of each test run, Apache Solr Benchmark prints a summary report to the console and saves the results to disk. The report shows metrics such as throughput, latency, service time, and error rate for each task in the challenge.
+At the end of each test run, Apache Solr Orbit prints a summary report to the console and saves the results to disk. The report shows metrics such as throughput, latency, service time, and error rate for each task in the challenge.
 
 ## Console output
 
@@ -60,7 +60,7 @@ The summary table is printed after all tasks complete. The following is a real e
 
 ### Throughput
 
-Throughput measures the rate at which operations were completed during the task. Apache Solr Benchmark reports four values:
+Throughput measures the rate at which operations were completed during the task. Apache Solr Orbit reports four values:
 
 | Metric | Description |
 |--------|-------------|
@@ -90,7 +90,7 @@ Higher percentiles (99th, 99.9th) appear in full runs; in `--test-mode` only the
 
 **Service time** is the time the server spent actively processing the request, excluding any client-side queuing wait. It is always ≤ latency.
 
-When Apache Solr Benchmark runs operations at maximum throughput (no `target-throughput` set), or when there is only one operation in flight at a time, latency and service time will be equal — as seen in the example above. The difference becomes visible under load when a schedule produces more requests than the cluster can immediately process.
+When Apache Solr Orbit runs operations at maximum throughput (no `target-throughput` set), or when there is only one operation in flight at a time, latency and service time will be equal — as seen in the example above. The difference becomes visible under load when a schedule produces more requests than the cluster can immediately process.
 
 ### Error rate
 
@@ -98,10 +98,10 @@ The error rate is the fraction of operations that returned an error response, ex
 
 ## Result files
 
-Results are saved to `~/.solr-benchmark/benchmarks/test-runs/` after each run:
+Results are saved to `~/.solr-orbit/benchmarks/test-runs/` after each run:
 
 ```
-~/.solr-benchmark/benchmarks/test-runs/
+~/.solr-orbit/benchmarks/test-runs/
 └── 20260220_143052_a34ff090/
     ├── test_run.json   ← complete metrics record (JSON)
     ├── results.csv     ← key metrics in CSV format
@@ -123,10 +123,10 @@ The following flags on the `run` command control how results are stored and disp
 
 ## Comparing runs
 
-Use `solr-benchmark compare` to diff two runs by their run IDs:
+Use `solr-orbit compare` to diff two runs by their run IDs:
 
 ```bash
-solr-benchmark compare \
+solr-orbit compare \
   --baseline 20260101_120000_abc12345 \
   --contender 20260220_143052_a34ff090
 ```

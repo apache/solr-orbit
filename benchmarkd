@@ -42,6 +42,6 @@ export PYTHONPATH="${BENCHMARK_SRC_HOME}:${PYTHONPATH:-}"
 
 # set variables that are needed for run.sh
 __BENCHMARK_INTERNAL_BINARY_NAME="osbenchmarkd"
-__BENCHMARK_INTERNAL_HUMAN_NAME="Apache Solr Benchmark Daemon"
+__BENCHMARK_INTERNAL_HUMAN_NAME="Apache Solr Orbit Daemon"
 
 source run.sh

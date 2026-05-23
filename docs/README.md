@@ -1,6 +1,6 @@
 # Documentation Maintenance Guide
 
-This directory contains the source for the [Apache Solr Benchmark documentation site](https://janhoy.github.io/solr-benchmark/),
+This directory contains the source for the [Apache Solr Orbit documentation site](https://apache.github.io/solr-orbit/),
 built with [Jekyll](https://jekyllrb.com/) and the [just-the-docs](https://just-the-docs.com/) theme.
 
 ## Prerequisites
@@ -134,6 +134,6 @@ at `.github/workflows/docs.yml`.
 4. `bundle exec jekyll build` generates the static site.
 5. The `docs/_site/` directory is uploaded as a Pages artifact and deployed.
 
-The live site URL is: **https://janhoy.github.io/solr-benchmark/**
+The live site URL is: **https://apache.github.io/solr-orbit/**
 
 No manual deployment step is needed — merge to `main` and the site updates within a few minutes.

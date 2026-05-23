@@ -12,7 +12,7 @@ Shows detailed information about a workload.
 ## Syntax
 
 ```bash
-solr-benchmark info --workload WORKLOAD [OPTIONS]
+solr-orbit info --workload WORKLOAD [OPTIONS]
 ```
 
 ## Options
@@ -32,13 +32,13 @@ solr-benchmark info --workload WORKLOAD [OPTIONS]
 
 ```bash
 # Show information about a named workload
-solr-benchmark info --workload nyc_taxis
+solr-orbit info --workload nyc_taxis
 
 # Show information about a local workload
-solr-benchmark info --workload-path /path/to/my-workload
+solr-orbit info --workload-path /path/to/my-workload
 
 # Show details for a specific test procedure
-solr-benchmark info --workload nyc_taxis --test-procedure append-no-conflicts
+solr-orbit info --workload nyc_taxis --test-procedure append-no-conflicts
 ```
 
 The output includes:

@@ -1,21 +1,21 @@
 ---
-title: solr-benchmarkd
+title: solr-orbitd
 parent: Command Reference
 grand_parent: Reference
 nav_order: 15
 ---
 
-# solr-benchmarkd
+# solr-orbitd
 
-`solr-benchmarkd` is the daemon binary used for distributed load generation. It must be running on every **worker** machine before starting a distributed benchmark from the coordinator.
+`solr-orbitd` is the daemon binary used for distributed load generation. It must be running on every **worker** machine before starting a distributed benchmark from the coordinator.
 
 ## Syntax
 
 ```bash
-solr-benchmarkd start   --node-ip IP --coordinator-ip IP
-solr-benchmarkd stop    --node-ip IP --coordinator-ip IP
-solr-benchmarkd restart --node-ip IP --coordinator-ip IP
-solr-benchmarkd status
+solr-orbitd start   --node-ip IP --coordinator-ip IP
+solr-orbitd stop    --node-ip IP --coordinator-ip IP
+solr-orbitd restart --node-ip IP --coordinator-ip IP
+solr-orbitd status
 ```
 
 ## Subcommands
@@ -32,7 +32,7 @@ solr-benchmarkd status
 | Option | Required | Description |
 |--------|----------|-------------|
 | `--node-ip` | Yes (`start`, `stop`, `restart`) | IP address of this worker machine |
-| `--coordinator-ip` | Yes (`start`, `stop`, `restart`) | IP address of the coordinator machine running `solr-benchmark` |
+| `--coordinator-ip` | Yes (`start`, `stop`, `restart`) | IP address of the coordinator machine running `solr-orbit` |
 
 ## Examples
 
@@ -40,13 +40,13 @@ Start daemons on two worker machines, then run the benchmark from the coordinato
 
 ```bash
 # On worker-1 (192.168.1.10):
-solr-benchmarkd start --node-ip 192.168.1.10 --coordinator-ip 192.168.1.1
+solr-orbitd start --node-ip 192.168.1.10 --coordinator-ip 192.168.1.1
 
 # On worker-2 (192.168.1.11):
-solr-benchmarkd start --node-ip 192.168.1.11 --coordinator-ip 192.168.1.1
+solr-orbitd start --node-ip 192.168.1.11 --coordinator-ip 192.168.1.1
 
 # On the coordinator (192.168.1.1):
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --pipeline benchmark-only \
   --target-hosts solr1:8983,solr2:8983 \
@@ -56,13 +56,13 @@ solr-benchmark run \
 Check daemon status on a worker:
 
 ```bash
-solr-benchmarkd status
+solr-orbitd status
 ```
 
 Stop a worker daemon when the benchmark is complete:
 
 ```bash
-solr-benchmarkd stop --node-ip 192.168.1.10 --coordinator-ip 192.168.1.1
+solr-orbitd stop --node-ip 192.168.1.10 --coordinator-ip 192.168.1.1
 ```
 
 ## See also

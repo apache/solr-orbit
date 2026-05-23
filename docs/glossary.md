@@ -54,7 +54,7 @@ Solr's aggregation mechanism for computing counts, statistics, and groupings ove
 
 ## Terminology mapping
 
-| OpenSearch Benchmark Term | Apache Solr Benchmark Canonical Term |
+| OpenSearch Benchmark Term | Apache Solr Orbit Canonical Term |
 |---------------------------|--------------------------------------|
 | index | collection |
 | indices | collections |

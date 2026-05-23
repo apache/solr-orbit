@@ -64,7 +64,7 @@ class IoTests(TestCase):
     def test_archive(self):
         self.assertTrue(io.is_archive("/tmp/some-archive.tar.gz"))
         self.assertTrue(io.is_archive("/tmp/some-archive.tgz"))
-        # solr-benchmark does not recognize .7z
+        # solr-orbit does not recognize .7z
         self.assertFalse(io.is_archive("/tmp/some-archive.7z"))
         self.assertFalse(io.is_archive("/tmp/some.log"))
         self.assertFalse(io.is_archive("some.log"))

@@ -25,4 +25,4 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Empty placeholder. We just need this file to verify that solr-benchmark will recognize it as an install hook entry point.
+# Empty placeholder. We just need this file to verify that solr-orbit will recognize it as an install hook entry point.

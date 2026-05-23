@@ -19,7 +19,7 @@
 
 ##########################################################################################
 #
-# Internal helper script to actually run either solr-benchmark or its daemon.
+# Internal helper script to actually run either solr-orbit or its daemon.
 #
 # Do not invoke directly but rather use the `benchmark` and `benchmarkd` scripts.
 #
@@ -43,7 +43,7 @@ install_osbenchmark_with_setuptools () {
     fi
 }
 
-# Attempt to update solr-benchmark itself by default but allow user to skip it.
+# Attempt to update solr-orbit itself by default but allow user to skip it.
 SELF_UPDATE=YES
 # Assume that the "main remote" is called "origin"
 REMOTE="origin"
@@ -89,7 +89,7 @@ then
     # see http://unix.stackexchange.com/a/155077
     if output=$(git status --porcelain) && [ -z "$output" ] && on_master=$(git rev-parse --abbrev-ref HEAD) && [ "$on_master" == "master" ]
     then
-      # Working directory clean -> we assume this is a user that is not actively developing solr-benchmark and just upgrade it every time it is invoked
+      # Working directory clean -> we assume this is a user that is not actively developing solr-orbit and just upgrade it every time it is invoked
       set +e
       # this will fail if the user is offline
       git fetch ${REMOTE} --quiet >/dev/null 2>&1
@@ -97,7 +97,7 @@ then
       set -e
       if [[ $exit_code == 0 ]]
       then
-        echo "Auto-updating solr-benchmark from ${REMOTE}"
+        echo "Auto-updating solr-orbit from ${REMOTE}"
         git rebase ${REMOTE}/master --quiet
         install_osbenchmark_with_setuptools
       #else

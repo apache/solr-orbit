@@ -6,7 +6,7 @@ nav_order: 45
 
 # Telemetry Devices
 
-Apache Solr Benchmark includes telemetry devices for collecting server-side metrics. Six devices are **always enabled** and collect metrics automatically without any flags. One additional device (`disk-io`) runs automatically on provisioned pipelines. Eight further devices can be enabled on demand with `--telemetry`.
+Apache Solr Orbit includes telemetry devices for collecting server-side metrics. Six devices are **always enabled** and collect metrics automatically without any flags. One additional device (`disk-io`) runs automatically on provisioned pipelines. Eight further devices can be enabled on demand with `--telemetry`.
 
 Both Solr 9.x (JSON format) and Solr 10.x (Prometheus text format) are supported. Format detection is automatic via the HTTP `Content-Type` header.
 
@@ -260,7 +260,7 @@ The six always-on devices collect metrics automatically — no flags required:
 
 ```bash
 # Always-on devices activate without any --telemetry flag:
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis
@@ -269,7 +269,7 @@ solr-benchmark run \
 Add optional REST devices on any pipeline:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
@@ -279,7 +279,7 @@ solr-benchmark run \
 Add JVM profiling devices on provisioned pipelines:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline docker \
   --distribution-version 9.10.1 \
   --workload nyc_taxis \
@@ -288,4 +288,4 @@ solr-benchmark run \
 
 ## Telemetry output location
 
-Telemetry metrics are written to the metrics store alongside all other benchmark metrics. When using the filesystem store, they are recorded in `metrics.jsonl` in the test run directory (`~/.solr-benchmark/benchmarks/test-runs/<run-id>/`). See [Filesystem Metrics Store](metrics/filesystem-metrics-store.html) for the file format.
+Telemetry metrics are written to the metrics store alongside all other benchmark metrics. When using the filesystem store, they are recorded in `metrics.jsonl` in the test run directory (`~/.solr-orbit/benchmarks/test-runs/<run-id>/`). See [Filesystem Metrics Store](metrics/filesystem-metrics-store.html) for the file format.

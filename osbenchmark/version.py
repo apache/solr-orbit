@@ -32,7 +32,7 @@ from importlib.metadata import version as get_version
 from osbenchmark import paths
 from osbenchmark.utils import git, io
 
-__version__ = get_version("solr-benchmark")
+__version__ = get_version("solr-orbit")
 
 __BENCHMARK_VERSION_PATTERN = re.compile(r"^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:.(.+))?$")
 

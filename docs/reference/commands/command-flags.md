@@ -7,7 +7,7 @@ nav_order: 150
 
 # Command Flags
 
-Complete reference of all `solr-benchmark` command-line flags.
+Complete reference of all `solr-orbit` command-line flags.
 
 ## Global flags
 
@@ -87,7 +87,7 @@ Accepted by all subcommands.
 | `--test-mode` | flag | off | Run with ≤1,000 documents for quick validation |
 | `--on-error` | string | `continue` | Error strategy: `continue` or `abort` |
 | `--client-options` | string | `timeout:60` | Comma-separated client options passed to the Solr client (short: `-c`) |
-| `--kill-running-processes` | flag | off | Kill other running `solr-benchmark` processes before starting (short: `-k`) |
+| `--kill-running-processes` | flag | off | Kill other running `solr-orbit` processes before starting (short: `-k`) |
 | `--preserve-install` | flag | off | Keep the Solr installation after the run (provisioned pipelines only) |
 
 ### Provisioning

@@ -16,7 +16,7 @@ Combines results from multiple benchmark runs into a single aggregated result. T
 Pass `--test-iterations` and `--aggregate` directly to the `run` command to execute the workload multiple times and aggregate automatically:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --workload nyc_taxis \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
@@ -38,17 +38,17 @@ Run benchmarks separately, then combine specific runs by their test run IDs:
 
 ```bash
 # First, list recent test runs to get IDs
-solr-benchmark list test-runs
+solr-orbit list test-runs
 
 # Then aggregate the runs you want
-solr-benchmark aggregate \
+solr-orbit aggregate \
   --test-runs 20260101T120000Z,20260102T120000Z,20260103T120000Z
 ```
 
 ## Syntax
 
 ```bash
-solr-benchmark aggregate --test-runs ID1,ID2[,...] [OPTIONS]
+solr-orbit aggregate --test-runs ID1,ID2[,...] [OPTIONS]
 ```
 
 ## Options
@@ -85,7 +85,7 @@ The aggregated result includes additional statistical fields compared to a singl
 | `overall_max` | True maximum value across all runs |
 | `mean_rsd` | Mean relative standard deviation (%) — lower is better; indicates how consistent the runs were |
 
-Aggregated results are saved to `~/.solr-benchmark/benchmarks/aggregated_results/<aggregated-id>/`.
+Aggregated results are saved to `~/.solr-orbit/benchmarks/aggregated_results/<aggregated-id>/`.
 
 ## See also
 

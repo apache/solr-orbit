@@ -12,20 +12,20 @@ nav_order: 9
 To see which named workloads are available in the configured workload repository:
 
 ```bash
-solr-benchmark list workloads
+solr-orbit list workloads
 ```
 
-This prints the name and description of each workload that Solr Benchmark can fetch and run
+This prints the name and description of each workload that Solr Orbit can fetch and run
 by name. Workloads are fetched from the repository configured under `[workloads]` in
-`~/.solr-benchmark/benchmark.ini` (default:
-[https://github.com/janhoy/solr-benchmark-workloads](https://github.com/janhoy/solr-benchmark-workloads)).
+`~/.solr-orbit/benchmark.ini` (default:
+[https://github.com/apache/solr-orbit-workloads](https://github.com/apache/solr-orbit-workloads)).
 
 ---
 
 ## Basic syntax
 
 ```bash
-solr-benchmark run [--pipeline PIPELINE] [--target-hosts HOSTS] \
+solr-orbit run [--pipeline PIPELINE] [--target-hosts HOSTS] \
   [--workload WORKLOAD | --workload-path PATH] [OPTIONS]
 ```
 
@@ -34,10 +34,10 @@ solr-benchmark run [--pipeline PIPELINE] [--target-hosts HOSTS] \
 ## Using a named workload
 
 Named workloads are fetched from
-[https://github.com/janhoy/solr-benchmark-workloads](https://github.com/janhoy/solr-benchmark-workloads):
+[https://github.com/apache/solr-orbit-workloads](https://github.com/apache/solr-orbit-workloads):
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis
@@ -48,7 +48,7 @@ solr-benchmark run \
 ## Using a local workload path
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload-path /path/to/my-workload
@@ -61,14 +61,14 @@ solr-benchmark run \
 A workload may define multiple test procedures. Use `--test-procedure` to select one:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
   --test-procedure bulk-only
 ```
 
-If `--test-procedure` is omitted, Solr Benchmark runs the default test procedure defined
+If `--test-procedure` is omitted, Solr Orbit runs the default test procedure defined
 in `workload.json`.
 
 ---
@@ -81,7 +81,7 @@ flags accept a comma-separated list of task names.
 Run only the indexing and commit tasks, skipping all search operations:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
@@ -91,7 +91,7 @@ solr-benchmark run \
 Run the full workload but skip aggregation-heavy tasks:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
@@ -109,14 +109,14 @@ Pass `--test-mode` to run a shortened version of the workload (at most 1,000 doc
 quick validation:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
   --test-mode
 ```
 
-When `--test-mode` is active, Solr Benchmark uses a companion `-1k` corpus file (for
+When `--test-mode` is active, Solr Orbit uses a companion `-1k` corpus file (for
 example, `data-1k.json.gz`) instead of the full dataset. See
 [Creating Custom Workloads](creating-custom-workloads.html#test-mode-support) for instructions
 on creating the companion file for your own workload.
@@ -128,7 +128,7 @@ on creating the companion file for your own workload.
 Separate multiple hosts with commas:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts node1:8983,node2:8983,node3:8983 \
   --workload nyc_taxis
@@ -142,7 +142,7 @@ The `docker` pipeline pulls the official `solr` Docker image, starts a single-no
 runs the workload, and stops the cluster when finished. No JDK is required.
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline docker \
   --distribution-version 9.10.1 \
   --workload nyc_taxis \
@@ -157,7 +157,7 @@ The `from-distribution` pipeline downloads a Solr release archive, installs it l
 and starts a cluster. JDK 21 must be available on the host.
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline from-distribution \
   --distribution-version 9.10.1 \
   --workload nyc_taxis \
@@ -171,7 +171,7 @@ solr-benchmark run \
 Override workload Jinja2 parameters at runtime with `--workload-params`:
 
 ```bash
-solr-benchmark run \
+solr-orbit run \
   --pipeline benchmark-only \
   --target-hosts localhost:8983 \
   --workload nyc_taxis \
@@ -188,7 +188,7 @@ Multiple parameters are separated by commas. See
 By default, the run continues if individual operations fail. To abort on the first error:
 
 ```bash
-solr-benchmark run --on-error abort ...
+solr-orbit run --on-error abort ...
 ```
 
 ---
@@ -207,10 +207,10 @@ your workload. For `nyc_taxis` in `--test-mode`, you should see approximately 1,
 documents.
 
 The full computed results for every run are stored in
-`~/.solr-benchmark/benchmarks/test-runs/<run-id>/test_run.json`. To view the results for
+`~/.solr-orbit/benchmarks/test-runs/<run-id>/test_run.json`. To view the results for
 the most recent run:
 
 ```bash
-ls -t ~/.solr-benchmark/benchmarks/test-runs/ | head -1 | \
-  xargs -I{} cat ~/.solr-benchmark/benchmarks/test-runs/{}/test_run.json | python3 -m json.tool
+ls -t ~/.solr-orbit/benchmarks/test-runs/ | head -1 | \
+  xargs -I{} cat ~/.solr-orbit/benchmarks/test-runs/{}/test_run.json | python3 -m json.tool
 ```

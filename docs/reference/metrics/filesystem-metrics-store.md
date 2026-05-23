@@ -18,7 +18,7 @@ you need access to individual raw samples after the run.
 ## Configuration
 
 The store type is controlled by the `datastore.type` key under the `[reporting]` section in
-`~/.solr-benchmark/benchmark.ini`:
+`~/.solr-orbit/benchmark.ini`:
 
 ```ini
 [reporting]
@@ -30,10 +30,10 @@ datastore.type = filesystem
 ## File layout
 
 When the filesystem metrics store is active, the following structure is created under
-`~/.solr-benchmark/` after a completed benchmark run:
+`~/.solr-orbit/` after a completed benchmark run:
 
 ```
-~/.solr-benchmark/
+~/.solr-orbit/
 └── benchmarks/
     └── test-runs/
         └── <run-id>/
@@ -68,14 +68,14 @@ Example line:
 List all distinct metric names recorded in a run:
 
 ```sh
-jq -r '.name' ~/.solr-benchmark/benchmarks/test-runs/<run-id>/metrics.jsonl | sort -u
+jq -r '.name' ~/.solr-orbit/benchmarks/test-runs/<run-id>/metrics.jsonl | sort -u
 ```
 
 Compute the median service time for a task:
 
 ```sh
 jq 'select(.name=="service_time" and .task=="index") | .value' \
-  ~/.solr-benchmark/benchmarks/test-runs/<run-id>/metrics.jsonl \
+  ~/.solr-orbit/benchmarks/test-runs/<run-id>/metrics.jsonl \
   | sort -n | awk '{a[NR]=$0} END{print a[int(NR/2)]}'
 ```
 
@@ -84,7 +84,7 @@ jq 'select(.name=="service_time" and .task=="index") | .value' \
 ```python
 import json
 
-with open("~/.solr-benchmark/benchmarks/test-runs/<run-id>/metrics.jsonl") as f:
+with open("~/.solr-orbit/benchmarks/test-runs/<run-id>/metrics.jsonl") as f:
     docs = [json.loads(line) for line in f]
 
 service_times = [d["value"] for d in docs if d["name"] == "service_time"]
@@ -94,5 +94,5 @@ print(f"Samples: {len(service_times)}, avg: {sum(service_times)/len(service_time
 ### Pretty-printing a single line
 
 ```sh
-head -1 ~/.solr-benchmark/benchmarks/test-runs/<run-id>/metrics.jsonl | python3 -m json.tool
+head -1 ~/.solr-orbit/benchmarks/test-runs/<run-id>/metrics.jsonl | python3 -m json.tool
 ```

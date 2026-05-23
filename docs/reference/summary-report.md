@@ -6,7 +6,7 @@ nav_order: 40
 
 # Summary Report Format
 
-Apache Solr Benchmark saves results in JSON and CSV format to `~/.solr-benchmark/benchmarks/test-runs/<run-id>/`.
+Apache Solr Orbit saves results in JSON and CSV format to `~/.solr-orbit/benchmarks/test-runs/<run-id>/`.
 
 ## JSON format
 
