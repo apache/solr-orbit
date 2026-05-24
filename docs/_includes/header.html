@@ -1,0 +1,24 @@
+<header class="site-header">
+  <div class="header-inner">
+    <a href="{{ '/' | relative_url }}" class="site-logo">
+      <img src="{{ '/assets/images/solr-logo.svg' | relative_url }}" alt="Apache Solr" height="32">
+      <span class="site-name">Orbit Docs</span>
+    </a>
+
+    <div class="search-wrap">
+      <input type="search" id="search-input" class="search-input"
+             placeholder="Search docs…" autocomplete="off" aria-label="Search documentation">
+      <div class="search-results" id="search-results" role="listbox"></div>
+    </div>
+
+    <div class="header-spacer"></div>
+
+    <nav class="header-links" aria-label="External links">
+      <a href="{{ site.solr_url }}" class="header-link" target="_blank" rel="noopener">Apache Solr</a>
+      <a href="{{ site.github_url }}" class="header-link" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+
+    <button class="mobile-menu-btn" id="mobile-menu-btn"
+            aria-label="Toggle navigation" aria-expanded="false" aria-controls="sidebar">&#9776;</button>
+  </div>
+</header>

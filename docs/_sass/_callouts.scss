@@ -1,0 +1,28 @@
+// Callout blocks — support Kramdown IAL: {: .note }, {: .warning }, {: .important }
+// Applied to both <p class="note"> and <blockquote class="note">
+
+@mixin callout($border, $bg, $label-color, $label-text) {
+  padding: $sp3 $sp4 $sp3 calc(#{$sp4} + 4px);
+  border-left: 4px solid $border;
+  background: $bg;
+  border-radius: 0 6px 6px 0;
+  margin: $sp4 0;
+  color: $body-text;
+
+  &::before {
+    content: $label-text;
+    display: block;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: $label-color;
+    margin-bottom: 4px;
+  }
+
+  p:last-child, &:last-child { margin-bottom: 0; }
+}
+
+p.note, blockquote.note       { @include callout($note-border,      $note-bg,      $note-label,      'Note'); }
+p.warning, blockquote.warning  { @include callout($warning-border,   $warning-bg,   $warning-label,   'Warning'); }
+p.important, blockquote.important { @include callout($important-border, $important-bg, $important-label, 'Important'); }

@@ -1,0 +1,28 @@
+{% if page.parent or page.grand_parent %}
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <a href="{{ '/' | relative_url }}">Home</a>
+  <span class="sep">›</span>
+
+  {% if page.grand_parent %}
+    {% assign gp_page = site.pages | where: "title", page.grand_parent | first %}
+    {% if gp_page %}
+      <a href="{{ gp_page.url | relative_url }}">{{ page.grand_parent }}</a>
+    {% else %}
+      <span>{{ page.grand_parent }}</span>
+    {% endif %}
+    <span class="sep">›</span>
+  {% endif %}
+
+  {% if page.parent %}
+    {% assign parent_page = site.pages | where: "title", page.parent | first %}
+    {% if parent_page %}
+      <a href="{{ parent_page.url | relative_url }}">{{ page.parent }}</a>
+    {% else %}
+      <span>{{ page.parent }}</span>
+    {% endif %}
+    <span class="sep">›</span>
+  {% endif %}
+
+  <span class="current">{{ page.title }}</span>
+</nav>
+{% endif %}
