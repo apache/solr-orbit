@@ -123,7 +123,7 @@ solr-orbitd = "osbenchmark.benchmarkd:main"
 [project.optional-dependencies]
 test = [
     "ujson",
-    "pytest==7.2.2",
+    "pytest==9.0.3",
     # Upgraded from 3.2.2: py.io.TerminalWriter was removed in py 1.11+,
     # making 3.x incompatible with Python 3.12. 4.0+ dropped the py dependency.
     "pytest-benchmark>=4.0.0",
@@ -131,7 +131,7 @@ test = [
 ]
 develop = [
     "ujson",
-    "pytest==7.2.2",
+    "pytest==9.0.3",
     # Upgraded from 3.2.2: py.io.TerminalWriter was removed in py 1.11+,
     # making 3.x incompatible with Python 3.12. 4.0+ dropped the py dependency.
     "pytest-benchmark>=4.0.0",
