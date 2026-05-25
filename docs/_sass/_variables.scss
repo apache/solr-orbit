@@ -1,0 +1,50 @@
+// Solr Brand Colors (from Solr Style Guide)
+$solr-orange:       #D9411E;
+$solr-dark:         #262130;
+$solr-dark-alt:     #25202f;
+$solr-orange-hover: #ff833d;
+$solr-orange-dark:  #A13016;
+
+// UI Colors
+$body-text:     #333333;
+$muted-text:    #666666;
+$border-color:  #d1d3d4;
+$background:    #ffffff;
+$bg-alt:        #f9f8f8;
+$code-bg:       #f4f4f4;
+$code-text:     #4F504D;
+
+// Callout Colors
+$note-border:     #305CB3;
+$note-bg:         #eef3ff;
+$note-label:      #1d3a80;
+$warning-border:  #e6a817;
+$warning-bg:      #fffbee;
+$warning-label:   #7a5800;
+$important-border: #D9411E;
+$important-bg:    #fff0ee;
+$important-label: #8b1a0a;
+
+// Typography
+$font-family: 'Raleway', 'Helvetica Neue', Arial, sans-serif;
+$font-mono:   Menlo, Consolas, 'Liberation Mono', Courier, monospace;
+$base-font-size:   16px;
+$base-line-height: 1.65;
+
+// Layout
+$header-height:    60px;
+$sidebar-width:    272px;
+$content-max-width: 900px;
+$sidebar-bg:       #f9f8f8;
+$sidebar-border:   #e4e2dd;
+
+// Spacing scale
+$sp1: 4px;
+$sp2: 8px;
+$sp3: 16px;
+$sp4: 24px;
+$sp5: 32px;
+$sp6: 48px;
+
+// Breakpoints
+$bp-mobile: 768px;

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+{% include head.html %}
+<body>
+<div class="site-wrapper">
+
+  {% include header.html %}
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="page-body">
+    <nav class="sidebar" id="sidebar" aria-label="Site navigation">
+      <div class="sidebar-inner">
+        {% include nav.html %}
+      </div>
+    </nav>
+
+    <main class="content" id="main-content">
+      <div class="content-inner">
+        {% include breadcrumbs.html %}
+        <article class="page-content">
+          {{ content }}
+        </article>
+        <div class="page-meta">
+          <a href="{{ site.github_url }}/edit/main/docs/{{ page.path }}" target="_blank" rel="noopener">
+            Edit this page on GitHub
+          </a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  {% include footer.html %}
+
+</div>
+
+<button class="back-to-top" id="back-to-top" aria-label="Back to top" title="Back to top">&#8679;</button>
+
+<script src="{{ '/assets/js/app.js' | relative_url }}"></script>
+</body>
+</html>
