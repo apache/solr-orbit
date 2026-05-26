@@ -113,10 +113,9 @@ make it
 ## Submitting a Pull Request
 
 1. **Run tests**: `make test` (and `make it` if applicable).
-2. **Sign commits** with DCO: `git commit -s`.
-3. **Rebase** onto the latest `main` before opening a PR.
-4. Open the PR, referencing the related issue (`Closes #123`).
-5. Respond to review comments; squash commits if asked.
+2. **Rebase** onto the latest `main` before opening a PR.
+3. Open the PR, referencing the related issue (`Closes #123`).
+4. Respond to review comments; squash commits if asked.
 
 ## Developing Breaking Changes
 
