@@ -28,15 +28,14 @@
 readonly BINARY_NAME="${__BENCHMARK_INTERNAL_BINARY_NAME}"
 readonly HUMAN_NAME="${__BENCHMARK_INTERNAL_HUMAN_NAME}"
 
-install_osbenchmark_with_setuptools () {
+install_osbenchmark () {
     # Check if optional parameter with benchmark binary path, points to an existing executable file.
     if [[ $# -ge 1 && -n $1 ]]; then
         if [[ -f $1 && -x $1 ]]; then return; fi
     fi
 
+    # Workaround system pip conflicts, https://github.com/pypa/pip/issues/5599
     if [[ ${IN_VIRTUALENV} == 0 ]]; then
-        # https://setuptools.readthedocs.io/en/latest/setuptools.html suggests not invoking setup.py directly
-        # Also workaround system pip conflicts, https://github.com/pypa/pip/issues/5599
         python3 -m pip install --quiet --user --upgrade --editable .[develop]
     else
         python3 -m pip install --quiet --upgrade --editable .[develop]
@@ -99,7 +98,7 @@ then
       then
         echo "Auto-updating solr-orbit from ${REMOTE}"
         git rebase ${REMOTE}/master --quiet
-        install_osbenchmark_with_setuptools
+        install_osbenchmark
       #else
       # offline - skipping update
       fi
@@ -125,14 +124,14 @@ if [[ $IN_VIRTUALENV == 0 ]]
 then
     BENCHMARK_ROOT=$(python3 -c "import site; print(site.USER_BASE)")
     BENCHMARK_BIN=${BENCHMARK_ROOT}/bin/${BINARY_NAME}
-    install_osbenchmark_with_setuptools "${BENCHMARK_BIN}"
+    install_osbenchmark "${BENCHMARK_BIN}"
     if [[ -x $BENCHMARK_BIN ]]; then
         ${BENCHMARK_BIN} "$@"
     else
         echo "Cannot execute ${HUMAN_NAME} in ${BENCHMARK_BIN}."
     fi
 else
-    install_osbenchmark_with_setuptools "${BINARY_NAME}"
+    install_osbenchmark "${BINARY_NAME}"
 
     ${BINARY_NAME} "$@"
 fi

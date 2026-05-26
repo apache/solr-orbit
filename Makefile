@@ -19,7 +19,7 @@ SHELL = /bin/bash
 PYTHON = python3
 PIP = pip3
 VERSIONS = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d')
-VERSION310 = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d' | grep 3\.10)
+VERSION312 = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d' | grep 3\.12)
 PYENV_ERROR = "\033[0;31mIMPORTANT\033[0m: Please install pyenv and run \033[0;31meval \"\$$(pyenv init -)\"\033[0m.\n"
 
 all: develop
@@ -29,14 +29,14 @@ pyinst:
 	@for i in $(VERSIONS); do pyenv install --skip-existing $$i; done
 	pyenv local $(VERSIONS)
 
-pyinst310:
+pyinst312:
 	@which pyenv > /dev/null 2>&1 || { printf $(PYENV_ERROR); exit 1; }
-	pyenv install --skip-existing $(VERSION310)
-	pyenv local $(VERSION310)
+	pyenv install --skip-existing $(VERSION312)
+	pyenv local $(VERSION312)
 
 check-pip:
 	# Install pyenv if the Python environment is externally managed.
-	@if ! $(PIP) > /dev/null 2>&1 || ! $(PIP) install pip > /dev/null 2>&1; then make pyinst310; fi
+	@if ! $(PIP) > /dev/null 2>&1 || ! $(PIP) install pip > /dev/null 2>&1; then make pyinst312; fi
 
 check-java:
 	@if ! test "$(JAVA21_HOME)" || ! java --version > /dev/null 2>&1 || ! javadoc --help > /dev/null 2>&1; then \
@@ -50,9 +50,7 @@ check-java:
 install-deps: check-pip
 	$(PIP) install --upgrade pip setuptools wheel
 
-# pylint does not work with Python versions >3.8:
-#   Value 'Optional' is unsubscriptable (unsubscriptable-object)
-develop: pyinst310 install-deps
+develop: pyinst312 install-deps
 	PIP_ONLY_BINARY=h5py $(PIP) install -e .[develop]
 
 build: install-deps
@@ -72,31 +70,31 @@ python-caches-clean:
 	-@find . -name "__pycache__" -prune -exec rm -rf -- \{\} \;
 	-@find . -name ".pyc" -prune -exec rm -rf -- \{\} \;
 
-# Note: pip will not update project dependencies (specified either in the install_requires or the extras
-# section of the setup.py) if any version is already installed; therefore we recommend
-# recreating your environments whenever your project dependencies change.
+# Note: pip will not update project dependencies (specified in pyproject.toml) if any version is
+# already installed; therefore we recommend recreating your environments whenever your project
+# dependencies change.
 tox-env-clean:
 	rm -rf .tox
 
 lint:
-	@find osbenchmark benchmarks scripts tests it -name "*.py" -exec pylint -j0 -rn --load-plugins pylint_quotes --rcfile=$(CURDIR)/.pylintrc \{\} +
+	@find osbenchmark benchmarks scripts tests it -name "*.py" -exec pylint -j0 -rn --rcfile=$(CURDIR)/.pylintrc \{\} +
 
 test: develop
 	pytest tests/
 
 it: pyinst check-java python-caches-clean tox-env-clean
-	@which tox || $(PIP) install tox
+	@tox --version 2>/dev/null | grep -qE '^[4-9]\.' || $(PIP) install "tox>=4"
 	tox
 
-it310 it311 it312 it313: pyinst check-java python-caches-clean tox-env-clean
-	@which tox || $(PIP) install tox
+it312 it313: pyinst check-java python-caches-clean tox-env-clean
+	@tox --version 2>/dev/null | grep -qE '^[4-9]\.' || $(PIP) install "tox>=4"
 	tox -e $(@:it%=py%)
 
 benchmark:
 	pytest benchmarks/
 
 coverage:
-	coverage run setup.py test
+	coverage run -m pytest tests/
 	coverage html
 
 release-checks:
@@ -106,4 +104,4 @@ release-checks:
 release: release-checks clean it
 	./release.sh $(release_version) $(next_version)
 
-.PHONY: install clean python-caches-clean tox-env-clean test it it310 benchmark coverage release release-checks pyinst
+.PHONY: install clean python-caches-clean tox-env-clean test it it312 benchmark coverage release release-checks pyinst

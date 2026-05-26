@@ -1,0 +1,40 @@
+// ── Breadcrumbs ────────────────────────────────────────
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: $muted-text;
+  margin-bottom: $sp4;
+
+  a { color: $muted-text; &:hover { color: $solr-orange; text-decoration: none; } }
+  .sep { opacity: 0.45; font-size: 0.7rem; }
+  .current { color: $body-text; font-weight: 500; }
+}
+
+// ── Page meta (edit link) ──────────────────────────────
+.page-meta {
+  margin-top: $sp6;
+  padding-top: $sp4;
+  border-top: 1px solid $border-color;
+  font-size: 0.8125rem;
+  color: $muted-text;
+  a { color: $muted-text; &:hover { color: $solr-orange; } }
+}
+
+// ── Heading anchor links ───────────────────────────────
+.heading-anchor {
+  opacity: 0;
+  margin-left: $sp2;
+  color: $muted-text;
+  font-size: 0.8em;
+  font-weight: 400;
+  transition: opacity 0.15s;
+  text-decoration: none;
+  &:hover { color: $solr-orange; text-decoration: none; }
+}
+
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor { opacity: 1; }

@@ -12,7 +12,7 @@ This page outlines how to quickly install Apache Solr Orbit and run your first b
 To perform the quickstart steps, you'll need the following:
 
 - Git 2.3 or later
-- Python 3.10 or later
+- Python 3.12 or later
 - An active Apache Solr cluster, **or** Docker (to let Solr Orbit start one for you)
 
 ## Set up a Solr cluster

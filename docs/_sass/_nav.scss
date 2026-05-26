@@ -1,0 +1,130 @@
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+// ── Shared link/button style ───────────────────────────
+%nav-link-base {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px $sp4;
+  font-family: $font-family;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: $body-text;
+  text-decoration: none;
+  background: none;
+  border: none;
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+
+  &:hover {
+    color: $solr-orange;
+    background: rgba($solr-orange, 0.05);
+    border-left-color: rgba($solr-orange, 0.3);
+    text-decoration: none;
+  }
+}
+
+// ── Root-level items ───────────────────────────────────
+.nav-root-link { @extend %nav-link-base; }
+
+.nav-row {
+  display: flex;
+  align-items: stretch;
+
+  .nav-root-link {
+    flex: 1;
+    border-right: none;
+  }
+}
+
+.nav-toggle-btn {
+  @extend %nav-link-base;
+  flex: 0 0 auto;
+  width: 36px;
+  padding: 6px $sp2;
+  justify-content: center;
+  border-left: none;
+  color: $muted-text;
+  font-size: 0.65rem;
+
+  &:hover { color: $solr-orange; background: rgba($solr-orange, 0.05); }
+
+  .caret {
+    display: inline-block;
+    transition: transform 0.2s;
+  }
+
+  &.open .caret { transform: rotate(90deg); }
+}
+
+// Active state for root items
+.nav-item.active {
+  > .nav-root-link,
+  > .nav-row > .nav-root-link {
+    color: $solr-orange;
+    font-weight: 600;
+    background: rgba($solr-orange, 0.07);
+    border-left-color: $solr-orange;
+  }
+  > .nav-row > .nav-toggle-btn {
+    color: $solr-orange;
+  }
+}
+
+// ── Level-1 children ───────────────────────────────────
+.nav-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: none;
+  &.open { display: block; }
+
+  .nav-item > .nav-child-link {
+    @extend %nav-link-base;
+    padding-left: calc(#{$sp4} + 14px);
+    font-size: 0.9rem;
+  }
+
+  .nav-item.active > .nav-child-link {
+    color: $solr-orange;
+    font-weight: 600;
+    background: rgba($solr-orange, 0.07);
+    border-left-color: $solr-orange;
+  }
+
+  .nav-row .nav-child-link {
+    @extend %nav-link-base;
+    padding-left: calc(#{$sp4} + 14px);
+    font-size: 0.9rem;
+    flex: 1;
+  }
+}
+
+// ── Level-2 grandchildren ──────────────────────────────
+.nav-grandchildren {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: none;
+  &.open { display: block; }
+
+  .nav-item > .nav-gc-link {
+    @extend %nav-link-base;
+    padding-left: calc(#{$sp4} + 28px);
+    font-size: 0.875rem;
+    color: $muted-text;
+  }
+
+  .nav-item.active > .nav-gc-link {
+    color: $solr-orange;
+    font-weight: 600;
+    background: rgba($solr-orange, 0.06);
+    border-left-color: $solr-orange;
+  }
+}

@@ -5,24 +5,26 @@
 #
 # Stage 1: build packages and compile where needed
 #
-FROM python:3.11.2-slim AS build-stage
+FROM python:3.12-slim AS build-stage
 
+# hadolint ignore=DL3008
 RUN apt-get -y update && \
-    apt-get install -y curl git gcc pbzip2 pigz make jq && \
-    apt-get -y upgrade
+    apt-get install -y --no-install-recommends curl git gcc pbzip2 pigz make jq && \
+    apt-get -y upgrade && \
+    rm -rf /var/lib/apt/lists/*
 
-COPY . solr-orbit
+WORKDIR /build/solr-orbit
+COPY . .
 
 # There is no binary package currently available for yappi on ARM.
-RUN cd solr-orbit; \
-    make build; \
-    if test "`uname -m`" = aarch64; then pip wheel yappi && cp yappi-*.whl dist; fi
+RUN make build && \
+    if test "$(uname -m)" = aarch64; then pip wheel yappi && cp yappi-*.whl dist; fi
 
 
 #
 # Stage 2: create image
 #
-FROM python:3.11.2-slim AS image-stage
+FROM python:3.12-slim AS image-stage
 ENV BENCHMARK_RUNNING_IN_DOCKER=True
 
 RUN groupadd --gid 1000 solr-orbit && \
@@ -33,15 +35,16 @@ WORKDIR /solr-orbit
 RUN mkdir -p /solr-orbit/.solr-orbit && \
     chown -R 1000:0 /solr-orbit/.solr-orbit
 
-COPY --from=build-stage /solr-orbit/dist/*.whl ./
+COPY --from=build-stage /build/solr-orbit/dist/*.whl ./
 
+# hadolint ignore=DL3008
 RUN set -ex; \
     apt-get -y update; \
-    apt-get install -y git pbzip2; \
+    apt-get install -y --no-install-recommends git pbzip2; \
     apt-get -y upgrade; \
     rm -rf /var/lib/apt/lists/*; \
-    PIP_ONLY_BINARY=h5py pip install *.whl; \
-    rm *.whl
+    pip install --no-cache-dir ./*.whl; \
+    rm ./*.whl
 
 USER 1000
 
@@ -57,7 +60,7 @@ LABEL org.label-schema.schema-version="1.0" \
   org.label-schema.description="Apache Solr Orbit — performance benchmarking tool for Apache Solr clusters" \
   org.label-schema.build-date="$BUILD_DATE" \
   org.label-schema.vcs-url="https://github.com/apache/solr-orbit" \
-  "DOCKERFILE"="https://github.com/apache/solr-orbit/blob/main/docker/Dockerfile"
+  org.label-schema.dockerfile="https://github.com/apache/solr-orbit/blob/main/docker/Dockerfile"
 
 VOLUME ["/solr-orbit/.solr-orbit"]
 

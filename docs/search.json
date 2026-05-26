@@ -1,0 +1,6 @@
+---
+layout: none
+---
+[{% assign first = true %}{% for p in site.pages %}{% if p.nav_order %}{% unless first %},{% endunless %}{% assign first = false %}
+{"title":{{ p.title | jsonify }},"url":{{ p.url | relative_url | jsonify }},"content":{{ p.content | strip_html | normalize_whitespace | truncate: 500 | jsonify }}}{% endif %}{% endfor %}
+]

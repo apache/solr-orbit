@@ -39,7 +39,7 @@ drives introduce performance bottlenecks that make benchmark results unreliable.
 
 Before installing Solr Orbit, ensure the following software is available on your host:
 
-- **Python 3.10 or later** — required for all pipelines.
+- **Python 3.12 or later** — required for all pipelines.
 - **pip** — Python package manager.
 - **Git 2.3 or later** — required to fetch workloads from a remote repository.
 - **Docker** — required for the `--pipeline=docker` pipeline, which starts a Solr cluster
@@ -53,10 +53,10 @@ Before installing Solr Orbit, ensure the following software is available on your
 ### Checking software dependencies
 
 Use [pyenv](https://github.com/pyenv/pyenv) to manage multiple versions of Python on your host.
-This is especially useful if your system Python is older than 3.10.
+This is especially useful if your system Python is older than 3.12.
 {: .tip}
 
-- Check that Python 3.10 or later is installed:
+- Check that Python 3.12 or later is installed:
 
   ```bash
   python3 --version

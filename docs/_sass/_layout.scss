@@ -1,0 +1,162 @@
+.site-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+// ── Header ─────────────────────────────────────────────
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: $header-height;
+  background: $solr-dark;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 $sp4;
+    gap: $sp3;
+  }
+}
+
+.site-logo {
+  display: flex;
+  align-items: center;
+  gap: $sp3;
+  text-decoration: none;
+  flex-shrink: 0;
+
+  img { height: 32px; width: auto; }
+
+  .site-name {
+    color: rgba(255,255,255,0.55);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+    border-left: 1px solid rgba(255,255,255,0.2);
+    padding-left: $sp3;
+    white-space: nowrap;
+  }
+
+  &:hover { text-decoration: none; .site-name { color: rgba(255,255,255,0.85); } }
+}
+
+.header-spacer { flex: 1; }
+
+.header-links {
+  display: flex;
+  align-items: center;
+  gap: $sp2;
+}
+
+.header-link {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 5px $sp3;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.2);
+  white-space: nowrap;
+  transition: all 0.15s;
+  &:hover {
+    color: #fff;
+    border-color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.1);
+    text-decoration: none;
+  }
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  padding: 5px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  &:hover { background: rgba(255,255,255,0.1); }
+}
+
+// ── Page body ──────────────────────────────────────────
+.page-body {
+  display: flex;
+  flex: 1;
+  padding-top: $header-height;
+}
+
+// ── Sidebar ────────────────────────────────────────────
+.sidebar {
+  position: fixed;
+  top: $header-height; left: 0; bottom: 0;
+  width: $sidebar-width;
+  background: $sidebar-bg;
+  border-right: 1px solid $sidebar-border;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 100;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: $border-color; border-radius: 2px; }
+}
+
+.sidebar-inner { padding: $sp4 0 $sp6; }
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 99;
+}
+
+// ── Main content ───────────────────────────────────────
+.content {
+  margin-left: $sidebar-width;
+  flex: 1;
+  min-width: 0;
+}
+
+.content-inner {
+  max-width: $content-max-width;
+  padding: $sp6;
+}
+
+// ── Footer ─────────────────────────────────────────────
+.site-footer {
+  background: $solr-dark;
+  color: rgba(255,255,255,0.6);
+  padding: $sp5 $sp6;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  margin-left: $sidebar-width;
+
+  a { color: rgba(255,255,255,0.75); &:hover { color: #fff; } }
+  p { margin-bottom: $sp2; &:last-child { margin-bottom: 0; } }
+}
+
+// ── Back to top ────────────────────────────────────────
+.back-to-top {
+  position: fixed;
+  bottom: $sp4; right: $sp4;
+  background: $solr-orange;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 40px; height: 40px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  z-index: 500;
+  transition: background 0.15s;
+  &:hover { background: $solr-orange-dark; }
+  &.visible { display: flex; }
+}

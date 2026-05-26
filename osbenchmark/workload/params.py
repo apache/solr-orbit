@@ -882,7 +882,7 @@ class Slice:
         client_options_obj = IngestionManager.config.opts("client", "options")
         client_options = getattr(client_options_obj, "all_client_options", {})
         # pylint: disable = import-outside-toplevel
-        from osbenchmark.cloud_provider.vendors.s3_data_producer import S3DataProducer
+        from osbenchmark.utils.s3_data_producer import S3DataProducer
         bucket = re.sub('^s3://', "", Slice.base_url)
         keys = Slice.document_file
         producer = S3DataProducer(bucket, keys, client_options, Slice.data_dir)

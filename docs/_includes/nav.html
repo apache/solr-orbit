@@ -1,0 +1,55 @@
+{% assign nav_pages = site.pages | where_exp: "p", "p.nav_order != nil" %}
+{% assign root_pages = nav_pages | where_exp: "p", "p.parent == nil" | sort: "nav_order" %}
+
+<ul class="nav-list" role="tree">
+{% for root in root_pages %}{% if root.title %}
+  {%- assign root_children = nav_pages | where: "parent", root.title | where_exp: "c", "c.grand_parent == nil" | sort: "nav_order" -%}
+
+  {%- comment %}Determine active state{% endcomment -%}
+  {%- assign root_active = false -%}
+  {%- if page.url == root.url -%}{%- assign root_active = true -%}{%- endif -%}
+  {%- if page.parent == root.title and page.grand_parent == nil -%}{%- assign root_active = true -%}{%- endif -%}
+  {%- if page.grand_parent == root.title -%}{%- assign root_active = true -%}{%- endif -%}
+
+  <li class="nav-item{% if root_active %} active{% endif %}" role="treeitem">
+    {% if root_children.size > 0 %}
+      <div class="nav-row">
+        <a href="{{ root.url | relative_url }}" class="nav-root-link">{{ root.title }}</a>
+        <button class="nav-toggle-btn{% if root_active %} open{% endif %}" aria-label="Toggle {{ root.title }}">
+          <span class="caret">&#9654;</span>
+        </button>
+      </div>
+      <ul class="nav-children{% if root_active %} open{% endif %}" role="group">
+        {% for child in root_children %}{% if child.title %}
+          {%- assign child_gc = nav_pages | where: "parent", child.title | where: "grand_parent", root.title | sort: "nav_order" -%}
+          {%- assign child_active = false -%}
+          {%- if page.url == child.url -%}{%- assign child_active = true -%}{%- endif -%}
+          {%- if page.parent == child.title and page.grand_parent == root.title -%}{%- assign child_active = true -%}{%- endif -%}
+
+          <li class="nav-item{% if child_active %} active{% endif %}" role="treeitem">
+            {% if child_gc.size > 0 %}
+              <div class="nav-row">
+                <a href="{{ child.url | relative_url }}" class="nav-child-link">{{ child.title }}</a>
+                <button class="nav-toggle-btn{% if child_active %} open{% endif %}" aria-label="Toggle {{ child.title }}">
+                  <span class="caret">&#9654;</span>
+                </button>
+              </div>
+              <ul class="nav-grandchildren{% if child_active %} open{% endif %}" role="group">
+                {% for gc in child_gc %}{% if gc.title %}
+                  <li class="nav-item{% if page.url == gc.url %} active{% endif %}" role="treeitem">
+                    <a href="{{ gc.url | relative_url }}" class="nav-gc-link">{{ gc.title }}</a>
+                  </li>
+                {% endif %}{% endfor %}
+              </ul>
+            {% else %}
+              <a href="{{ child.url | relative_url }}" class="nav-child-link">{{ child.title }}</a>
+            {% endif %}
+          </li>
+        {% endif %}{% endfor %}
+      </ul>
+    {% else %}
+      <a href="{{ root.url | relative_url }}" class="nav-root-link">{{ root.title }}</a>
+    {% endif %}
+  </li>
+{% endif %}{% endfor %}
+</ul>

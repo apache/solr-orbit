@@ -83,8 +83,8 @@ $$$$$$$$$$""""           ""$$$$$$$$$$$"
 
 
 def check_python_version():
-    if sys.version_info < (3, 10):
-        raise RuntimeError("solr-orbit requires at least Python 3.10 but you are using:\n\nPython %s" % str(sys.version))
+    if sys.version_info < (3, 12):
+        raise RuntimeError("Solr Orbit requires at least Python 3.12 but you are using:\n\nPython %s" % str(sys.version))
 
 
 def doc_link(path=None):
