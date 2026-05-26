@@ -17,6 +17,6 @@ permissions:
 jobs:
   check:
     name: Check actions usage
-    uses: apache/infrastructure-actions/check-project-actions/check-project-actions.yml@main
+    uses: apache/infrastructure-actions/.github/workflows/check-project-actions.yml@main
     permissions:
       contents: read
