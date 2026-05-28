@@ -328,8 +328,17 @@ class CreateCollectionParamSource(ParamSource):
 
     def params(self):
         p = {}
-        p.update(self.collection_def)
         p.update(self._params)
+        p.update(self.collection_def)
+        # Allow operation-level params (typically supplied via --workload-params
+        # at template-render time) to override the Collection's topology fields.
+        # Path fields (configset, configset-path) are not overridable here:
+        # the loader has already resolved configset-path to an absolute path
+        # against the workload directory, and the operation template only
+        # carries the unresolved relative form.
+        for key in ("num-shards", "replication-factor", "tlog-replicas", "pull-replicas"):
+            if key in self._params:
+                p[key] = self._params[key]
         return p
 
 

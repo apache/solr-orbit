@@ -1767,10 +1767,26 @@ class CreateCollectionParamSourceTests(TestCase):
         wl = workload.Workload(name="unit-test", collections=[col])
         ps = params.CreateCollectionParamSource(
             workload=wl,
-            params={"collection": "my-col", "num-shards": 4, "replication-factor": 2})
+            params={"collection": "my-col", "num-shards": 4, "replication-factor": 2,
+                    "tlog-replicas": 1, "pull-replicas": 3})
         p = ps.params()
         self.assertEqual(4, p["num-shards"])
         self.assertEqual(2, p["replication-factor"])
+        self.assertEqual(1, p["tlog-replicas"])
+        self.assertEqual(3, p["pull-replicas"])
+
+    def test_configset_path_from_collection_wins_over_operation(self):
+        # The loader resolves configset-path to an absolute path against the
+        # workload directory; the operation template only carries the relative
+        # form. The loader-resolved path must survive.
+        col = workload.Collection(name="my-col", configset="my-col",
+                                  configset_path="/abs/workload/configsets/my-col")
+        wl = workload.Workload(name="unit-test", collections=[col])
+        ps = params.CreateCollectionParamSource(
+            workload=wl,
+            params={"collection": "my-col", "configset-path": "configsets/my-col"})
+        p = ps.params()
+        self.assertEqual("/abs/workload/configsets/my-col", p["configset-path"])
 
     def test_registered_by_op_type_string(self):
         col = workload.Collection(name="my-col")
