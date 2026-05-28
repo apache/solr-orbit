@@ -1762,6 +1762,16 @@ class CreateCollectionParamSourceTests(TestCase):
         with self.assertRaises(exceptions.InvalidSyntax):
             params.CreateCollectionParamSource(workload=wl, params={})
 
+    def test_operation_params_override_collection_defaults(self):
+        col = workload.Collection(name="my-col", num_shards=1, replication_factor=1)
+        wl = workload.Workload(name="unit-test", collections=[col])
+        ps = params.CreateCollectionParamSource(
+            workload=wl,
+            params={"collection": "my-col", "num-shards": 4, "replication-factor": 2})
+        p = ps.params()
+        self.assertEqual(4, p["num-shards"])
+        self.assertEqual(2, p["replication-factor"])
+
     def test_registered_by_op_type_string(self):
         col = workload.Collection(name="my-col")
         wl = workload.Workload(name="unit-test", collections=[col])

@@ -328,8 +328,8 @@ class CreateCollectionParamSource(ParamSource):
 
     def params(self):
         p = {}
-        p.update(self._params)
         p.update(self.collection_def)
+        p.update(self._params)
         return p
 
 
