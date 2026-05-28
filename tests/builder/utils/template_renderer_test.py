@@ -3,8 +3,8 @@ from unittest.mock import Mock
 
 from jinja2 import TemplateSyntaxError
 
-from osbenchmark.builder.utils.template_renderer import TemplateRenderer
-from osbenchmark.exceptions import InvalidSyntax, SystemSetupError
+from solrorbit.builder.utils.template_renderer import TemplateRenderer
+from solrorbit.exceptions import InvalidSyntax, SystemSetupError
 
 
 class TemplateRendererTest(TestCase):

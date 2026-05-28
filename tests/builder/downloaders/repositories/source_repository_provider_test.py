@@ -1,8 +1,8 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.downloaders.repositories.source_repository_provider import SourceRepositoryProvider
-from osbenchmark.exceptions import SystemSetupError
+from solrorbit.builder.downloaders.repositories.source_repository_provider import SourceRepositoryProvider
+from solrorbit.exceptions import SystemSetupError
 
 
 class SourceRepositoryProviderTest(TestCase):

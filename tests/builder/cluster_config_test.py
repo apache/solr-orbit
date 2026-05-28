@@ -28,8 +28,8 @@
 import os
 from unittest import TestCase
 
-from osbenchmark import exceptions
-from osbenchmark.builder import cluster_config
+from solrorbit import exceptions
+from solrorbit.builder import cluster_config
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 

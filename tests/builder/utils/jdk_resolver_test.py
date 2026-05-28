@@ -1,8 +1,8 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-from osbenchmark.builder.utils.jdk_resolver import JdkResolver
-from osbenchmark.exceptions import SystemSetupError
+from solrorbit.builder.utils.jdk_resolver import JdkResolver
+from solrorbit.exceptions import SystemSetupError
 
 
 class JdkResolverTests(TestCase):

@@ -28,8 +28,8 @@
 import unittest.mock as mock
 from unittest import TestCase
 
-from osbenchmark import exceptions
-from osbenchmark.utils import jvm
+from solrorbit import exceptions
+from solrorbit.utils import jvm
 
 
 class JvmTests(TestCase):

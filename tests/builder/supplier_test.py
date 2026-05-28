@@ -31,8 +31,8 @@ import datetime
 import unittest.mock as mock
 from unittest import TestCase
 
-from osbenchmark import exceptions, config
-from osbenchmark.builder import supplier, cluster_config
+from solrorbit import exceptions, config
+from solrorbit.builder import supplier, cluster_config
 
 
 class RevisionExtractorTests(TestCase):
@@ -53,10 +53,10 @@ class RevisionExtractorTests(TestCase):
 
 
 class SourceRepositoryTests(TestCase):
-    @mock.patch("osbenchmark.utils.git.head_revision", autospec=True)
-    @mock.patch("osbenchmark.utils.git.pull", autospec=True)
-    @mock.patch("osbenchmark.utils.git.clone", autospec=True)
-    @mock.patch("osbenchmark.utils.git.is_working_copy", autospec=True)
+    @mock.patch("solrorbit.utils.git.head_revision", autospec=True)
+    @mock.patch("solrorbit.utils.git.pull", autospec=True)
+    @mock.patch("solrorbit.utils.git.clone", autospec=True)
+    @mock.patch("solrorbit.utils.git.is_working_copy", autospec=True)
     def test_intial_checkout_latest(self, mock_is_working_copy, mock_clone, mock_pull, mock_head_revision):
         # before cloning, it is not a working copy, afterwards it is
         mock_is_working_copy.side_effect = [False, True]
@@ -70,10 +70,10 @@ class SourceRepositoryTests(TestCase):
         mock_pull.assert_called_with("/src")
         mock_head_revision.assert_called_with("/src")
 
-    @mock.patch("osbenchmark.utils.git.head_revision", autospec=True)
-    @mock.patch("osbenchmark.utils.git.pull")
-    @mock.patch("osbenchmark.utils.git.clone")
-    @mock.patch("osbenchmark.utils.git.is_working_copy", autospec=True)
+    @mock.patch("solrorbit.utils.git.head_revision", autospec=True)
+    @mock.patch("solrorbit.utils.git.pull")
+    @mock.patch("solrorbit.utils.git.clone")
+    @mock.patch("solrorbit.utils.git.is_working_copy", autospec=True)
     def test_checkout_current(self, mock_is_working_copy, mock_clone, mock_pull, mock_head_revision):
         mock_is_working_copy.return_value = True
         mock_head_revision.return_value = "HEAD"
@@ -87,11 +87,11 @@ class SourceRepositoryTests(TestCase):
         mock_head_revision.assert_called_with("/src")\
 
 
-    @mock.patch("osbenchmark.utils.git.head_revision", autospec=True)
-    @mock.patch("osbenchmark.utils.git.checkout")
-    @mock.patch("osbenchmark.utils.git.pull")
-    @mock.patch("osbenchmark.utils.git.clone")
-    @mock.patch("osbenchmark.utils.git.is_working_copy", autospec=True)
+    @mock.patch("solrorbit.utils.git.head_revision", autospec=True)
+    @mock.patch("solrorbit.utils.git.checkout")
+    @mock.patch("solrorbit.utils.git.pull")
+    @mock.patch("solrorbit.utils.git.clone")
+    @mock.patch("solrorbit.utils.git.is_working_copy", autospec=True)
     def test_checkout_revision_for_local_only_repo(self, mock_is_working_copy, mock_clone, mock_pull, mock_checkout, mock_head_revision):
         mock_is_working_copy.return_value = True
         mock_head_revision.return_value = "HEAD"
@@ -106,9 +106,9 @@ class SourceRepositoryTests(TestCase):
         mock_checkout.assert_called_with("/src", "67c2f42")
         mock_head_revision.assert_called_with("/src")
 
-    @mock.patch("osbenchmark.utils.git.head_revision", autospec=True)
-    @mock.patch("osbenchmark.utils.git.pull_ts", autospec=True)
-    @mock.patch("osbenchmark.utils.git.is_working_copy", autospec=True)
+    @mock.patch("solrorbit.utils.git.head_revision", autospec=True)
+    @mock.patch("solrorbit.utils.git.pull_ts", autospec=True)
+    @mock.patch("solrorbit.utils.git.is_working_copy", autospec=True)
     def test_checkout_ts(self, mock_is_working_copy, mock_pull_ts, mock_head_revision):
         mock_is_working_copy.return_value = True
         mock_head_revision.return_value = "HEAD"
@@ -120,9 +120,9 @@ class SourceRepositoryTests(TestCase):
         mock_pull_ts.assert_called_with("/src", "2015-01-01-01:00:00")
         mock_head_revision.assert_called_with("/src")
 
-    @mock.patch("osbenchmark.utils.git.head_revision", autospec=True)
-    @mock.patch("osbenchmark.utils.git.pull_revision", autospec=True)
-    @mock.patch("osbenchmark.utils.git.is_working_copy", autospec=True)
+    @mock.patch("solrorbit.utils.git.head_revision", autospec=True)
+    @mock.patch("solrorbit.utils.git.pull_revision", autospec=True)
+    @mock.patch("solrorbit.utils.git.is_working_copy", autospec=True)
     def test_checkout_revision(self, mock_is_working_copy, mock_pull_revision, mock_head_revision):
         mock_is_working_copy.return_value = True
         mock_head_revision.return_value = "HEAD"
@@ -144,8 +144,8 @@ class SourceRepositoryTests(TestCase):
 
 
 class BuilderTests(TestCase):
-    @mock.patch("osbenchmark.utils.process.run_subprocess")
-    @mock.patch("osbenchmark.utils.jvm.resolve_path")
+    @mock.patch("solrorbit.utils.process.run_subprocess")
+    @mock.patch("solrorbit.utils.jvm.resolve_path")
     def test_build_on_jdk_8(self, jvm_resolve_path, mock_run_subprocess):
         jvm_resolve_path.return_value = (8, "/opt/jdk8")
         mock_run_subprocess.return_value = False
@@ -162,8 +162,8 @@ class BuilderTests(TestCase):
 
         mock_run_subprocess.assert_has_calls(calls)
 
-    @mock.patch("osbenchmark.utils.process.run_subprocess")
-    @mock.patch("osbenchmark.utils.jvm.resolve_path")
+    @mock.patch("solrorbit.utils.process.run_subprocess")
+    @mock.patch("solrorbit.utils.jvm.resolve_path")
     def test_build_on_jdk_10(self, jvm_resolve_path, mock_run_subprocess):
         jvm_resolve_path.return_value = (10, "/opt/jdk10")
         mock_run_subprocess.return_value = False
@@ -195,9 +195,9 @@ class TemplateRendererTests(TestCase):
 
 
 class CachedSolrSourceSupplierTests(TestCase):
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("shutil.copy")
-    @mock.patch("osbenchmark.builder.supplier.SourceSupplier")
+    @mock.patch("solrorbit.builder.supplier.SourceSupplier")
     def test_does_not_cache_when_no_revision(self, opensearch, copy, ensure_dir):
         def add_os_artifact(binaries):
             binaries["solr"] = "/path/to/artifact.tar.gz"
@@ -232,7 +232,7 @@ class CachedSolrSourceSupplierTests(TestCase):
         self.assertEqual("/path/to/artifact.tar.gz", binaries["solr"])
 
     @mock.patch("os.path.exists")
-    @mock.patch("osbenchmark.builder.supplier.SourceSupplier")
+    @mock.patch("solrorbit.builder.supplier.SourceSupplier")
     def test_uses_already_cached_artifact(self, opensearch, path_exists):
         # assume that the artifact is already cached
         path_exists.return_value = True
@@ -263,10 +263,10 @@ class CachedSolrSourceSupplierTests(TestCase):
         self.assertIn("solr", binaries)
         self.assertEqual("/tmp/solr-abc123.tgz", binaries["solr"])
 
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.exists")
     @mock.patch("shutil.copy")
-    @mock.patch("osbenchmark.builder.supplier.SourceSupplier")
+    @mock.patch("solrorbit.builder.supplier.SourceSupplier")
     def test_caches_artifact(self, opensearch, copy, path_exists, ensure_dir):
         def add_os_artifact(binaries):
             binaries["solr"] = "/path/to/artifact.tar.gz"
@@ -314,10 +314,10 @@ class CachedSolrSourceSupplierTests(TestCase):
         self.assertEqual(1, opensearch.add.call_count, "internal supplier is not called again")
         self.assertTrue(cached_supplier.cached)
 
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.exists")
     @mock.patch("shutil.copy")
-    @mock.patch("osbenchmark.builder.supplier.SourceSupplier")
+    @mock.patch("solrorbit.builder.supplier.SourceSupplier")
     def test_does_not_cache_on_copy_error(self, opensearch, copy, path_exists, ensure_dir):
         def add_os_artifact(binaries):
             binaries["solr"] = "/path/to/artifact.tar.gz"

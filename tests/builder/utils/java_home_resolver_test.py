@@ -1,8 +1,8 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-from osbenchmark.builder.cluster_config import ClusterConfigInstance
-from osbenchmark.builder.utils.java_home_resolver import JavaHomeResolver
+from solrorbit.builder.cluster_config import ClusterConfigInstance
+from solrorbit.builder.utils.java_home_resolver import JavaHomeResolver
 
 
 class JavaHomeResolverTests(TestCase):

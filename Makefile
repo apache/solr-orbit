@@ -77,7 +77,7 @@ tox-env-clean:
 	rm -rf .tox
 
 lint:
-	@find osbenchmark benchmarks scripts tests it -name "*.py" -exec pylint -j0 -rn --rcfile=$(CURDIR)/.pylintrc \{\} +
+	@find solrorbit benchmarks scripts tests it -name "*.py" -exec pylint -j0 -rn --rcfile=$(CURDIR)/.pylintrc \{\} +
 
 test: develop
 	pytest tests/

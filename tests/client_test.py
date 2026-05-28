@@ -30,7 +30,7 @@ from unittest import TestCase
 
 import pytest
 
-from osbenchmark import client
+from solrorbit import client
 from tests import run_async
 
 

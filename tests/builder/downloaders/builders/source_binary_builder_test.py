@@ -1,8 +1,8 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.downloaders.builders.source_binary_builder import SourceBinaryBuilder
-from osbenchmark.exceptions import BuildError, ExecutorError
+from solrorbit.builder.downloaders.builders.source_binary_builder import SourceBinaryBuilder
+from solrorbit.exceptions import BuildError, ExecutorError
 
 
 class SourceBinaryBuilderTest(TestCase):

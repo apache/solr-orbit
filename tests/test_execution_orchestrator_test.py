@@ -31,7 +31,7 @@ import unittest.mock as mock
 
 import pytest
 
-from osbenchmark import config, exceptions, test_run_orchestrator
+from solrorbit import config, exceptions, test_run_orchestrator
 
 
 @pytest.fixture

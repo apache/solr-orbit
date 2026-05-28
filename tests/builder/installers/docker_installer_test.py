@@ -5,8 +5,8 @@ import tempfile
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.installers.docker_installer import DockerInstaller
-from osbenchmark.builder.cluster_config import ClusterConfigInstance
+from solrorbit.builder.installers.docker_installer import DockerInstaller
+from solrorbit.builder.cluster_config import ClusterConfigInstance
 
 
 class DockerProvisionerTests(TestCase):
@@ -48,11 +48,11 @@ class DockerProvisionerTests(TestCase):
 
     maxDiff = None
     @mock.patch("uuid.uuid4")
-    @mock.patch("osbenchmark.paths.benchmark_root")
+    @mock.patch("solrorbit.paths.benchmark_root")
     def test_provisioning_with_defaults(self, benchmark_root, uuid4):
         uuid4.return_value = self.node_name
         benchmark_root.return_value = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                                    os.pardir, os.pardir, os.pardir, "osbenchmark"))
+                                                                    os.pardir, os.pardir, os.pardir, "solrorbit"))
 
         node = self.installer._create_node()
 
@@ -120,11 +120,11 @@ networks:
 """ % (self.node_data_dir, self.node_log_dir, self.node_heap_dump_dir), docker_cfg)
 
     @mock.patch("uuid.uuid4")
-    @mock.patch("osbenchmark.paths.benchmark_root")
+    @mock.patch("solrorbit.paths.benchmark_root")
     def test_provisioning_with_variables(self, benchmark_root, uuid4):
         uuid4.return_value = self.node_name
         benchmark_root.return_value = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                                    os.pardir, os.pardir, os.pardir, "osbenchmark"))
+                                                                    os.pardir, os.pardir, os.pardir, "solrorbit"))
 
         self.cluster_config.variables["origin"]["docker"]["docker_mem_limit"] = "256m"
         self.cluster_config.variables["origin"]["docker"]["docker_cpu_count"] = 2

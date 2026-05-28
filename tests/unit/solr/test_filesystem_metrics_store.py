@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for FilesystemMetricsStore in osbenchmark/metrics.py"""
+"""Unit tests for FilesystemMetricsStore in solrorbit/metrics.py"""
 
 import datetime
 import json
@@ -23,7 +23,7 @@ import os
 import tempfile
 import unittest
 
-from osbenchmark import config, metrics
+from solrorbit import config, metrics
 
 
 class StaticClock:

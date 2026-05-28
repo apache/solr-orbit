@@ -30,14 +30,14 @@ from unittest import TestCase
 
 import pytest
 
-import osbenchmark.time
+import solrorbit.time
 
 
 class TimeTests(TestCase):
     def test_split_time_increases(self):
         wait_period_seconds = 0.05
 
-        stop_watch = osbenchmark.time.Clock.stop_watch()
+        stop_watch = solrorbit.time.Clock.stop_watch()
         stop_watch.start()
         prev_split_time = 0
         for _ in range(3):
@@ -54,7 +54,7 @@ class TimeTests(TestCase):
         wait_period_seconds = 0.05
         acceptable_delta_seconds = 0.03
 
-        stop_watch = osbenchmark.time.Clock.stop_watch()
+        stop_watch = solrorbit.time.Clock.stop_watch()
         stop_watch.start()
         time.sleep(wait_period_seconds)
         stop_watch.stop()
@@ -69,9 +69,9 @@ class TimeTests(TestCase):
         wait_period_millis = 50
         acceptable_delta_millis = 30
 
-        start = osbenchmark.time.to_epoch_millis(osbenchmark.time.Clock.now())
+        start = solrorbit.time.to_epoch_millis(solrorbit.time.Clock.now())
         time.sleep(wait_period_millis / 1000.0)
-        end = osbenchmark.time.to_epoch_millis(osbenchmark.time.Clock.now())
+        end = solrorbit.time.to_epoch_millis(solrorbit.time.Clock.now())
 
         interval_millis = end - start
 

@@ -1,0 +1,122 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements. See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License. You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import logging
+import os
+import uuid
+
+from solrorbit.builder.installers.preparers.preparer import Preparer
+from solrorbit.builder.models.node import Node
+from solrorbit.builder.utils.binary_keys import BinaryKeys
+from solrorbit.builder.utils.host_cleaner import HostCleaner
+from solrorbit.builder.utils.path_manager import PathManager
+
+
+class SolrPreparer(Preparer):
+    def __init__(self, cluster_config, executor, hook_handler_class):
+        super().__init__(executor)
+        self.logger = logging.getLogger(__name__)
+        self.cluster_config = cluster_config
+        self.hook_handler = hook_handler_class(self.cluster_config)
+        if self.hook_handler.can_load():
+            self.hook_handler.load()
+        self.path_manager = PathManager(executor)
+        self.host_cleaner = HostCleaner(self.path_manager)
+
+    def prepare(self, host, binaries):
+        node = self._create_node()
+        self._prepare_node(host, node, binaries[BinaryKeys.SOLR])
+
+        return node
+
+    def _create_node(self):
+        node_name = str(uuid.uuid4())
+        node_port = int(self.cluster_config.variables["node"]["port"])
+        node_root_dir = os.path.join(self.cluster_config.variables["test_run_root"], node_name)
+        node_binary_path = os.path.join(node_root_dir, "install")
+        node_log_dir = os.path.join(node_root_dir, "logs", "server")
+        node_heap_dump_dir = os.path.join(node_root_dir, "heapdump")
+
+        return Node(name=node_name,
+                    port=node_port,
+                    pid=None,
+                    root_dir=node_root_dir,
+                    binary_path=node_binary_path,
+                    log_path=node_log_dir,
+                    heap_dump_path=node_heap_dump_dir,
+                    data_paths=None,
+                    telemetry=None)
+
+    def _prepare_node(self, host, node, binary):
+        self._prepare_directories(host, node)
+        self._extract_solr(host, node, binary)
+        self._update_node_binary_path(node)
+        self._set_node_data_paths(node)
+        # we need to immediately delete the prebundled config files as plugins may copy their configuration during installation.
+        self._delete_prebundled_config_files(host, node)
+
+    def _prepare_directories(self, host, node):
+        directories_to_create = [node.binary_path, node.log_path, node.heap_dump_path]
+        for directory_to_create in directories_to_create:
+            self.path_manager.create_path(host, directory_to_create)
+
+    def _extract_solr(self, host, node, binary):
+        self.logger.info("Unzipping %s to %s", binary, node.binary_path)
+        self.executor.execute(host, f"tar -xzvf {binary} --directory {node.binary_path}")
+
+    def _update_node_binary_path(self, node):
+        node.binary_path = os.path.join(node.binary_path, "solr*")
+
+    def _set_node_data_paths(self, node):
+        node.data_paths = [os.path.join(node.binary_path, "data")]
+
+    def _delete_prebundled_config_files(self, host, node):
+        config_path = os.path.join(node.binary_path, "config")
+        self.logger.info("Deleting pre-bundled Solr configuration at [%s]", config_path)
+        self.path_manager.delete_path(host, config_path)
+
+    def get_config_vars(self, host, node, all_node_ips):
+        installer_defaults = {
+            "cluster_name": self.cluster_config.variables["cluster_name"],
+            "node_name": node.name,
+            "data_paths": node.data_paths[0],
+            "log_path": node.log_path,
+            "heap_dump_path": node.heap_dump_path,
+            # this is the node's IP address as specified by the user when invoking OSB
+            "node_ip": host.address,
+            # this is the IP address that the node will be bound to. OSB will bind to the node's IP address (but not to 0.0.0.0). The
+            "network_host": host.address,
+            "http_port": str(node.port),
+            "zookeeper_port": str(node.port + 1000),
+            "all_node_ips": "[\"%s\"]" % "\",\"".join(all_node_ips),
+            # at the moment we are strict and enforce that all nodes are master eligible nodes
+            "minimum_master_nodes": len(all_node_ips),
+            "install_root_path": node.binary_path
+        }
+        config_vars = {}
+        config_vars.update(self.cluster_config.variables)
+        config_vars.update(installer_defaults)
+        return config_vars
+
+    def get_config_paths(self):
+        return self.cluster_config.config_paths
+
+    def invoke_install_hook(self, host, phase, variables, env):
+        self.hook_handler.invoke(phase.name, variables=variables, env=env)
+
+    def cleanup(self, host):
+        self.host_cleaner.cleanup(host, self.cluster_config.variables["preserve_install"])

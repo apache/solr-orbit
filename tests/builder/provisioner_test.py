@@ -31,15 +31,15 @@ import tempfile
 import unittest.mock as mock
 from unittest import TestCase
 
-from osbenchmark.builder import provisioner, cluster_config
+from solrorbit.builder import provisioner, cluster_config
 
 HOME_DIR = os.path.expanduser("~")
 
 
 class BareProvisionerTests(TestCase):
     @mock.patch("glob.glob", lambda p: ["/opt/solr-9.0.0"])
-    @mock.patch("osbenchmark.utils.io.decompress")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("shutil.rmtree")
     def test_prepare_without_plugins(self, mock_rm, mock_ensure_dir, mock_decompress):
         apply_config_calls = []
@@ -125,8 +125,8 @@ class NoopHookHandler:
 
 class NodeInstallerTests(TestCase):
     @mock.patch("glob.glob", lambda p: ["/install/solr-9.0.0"])
-    @mock.patch("osbenchmark.utils.io.decompress")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("shutil.rmtree")
     def test_prepare_default_data_paths(self, mock_rm, mock_ensure_dir, mock_decompress):
         installer = provisioner.NodeInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
@@ -162,8 +162,8 @@ class NodeInstallerTests(TestCase):
         self.assertEqual(installer.data_paths, ["/install/solr-9.0.0/data"])
 
     @mock.patch("glob.glob", lambda p: ["/install/solr-9.0.0"])
-    @mock.patch("osbenchmark.utils.io.decompress")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("shutil.rmtree")
     def test_prepare_user_provided_data_path(self, mock_rm, mock_ensure_dir, mock_decompress):
         installer = provisioner.NodeInstaller(cluster_config=cluster_config.ClusterConfigInstance(names="defaults",
@@ -251,7 +251,7 @@ class DockerProvisionerTests(TestCase):
         heap_dump_dir = os.path.join(node_root_dir, "heapdump")
         data_dir = os.path.join(node_root_dir, "data", "9dbc682e-d32a-4669-8fbe-56fb77120dd4")
 
-        benchmark_root = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, "osbenchmark"))
+        benchmark_root = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, "solrorbit"))
 
         c = cluster_config.ClusterConfigInstance("unit-test-cluster-config-instance", None, "/tmp", variables={
             "docker_image": "solr"
@@ -334,7 +334,7 @@ networks:
         heap_dump_dir = os.path.join(node_root_dir, "heapdump")
         data_dir = os.path.join(node_root_dir, "data", "86f42ae0-5840-4b5b-918d-41e7907cb644")
 
-        benchmark_root = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, "osbenchmark"))
+        benchmark_root = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, "solrorbit"))
 
         c = cluster_config.ClusterConfigInstance("unit-test-cluster-config-instance", None, "/tmp", variables={
             "docker_image": "solr",

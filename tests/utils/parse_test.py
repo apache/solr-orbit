@@ -5,7 +5,7 @@
 # compatible open source license.
 from unittest import TestCase
 
-from osbenchmark.utils.parse import parse_string_parameter, parse_int_parameter, parse_float_parameter
+from solrorbit.utils.parse import parse_string_parameter, parse_int_parameter, parse_float_parameter
 
 
 class ParseParamsFunctionalTests(TestCase):

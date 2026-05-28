@@ -33,7 +33,7 @@ from unittest import TestCase
 import pytest
 import ujson
 
-from osbenchmark.worker_coordinator import runner
+from solrorbit.worker_coordinator import runner
 
 @pytest.mark.benchmark(
     group="parse",

@@ -9,8 +9,8 @@
 from unittest.mock import MagicMock, patch
 import pytest
 
-from osbenchmark.synthetic_data_generator.synthetic_data_generator import SyntheticDataGenerator
-from osbenchmark.synthetic_data_generator.models import SyntheticDataGeneratorMetadata, SDGConfig
+from solrorbit.synthetic_data_generator.synthetic_data_generator import SyntheticDataGenerator
+from solrorbit.synthetic_data_generator.models import SyntheticDataGeneratorMetadata, SDGConfig
 
 class TestSyntheticDataGeneratorWithCustomStrategy:
 
@@ -83,7 +83,7 @@ class TestSyntheticDataGeneratorWithCustomStrategy:
         return SyntheticDataGenerator(setup_sdg_metadata, mock_sdg_config, setup_custom_strategy)
 
     # Patch how it's used in SDG
-    @patch('osbenchmark.synthetic_data_generator.synthetic_data_generator.get_client')
+    @patch('solrorbit.synthetic_data_generator.synthetic_data_generator.get_client')
     def test_generate_seeds_for_workers(self, mock_get_client, setup_custom_sdg, mock_dask_client):
         mock_get_client.return_value = mock_dask_client
         sdg = setup_custom_sdg
@@ -182,7 +182,7 @@ class TestSyntheticDataGeneratorWithMappingStrategy:
         return SyntheticDataGenerator(setup_sdg_metadata, mock_sdg_config, setup_mapping_strategy)
 
     # Patch how it's used in SDG
-    @patch('osbenchmark.synthetic_data_generator.synthetic_data_generator.get_client')
+    @patch('solrorbit.synthetic_data_generator.synthetic_data_generator.get_client')
     def test_generate_seeds_for_workers(self, mock_get_client, setup_custom_sdg, mock_dask_client):
         mock_get_client.return_value = mock_dask_client
         sdg = setup_custom_sdg

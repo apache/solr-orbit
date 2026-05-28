@@ -2,7 +2,7 @@ import sys
 from unittest import TestCase
 from unittest.mock import Mock
 
-from osbenchmark.utils.periodic_waiter import PeriodicWaiter
+from solrorbit.utils.periodic_waiter import PeriodicWaiter
 
 
 class PeriodicWaiterTest(TestCase):

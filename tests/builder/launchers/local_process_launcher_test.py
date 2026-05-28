@@ -6,11 +6,11 @@ from unittest.mock import Mock, mock_open
 
 from psutil import NoSuchProcess
 
-from osbenchmark import telemetry
-from osbenchmark.builder import cluster
-from osbenchmark.builder.launchers.local_process_launcher import LocalProcessLauncher
-from osbenchmark.builder.cluster_config import ClusterConfigInstance
-from osbenchmark.builder.provisioner import NodeConfiguration
+from solrorbit import telemetry
+from solrorbit.builder import cluster
+from solrorbit.builder.launchers.local_process_launcher import LocalProcessLauncher
+from solrorbit.builder.cluster_config import ClusterConfigInstance
+from solrorbit.builder.provisioner import NodeConfiguration
 
 
 class LocalProcessLauncherTests(TestCase):
@@ -40,10 +40,10 @@ class LocalProcessLauncherTests(TestCase):
         self.host = None
         self.path = "fake"
 
-    @mock.patch('osbenchmark.builder.java_resolver.java_home', return_value=(12, "/java_home/"))
-    @mock.patch('osbenchmark.utils.jvm.supports_option', return_value=True)
-    @mock.patch('osbenchmark.utils.io.get_size')
-    @mock.patch('osbenchmark.telemetry')
+    @mock.patch('solrorbit.builder.java_resolver.java_home', return_value=(12, "/java_home/"))
+    @mock.patch('solrorbit.utils.jvm.supports_option', return_value=True)
+    @mock.patch('solrorbit.utils.io.get_size')
+    @mock.patch('solrorbit.telemetry')
     @mock.patch('psutil.Process')
     def test_daemon_start_stop(self, process, telemetry, get_size, supports, java_home):
         mo = mock_open(read_data="1234")
@@ -85,7 +85,7 @@ class LocalProcessLauncherTests(TestCase):
         self.assertEqual([], stopped_nodes)
 
     # flight recorder shows a warning for several seconds before continuing
-    @mock.patch("osbenchmark.time.sleep")
+    @mock.patch("solrorbit.time.sleep")
     def test_env_options_order(self, sleep):
         node_telemetry = [
             telemetry.FlightRecorder(telemetry_params={}, log_root="/tmp/telemetry", java_major_version=8)

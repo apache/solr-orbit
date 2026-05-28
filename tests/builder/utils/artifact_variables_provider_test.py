@@ -1,7 +1,7 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-from osbenchmark.builder.utils.artifact_variables_provider import ArtifactVariablesProvider
+from solrorbit.builder.utils.artifact_variables_provider import ArtifactVariablesProvider
 
 
 class ArtifactVariablesProviderTest(TestCase):

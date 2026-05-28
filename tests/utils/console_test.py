@@ -33,7 +33,7 @@ from unittest import TestCase
 
 import pytest
 
-from osbenchmark.utils import console
+from solrorbit.utils import console
 
 
 class ConsoleFunctionTests(TestCase):

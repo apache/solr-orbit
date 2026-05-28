@@ -17,7 +17,7 @@ source .venv/bin/activate  # Activate virtual environment
 ## Common Commands
 
 ```bash
-make lint             # Run pylint on osbenchmark/, benchmarks/, scripts/, tests/, it/
+make lint             # Run pylint on solrorbit/, benchmarks/, scripts/, tests/, it/
 make test             # Run unit tests (pytest tests/)
 pytest tests/path/to/test_file.py::TestClass::test_method  # Run a single test
 make it               # Run integration tests via tox (requires Java, Docker; ~30 min)
@@ -40,10 +40,10 @@ Apache Solr Orbit is a **macrobenchmarking framework** for Apache Solr clusters,
 
 ### Entry Points
 
-- `solr-orbit` / `sb` → `osbenchmark/benchmark.py:main` — CLI for running benchmarks
-- `solr-orbitd` / `sbd` → `osbenchmark/benchmarkd.py:main` — Daemon for distributed worker nodes
+- `solr-orbit` / `sb` → `solrorbit/benchmark.py:main` — CLI for running benchmarks
+- `solr-orbitd` / `sbd` → `solrorbit/benchmarkd.py:main` — Daemon for distributed worker nodes
 
-### Core Package (`osbenchmark/`)
+### Core Package (`solrorbit/`)
 
 **Orchestration layer:**
 - `benchmark.py` — CLI arg parsing, subcommands: `run`, `list`, `info`, `generate`, `convert-workload`
@@ -87,7 +87,7 @@ Apache Solr Orbit is a **macrobenchmarking framework** for Apache Solr clusters,
 
 ### Test Structure
 
-- `tests/` — Unit tests mirroring `osbenchmark/` structure
+- `tests/` — Unit tests mirroring `solrorbit/` structure
 - `it/` — Integration tests (spin up real Solr clusters via Docker/provisioning)
 - `benchmarks/` — Performance benchmarks for Solr Orbit itself
 

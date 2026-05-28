@@ -32,8 +32,8 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import pytest
-from osbenchmark import client, exceptions
-from osbenchmark.worker_coordinator import runner
+from solrorbit import client, exceptions
+from solrorbit.worker_coordinator import runner
 from tests import run_async, as_future
 
 
@@ -332,8 +332,8 @@ class RawRequestRunnerTests(TestCase):
 
 class SleepTests(TestCase):
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     # To avoid real sleeps in unit tests
     @mock.patch("asyncio.sleep", return_value=as_future())
     @run_async
@@ -352,8 +352,8 @@ class SleepTests(TestCase):
         self.assertEqual(0, sleep.call_count)
 
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     # To avoid real sleeps in unit tests
     @mock.patch("asyncio.sleep", return_value=as_future())
     @run_async
@@ -461,10 +461,10 @@ class CompositeTests(TestCase):
         runner.remove_runner("counter")
         runner.remove_runner("call-recorder")
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
-    @mock.patch('osbenchmark.client.RequestContextHolder.new_request_context')
+    @mock.patch('solrorbit.client.RequestContextHolder.new_request_context')
     @run_async
     async def test_runs_tasks_in_specified_order(self, opensearch, on_client_request_start, on_client_request_end, new_request_context):
         opensearch.transport.perform_request.return_value = as_future()
@@ -593,8 +593,8 @@ class CompositeTests(TestCase):
             self.assertIn("request_end", timing)
             self.assertGreater(timing["request_end"], timing["request_start"])
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_limits_connections(self, opensearch, on_client_request_start, on_client_request_end):
@@ -633,8 +633,8 @@ class CompositeTests(TestCase):
         # composite runner should limit to two concurrent connections
         self.assertEqual(2, self.counter_runner.max_value)
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_rejects_invalid_stream(self, opensearch, on_client_request_start, on_client_request_end):
@@ -666,8 +666,8 @@ class CompositeTests(TestCase):
 
         self.assertEqual("Requests structure must contain [stream] or [operation-type].", ctx.exception.args[0])
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_rejects_unsupported_operations(self, opensearch, on_client_request_start, on_client_request_end):
@@ -712,8 +712,8 @@ class RequestTimingTests(TestCase):
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return False
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_merges_timing_info(self, opensearch, on_client_request_start, on_client_request_end):
@@ -747,8 +747,8 @@ class RequestTimingTests(TestCase):
 
         delegate.assert_called_once_with(multi_cluster_client, params)
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_creates_new_timing_info(self, opensearch, on_client_request_start, on_client_request_end):

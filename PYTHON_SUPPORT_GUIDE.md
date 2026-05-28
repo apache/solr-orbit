@@ -27,7 +27,7 @@ Make changes to the following files and open a PR titled
       @if ! $(PIP) > /dev/null 2>&1 || ! $(PIP) install pip > /dev/null 2>&1; then make pyinst312; fi
   ```
 
-* `osbenchmark/__init__.py`: Update the minimum version in the error message:
+* `solrorbit/__init__.py`: Update the minimum version in the error message:
 
   ```python
   raise RuntimeError("Solr Orbit requires at least Python <MIN_VERSION> but you are using:\n\nPython %s" % str(sys.version))

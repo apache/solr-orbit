@@ -28,12 +28,12 @@
 import unittest.mock as mock
 from unittest import TestCase
 
-from osbenchmark import config, exceptions
-from osbenchmark.builder import builder
+from solrorbit import config, exceptions
+from solrorbit.builder import builder
 
 
 class HostHandlingTests(TestCase):
-    @mock.patch("osbenchmark.utils.net.resolve")
+    @mock.patch("solrorbit.utils.net.resolve")
     def test_converts_valid_hosts(self, resolver):
         resolver.side_effect = ["127.0.0.1", "10.16.23.5", "11.22.33.44"]
 
@@ -50,7 +50,7 @@ class HostHandlingTests(TestCase):
             ("11.22.33.44", 8983),
         ], builder.to_ip_port(hosts))
 
-    @mock.patch("osbenchmark.utils.net.resolve")
+    @mock.patch("solrorbit.utils.net.resolve")
     def test_rejects_hosts_with_unexpected_properties(self, resolver):
         resolver.side_effect = ["127.0.0.1", "10.16.23.5", "11.22.33.44"]
 
@@ -122,7 +122,7 @@ class BuilderTests(TestCase):
         def _add_results(self, current_test_run, node):
             pass
 
-    @mock.patch("osbenchmark.builder.provisioner.cleanup")
+    @mock.patch("solrorbit.builder.provisioner.cleanup")
     def test_start_stop_nodes(self, cleanup):
         supplier = lambda: "/home/user/src/elasticsearch/es.tar.gz"
         provisioners = [mock.Mock(), mock.Mock()]

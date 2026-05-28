@@ -15,14 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for opt-in telemetry devices in osbenchmark/telemetry.py"""
+"""Unit tests for opt-in telemetry devices in solrorbit/telemetry.py"""
 
 import os
 import tempfile
 import unittest
 from unittest.mock import MagicMock, patch
 
-from osbenchmark.telemetry import (
+from solrorbit.telemetry import (
     ClusterEnvironmentInfo,
     FlightRecorder,
     Gc,
@@ -212,7 +212,7 @@ class TestShardStats(unittest.TestCase):
 
     def test_shard_stats_invalid_interval(self):
         """ShardStats raises SystemSetupError for non-positive sample interval."""
-        from osbenchmark.exceptions import SystemSetupError
+        from solrorbit.exceptions import SystemSetupError
         admin_client, _ = _make_admin_client()
         metrics_store, _ = _make_metrics_store()
         with self.assertRaises(SystemSetupError):
@@ -376,7 +376,7 @@ class TestHeapdumpDockerSupport(unittest.TestCase):
             device = Heapdump(log_root=log_root)
             node = MagicMock()
             node.pid = 12345
-            with patch("osbenchmark.utils.process.run_subprocess_with_logging") as mock_run:
+            with patch("solrorbit.utils.process.run_subprocess_with_logging") as mock_run:
                 mock_run.return_value = 0
                 device.detach_from_node(node, running=True)
                 call_args = mock_run.call_args[0][0]
@@ -390,7 +390,7 @@ class TestHeapdumpDockerSupport(unittest.TestCase):
             device = Heapdump(log_root=log_root, docker_container="solr-orbit")
             node = MagicMock()
             node.pid = 12345
-            with patch("osbenchmark.utils.process.run_subprocess_with_logging") as mock_run:
+            with patch("solrorbit.utils.process.run_subprocess_with_logging") as mock_run:
                 mock_run.return_value = 0
                 device.detach_from_node(node, running=True)
                 call_args = mock_run.call_args[0][0]
@@ -404,7 +404,7 @@ class TestHeapdumpDockerSupport(unittest.TestCase):
             device = Heapdump(log_root=log_root)
             node = MagicMock()
             node.pid = 12345
-            with patch("osbenchmark.utils.process.run_subprocess_with_logging") as mock_run:
+            with patch("solrorbit.utils.process.run_subprocess_with_logging") as mock_run:
                 device.detach_from_node(node, running=False)
                 mock_run.assert_not_called()
 

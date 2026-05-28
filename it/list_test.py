@@ -30,23 +30,23 @@ import it
 
 @it.all_benchmark_configs
 def test_list_test_runs(cfg):
-    assert it.osbenchmark(cfg, "list test-runs") == 0
+    assert it.solrorbit(cfg, "list test-runs") == 0
 
 
 @it.benchmark_in_mem
 def test_list_cluster_configs(cfg):
-    assert it.osbenchmark(cfg, "list cluster-configs") == 0
-    assert it.osbenchmark(cfg, "list cluster-configs --cluster-config-repository=default") == 0
+    assert it.solrorbit(cfg, "list cluster-configs") == 0
+    assert it.solrorbit(cfg, "list cluster-configs --cluster-config-repository=default") == 0
 
 
 
 @it.benchmark_in_mem
 def test_list_workloads(cfg):
-    assert it.osbenchmark(cfg, "list workloads") == 0
-    assert it.osbenchmark(cfg, "list workloads --workload-repository=default "
+    assert it.solrorbit(cfg, "list workloads") == 0
+    assert it.solrorbit(cfg, "list workloads --workload-repository=default "
                            "--workload-revision=cba4e45dda37ac03abbd3c9dd4532475dac355e9") == 0
 
 
 @it.benchmark_in_mem
 def test_list_telemetry(cfg):
-    assert it.osbenchmark(cfg, "list telemetry") == 0
+    assert it.solrorbit(cfg, "list telemetry") == 0

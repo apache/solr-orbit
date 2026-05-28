@@ -1,9 +1,9 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.models.host import Host
-from osbenchmark.builder.models.node import Node
-from osbenchmark.builder.utils.host_cleaner import HostCleaner
+from solrorbit.builder.models.host import Host
+from solrorbit.builder.models.node import Node
+from solrorbit.builder.utils.host_cleaner import HostCleaner
 
 
 class HostCleanerTest(TestCase):

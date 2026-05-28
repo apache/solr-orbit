@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 import pytest
-from osbenchmark import config
-from osbenchmark.aggregator import Aggregator, AggregatedResults
+from solrorbit import config
+from solrorbit.aggregator import Aggregator, AggregatedResults
 
 @pytest.fixture
 def mock_config():

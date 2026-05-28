@@ -30,8 +30,8 @@ import re
 
 import pytest  # type: ignore
 
-from osbenchmark import exceptions
-from osbenchmark.utils import versions
+from solrorbit import exceptions
+from solrorbit.utils import versions
 
 
 class TestsVersions:

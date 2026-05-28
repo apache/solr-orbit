@@ -15,13 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for Solr telemetry devices (osbenchmark/telemetry.py)"""
+"""Unit tests for Solr telemetry devices (solrorbit/telemetry.py)"""
 
 import time
 import unittest
 from unittest.mock import MagicMock
 
-from osbenchmark.telemetry import (
+from solrorbit.telemetry import (
     SolrCacheStats,
     SolrCollectionStats,
     SolrIndexingStats,

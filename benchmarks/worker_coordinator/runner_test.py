@@ -27,7 +27,7 @@
 
 import pytest
 
-from osbenchmark.worker_coordinator import runner
+from solrorbit.worker_coordinator import runner
 
 bulk_index = runner.BulkIndex()
 

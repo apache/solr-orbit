@@ -27,7 +27,7 @@
 
 from unittest import TestCase
 
-from osbenchmark.utils import convert
+from solrorbit.utils import convert
 
 
 class ToBoolTests(TestCase):

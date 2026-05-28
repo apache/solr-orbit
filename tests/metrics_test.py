@@ -35,9 +35,9 @@ import uuid
 from unittest import TestCase
 from collections import namedtuple
 
-from osbenchmark import config, metrics, workload, exceptions
-from osbenchmark.metrics import GlobalStatsCalculator
-from osbenchmark.workload import Task, Operation, TestProcedure, Workload
+from solrorbit import config, metrics, workload, exceptions
+from solrorbit.metrics import GlobalStatsCalculator
+from solrorbit.workload import Task, Operation, TestProcedure, Workload
 
 AWS_ACCESS_KEY_ID_LENGTH = 12
 AWS_SECRET_ACCESS_KEY_LENGTH = 40
@@ -158,7 +158,7 @@ class InMemoryMetricsStoreTests(TestCase):
         self.assertEqual(1, self.metrics_store.get_one("indexing_throughput", sample_type=metrics.SampleType.Warmup))
         self.assertEqual(throughput, self.metrics_store.get_one("indexing_throughput", sample_type=metrics.SampleType.Normal))
 
-    @mock.patch("osbenchmark.utils.console.warn")
+    @mock.patch("solrorbit.utils.console.warn")
     @mock.patch("psutil.virtual_memory")
     def test_out_of_memory(self, virt_mem, console_warn):
         vmem = namedtuple('vmem', ("available", "total"))

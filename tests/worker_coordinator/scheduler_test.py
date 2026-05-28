@@ -29,9 +29,9 @@
 import random
 from unittest import TestCase
 
-from osbenchmark import exceptions
-from osbenchmark.worker_coordinator import scheduler
-from osbenchmark.workload import workload
+from solrorbit import exceptions
+from solrorbit.worker_coordinator import scheduler
+from solrorbit.workload import workload
 
 
 class SchedulerTestCase(TestCase):

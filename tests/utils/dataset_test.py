@@ -6,8 +6,8 @@
 import tempfile
 from unittest import TestCase
 
-from osbenchmark.utils.dataset import Context, get_data_set, HDF5DataSet, BigANNVectorDataSet
-from osbenchmark.utils.parse import ConfigurationError
+from solrorbit.utils.dataset import Context, get_data_set, HDF5DataSet, BigANNVectorDataSet
+from solrorbit.utils.parse import ConfigurationError
 from tests.utils.dataset_helper import create_data_set, create_ground_truth
 
 DEFAULT_INDEX_NAME = "test-index"

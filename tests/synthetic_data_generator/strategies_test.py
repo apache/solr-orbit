@@ -11,11 +11,11 @@ import re
 from unittest.mock import MagicMock
 import pytest
 
-from osbenchmark.exceptions import ConfigError
-from osbenchmark.synthetic_data_generator.models import SyntheticDataGeneratorMetadata, SDGConfig
-from osbenchmark.synthetic_data_generator.strategies import MappingStrategy, CustomModuleStrategy
-from osbenchmark.synthetic_data_generator.strategies.mapping_strategy import MappingConverter
-from osbenchmark.synthetic_data_generator import helpers
+from solrorbit.exceptions import ConfigError
+from solrorbit.synthetic_data_generator.models import SyntheticDataGeneratorMetadata, SDGConfig
+from solrorbit.synthetic_data_generator.strategies import MappingStrategy, CustomModuleStrategy
+from solrorbit.synthetic_data_generator.strategies.mapping_strategy import MappingConverter
+from solrorbit.synthetic_data_generator import helpers
 
 
 class TestCustomStrategy:

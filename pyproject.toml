@@ -117,8 +117,8 @@ dependencies = [
 Homepage = "https://github.com/apache/solr-orbit"
 
 [project.scripts]
-solr-orbit = "osbenchmark.benchmark:main"
-solr-orbitd = "osbenchmark.benchmarkd:main"
+solr-orbit = "solrorbit.benchmark:main"
+solr-orbitd = "solrorbit.benchmarkd:main"
 
 [project.optional-dependencies]
 test = [

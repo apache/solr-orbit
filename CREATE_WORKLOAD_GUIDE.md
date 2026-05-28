@@ -51,7 +51,7 @@ If you have a workload written for OpenSearch Benchmark, use the migration
 utility to translate it to Solr format:
 
 ```bash
-python -m osbenchmark.tools.migrate_workload \
+python -m solrorbit.tools.migrate_workload \
   --input osb-workload.json \
   --output solr-workload.json
 ```

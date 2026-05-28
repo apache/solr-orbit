@@ -36,8 +36,8 @@ import datetime
 
 import pytest
 
-from osbenchmark import client, config, version, paths
-from osbenchmark.utils import process
+from solrorbit import client, config, version, paths
+from solrorbit.utils import process
 
 CONFIG_NAMES = ["in-memory-it"]
 DISTRIBUTIONS = ["9.10.1", "10.1.0"]
@@ -82,16 +82,16 @@ def benchmark_os(t):
     return wrapper
 
 
-def osbenchmark_command_line_for(cfg, command_line):
+def solrorbit_command_line_for(cfg, command_line):
     return f"{random.choice(BASE_COMMANDS)} {command_line} --configuration-name='{cfg}'"
 
 
-def osbenchmark(cfg, command_line):
+def solrorbit(cfg, command_line):
     """
     This method should be used for benchmark invocations of the all commands besides test_run.
     These commands may have different CLI options than test_run.
     """
-    cmd = osbenchmark_command_line_for(cfg, command_line)
+    cmd = solrorbit_command_line_for(cfg, command_line)
     print(f'\n{datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")} Invoking solr-orbit: {cmd}')
     err, retcode = process.run_subprocess_with_stderr(cmd)
     if retcode != 0:
@@ -104,7 +104,7 @@ def run_test(cfg, command_line):
     This method should be used for benchmark invocations of the test_run command.
     It sets up some defaults for how the integration tests expect to run test_runs.
     """
-    return osbenchmark(cfg, f"run {command_line} --kill-running-processes --on-error='abort'")
+    return solrorbit(cfg, f"run {command_line} --kill-running-processes --on-error='abort'")
 
 
 def shell_cmd(command_line):
@@ -191,14 +191,14 @@ class TestCluster:
 
     def start(self, test_run_id):
         cmd = "start --runtime-jdk=\"bundled\" --installation-id={} --test-run-id={}".format(self.installation_id, test_run_id)
-        if osbenchmark(self.cfg, cmd) != 0:
+        if solrorbit(self.cfg, cmd) != 0:
             raise AssertionError("Failed to start test cluster.")
         solr_client = client.ClientFactory(hosts=[{"host": "127.0.0.1", "port": self.http_port}], client_options={}).create()
         client.wait_for_rest_layer(solr_client)
 
     def stop(self):
         if self.installation_id:
-            if osbenchmark(self.cfg, "stop --installation-id={}".format(self.installation_id)) != 0:
+            if solrorbit(self.cfg, "stop --installation-id={}".format(self.installation_id)) != 0:
                 raise AssertionError("Failed to stop test cluster.")
 
     def __str__(self):

@@ -29,7 +29,7 @@ import os
 from unittest import TestCase
 
 import unittest.mock as mock
-from osbenchmark.utils import opts
+from solrorbit.utils import opts
 
 
 class ConfigHelperFunctionTests(TestCase):

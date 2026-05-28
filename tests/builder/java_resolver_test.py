@@ -28,11 +28,11 @@
 import unittest.mock as mock
 from unittest import TestCase
 
-from osbenchmark.builder import java_resolver
+from solrorbit.builder import java_resolver
 
 
 class JavaResolverTests(TestCase):
-    @mock.patch("osbenchmark.utils.jvm.resolve_path")
+    @mock.patch("solrorbit.utils.jvm.resolve_path")
     def test_resolves_java_home_for_default_runtime_jdk(self, resolve_jvm_path):
         resolve_jvm_path.return_value = (12, "/opt/jdk12")
         major, java_home = java_resolver.java_home("12,11,10,9,8",
@@ -42,7 +42,7 @@ class JavaResolverTests(TestCase):
         self.assertEqual(major, 12)
         self.assertEqual(java_home, "/opt/jdk12")
 
-    @mock.patch("osbenchmark.utils.jvm.resolve_path")
+    @mock.patch("solrorbit.utils.jvm.resolve_path")
     def test_resolves_java_home_for_specific_runtime_jdk(self, resolve_jvm_path):
         resolve_jvm_path.return_value = (8, "/opt/jdk8")
         major, java_home = java_resolver.java_home("12,11,10,9,8",

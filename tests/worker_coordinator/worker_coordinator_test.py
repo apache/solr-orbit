@@ -37,9 +37,9 @@ from unittest import TestCase
 
 import pytest
 
-from osbenchmark import metrics, workload, exceptions, config
-from osbenchmark.worker_coordinator import worker_coordinator, runner, scheduler
-from osbenchmark.workload import params
+from solrorbit import metrics, workload, exceptions, config
+from solrorbit.worker_coordinator import worker_coordinator, runner, scheduler
+from solrorbit.workload import params
 from tests import run_async, as_future
 
 
@@ -146,7 +146,7 @@ class WorkerCoordinatorTests(TestCase):
         }
         return mock.Mock(**attrs)
 
-    @mock.patch("osbenchmark.utils.net.resolve")
+    @mock.patch("solrorbit.utils.net.resolve")
     def test_start_benchmark_and_prepare_workload(self, resolve):
         # override load worker_coordinator host
         self.cfg.add(config.Scope.applicationOverride, "worker_coordinator", "worker_ips", ["10.5.5.1", "10.5.5.2"])
@@ -324,7 +324,7 @@ class SamplePostprocessorTests(TestCase):
                          relative_time=relative_time,
                          meta_data={})
 
-    @mock.patch("osbenchmark.metrics.MetricsStore")
+    @mock.patch("solrorbit.metrics.MetricsStore")
     def test_all_samples(self, metrics_store):
         post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store,
                                                   downsample_factor=1,
@@ -353,7 +353,7 @@ class SamplePostprocessorTests(TestCase):
         ]
         metrics_store.put_value_cluster_level.assert_has_calls(calls)
 
-    @mock.patch("osbenchmark.metrics.MetricsStore")
+    @mock.patch("solrorbit.metrics.MetricsStore")
     def test_downsamples(self, metrics_store):
         post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store,
                                                   downsample_factor=2,
@@ -382,7 +382,7 @@ class SamplePostprocessorTests(TestCase):
         ]
         metrics_store.put_value_cluster_level.assert_has_calls(calls)
 
-    @mock.patch("osbenchmark.metrics.MetricsStore")
+    @mock.patch("solrorbit.metrics.MetricsStore")
     def test_dependent_samples(self, metrics_store):
         post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store,
                                                   downsample_factor=1,
@@ -1328,8 +1328,8 @@ class AsyncExecutorTests(TestCase):
         runner.remove_runner("override-throughput")
         runner.remove_runner("bulk")
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_start')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
     @mock.patch("tests.worker_coordinator.worker_coordinator_test._FakeOSClient")
     @run_async
     async def test_run_schedule_in_throughput_mode(self, opensearch, on_client_request_start, on_client_request_end):
@@ -1701,7 +1701,7 @@ class AsyncExecutorTests(TestCase):
             "success": True
         }, request_meta_data)
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
     @run_async
     async def test_run_single_with_connection_error_always_aborts(self, on_client_request_end):
         for on_error in ["abort", "continue"]:
@@ -1716,7 +1716,7 @@ class AsyncExecutorTests(TestCase):
                     "Request returned an error. Error type: transport, Description: no route to host",
                     ctx.exception.args[0])
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
     @run_async
     async def test_run_single_with_http_400_aborts_when_specified(self, on_client_request_end):
         opensearch = None
@@ -1730,7 +1730,7 @@ class AsyncExecutorTests(TestCase):
             "Request returned an error. Error type: transport, Description: not found (the requested document could not be found)",
             ctx.exception.args[0])
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
     @run_async
     async def test_run_single_with_http_400(self, on_client_request_end):
         opensearch = None
@@ -1750,7 +1750,7 @@ class AsyncExecutorTests(TestCase):
             "success": False
         }, request_meta_data)
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
     @run_async
     async def test_run_single_with_http_413(self, on_client_request_end):
         opensearch = None
@@ -1770,7 +1770,7 @@ class AsyncExecutorTests(TestCase):
             "success": False
         }, request_meta_data)
 
-    @mock.patch('osbenchmark.client.RequestContextHolder.on_client_request_end')
+    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
     @run_async
     async def test_run_single_with_key_error(self, on_client_request_end):
         class FailingRunner:
@@ -1978,7 +1978,7 @@ class AsyncExecutorHelperMethodsTests(TestCase):
         self.executor._prepare_context_manager = mock.AsyncMock(return_value=context_manager)
         self.executor.runner = mock.Mock()
 
-        with mock.patch('osbenchmark.worker_coordinator.worker_coordinator.execute_single'):
+        with mock.patch('solrorbit.worker_coordinator.worker_coordinator.execute_single'):
             with mock.patch('asyncio.wait_for') as wait_for_mock:
                 wait_for_mock.return_value = (100, "docs", {"success": True})
 
@@ -2044,7 +2044,7 @@ class FeedbackActorTests(TestCase):
     @pytest.fixture(autouse=True)
     def setup_actor(self):
         self.monkeypatch = pytest.MonkeyPatch()
-        self.monkeypatch.setattr("osbenchmark.log.post_configure_actor_logging", lambda: None)
+        self.monkeypatch.setattr("solrorbit.log.post_configure_actor_logging", lambda: None)
         self.actor = worker_coordinator.FeedbackActor()
         self.actor.error_queue = queue.Queue()
         self.actor.queue_lock = mock.MagicMock()
@@ -2145,7 +2145,7 @@ class FeedbackActorTests(TestCase):
     def test_check_cpu_usage_raises_system_setup_error(self):
         # CPU-based redline feedback is not supported in Solr Orbit;
         # _check_cpu_usage must raise SystemSetupError immediately.
-        from osbenchmark.exceptions import SystemSetupError
+        from solrorbit.exceptions import SystemSetupError
         with self.assertRaises(SystemSetupError):
             self.actor._check_cpu_usage()  # pylint: disable=protected-access
 

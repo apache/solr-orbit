@@ -29,9 +29,9 @@
 import random
 from unittest import TestCase
 
-from osbenchmark import exceptions
-from osbenchmark.utils import io
-from osbenchmark.workload import params, workload, loader
+from solrorbit import exceptions
+from solrorbit.utils import io
+from solrorbit.workload import params, workload, loader
 
 
 class StaticBulkReader:

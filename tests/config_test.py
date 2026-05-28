@@ -28,7 +28,7 @@
 import configparser
 from unittest import TestCase
 
-from osbenchmark import config, exceptions
+from solrorbit import config, exceptions
 
 
 class MockInput:

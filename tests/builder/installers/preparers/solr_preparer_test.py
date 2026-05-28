@@ -2,11 +2,11 @@ import os
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.installers.preparers.solr_preparer import SolrPreparer
-from osbenchmark.builder.models.host import Host
-from osbenchmark.builder.models.node import Node
-from osbenchmark.builder.cluster_config import ClusterConfigInstance
-from osbenchmark.builder.utils.binary_keys import BinaryKeys
+from solrorbit.builder.installers.preparers.solr_preparer import SolrPreparer
+from solrorbit.builder.models.host import Host
+from solrorbit.builder.models.node import Node
+from solrorbit.builder.cluster_config import ClusterConfigInstance
+from solrorbit.builder.utils.binary_keys import BinaryKeys
 
 
 class NodePreparerTests(TestCase):

@@ -15,21 +15,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Unit tests for Solr runners (osbenchmark/worker_coordinator/runner.py)"""
+"""Unit tests for Solr runners (solrorbit/worker_coordinator/runner.py)"""
 
 import asyncio
 import unittest
 from unittest.mock import MagicMock
 
-from osbenchmark.worker_coordinator.runner import (
+from solrorbit.worker_coordinator.runner import (
     _translate_ndjson_batch,
     SolrBulkIndex,
     SolrSearch,
     SolrCreateCollection,
     SolrDeleteCollection,
 )
-from osbenchmark.conversion.field import normalize_field_name
-from osbenchmark.conversion.query import translate_opensearch_query
+from solrorbit.conversion.field import normalize_field_name
+from solrorbit.conversion.query import translate_opensearch_query
 
 
 # Backward compatibility aliases for tests
@@ -331,7 +331,7 @@ class TestSolrCreateCollection(unittest.TestCase):
 
 class TestSolrDeleteCollection(unittest.TestCase):
     def test_delete_ignores_missing_by_default(self):
-        from osbenchmark.client import CollectionNotFoundError
+        from solrorbit.client import CollectionNotFoundError
         mock_sc = MagicMock()
         mock_sc.delete_collection.side_effect = CollectionNotFoundError("not found")
 
@@ -355,12 +355,12 @@ class TestRunnerRegistrationSmoke(unittest.TestCase):
     """
 
     def setUp(self):
-        from osbenchmark.worker_coordinator.runner import register_default_runners
+        from solrorbit.worker_coordinator.runner import register_default_runners
         register_default_runners()
 
     def _run_via_framework(self, op_type, clients_dict, params):
         """Look up a registered runner and invoke it the same way execute_single does."""
-        from osbenchmark.worker_coordinator.runner import runner_for
+        from solrorbit.worker_coordinator.runner import runner_for
         wrapped = runner_for(op_type)
         return _run(wrapped(clients_dict, params))
 

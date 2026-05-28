@@ -29,7 +29,7 @@ import sys
 
 import pytest
 
-from osbenchmark.workload import params
+from solrorbit.workload import params
 
 
 class StaticSource:

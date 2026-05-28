@@ -36,10 +36,10 @@ from unittest.mock import mock_open
 
 import psutil
 
-from osbenchmark import config, exceptions, telemetry
-from osbenchmark.builder import launcher, cluster
-from osbenchmark.builder.provisioner import NodeConfiguration
-from osbenchmark.metrics import InMemoryMetricsStore
+from solrorbit import config, exceptions, telemetry
+from solrorbit.builder import launcher, cluster
+from solrorbit.builder.provisioner import NodeConfiguration
+from solrorbit.metrics import InMemoryMetricsStore
 
 
 class MockClientFactory:
@@ -169,11 +169,11 @@ MOCK_PID_VALUE = 1234
 
 class ProcessLauncherTests(TestCase):
     @mock.patch('subprocess.Popen', new=MockPopen)
-    @mock.patch('osbenchmark.builder.java_resolver.java_home', return_value=(12, "/java_home/"))
-    @mock.patch('osbenchmark.utils.jvm.supports_option', return_value=True)
-    @mock.patch('osbenchmark.utils.io.get_size')
+    @mock.patch('solrorbit.builder.java_resolver.java_home', return_value=(12, "/java_home/"))
+    @mock.patch('solrorbit.utils.jvm.supports_option', return_value=True)
+    @mock.patch('solrorbit.utils.io.get_size')
     @mock.patch('os.chdir')
-    @mock.patch('osbenchmark.builder.launcher.wait_for_pidfile', return_value=MOCK_PID_VALUE)
+    @mock.patch('solrorbit.builder.launcher.wait_for_pidfile', return_value=MOCK_PID_VALUE)
     @mock.patch('psutil.Process', new=MockProcess)
     def test_daemon_start_stop(self, wait_for_pidfile, chdir, get_size, supports, java_home):
         cfg = config.Config()
@@ -228,7 +228,7 @@ class ProcessLauncherTests(TestCase):
         self.assertEqual([], stopped_nodes)
 
     # flight recorder shows a warning for several seconds before continuing
-    @mock.patch("osbenchmark.time.sleep")
+    @mock.patch("solrorbit.time.sleep")
     def test_env_options_order(self, sleep):
         cfg = config.Config()
         cfg.add(config.Scope.application, "system", "env.name", "test")
@@ -294,7 +294,7 @@ class ProcessLauncherTests(TestCase):
         # unmodified
         self.assertEqual(os.environ["SOLR_JAVA_OPTS"], env["SOLR_JAVA_OPTS"])
 
-    @mock.patch("osbenchmark.time.sleep")
+    @mock.patch("solrorbit.time.sleep")
     def test_pidfile_wait_test_run(self, sleep):
         mo = mock_open()
         with self.assertRaises(exceptions.LaunchError):
@@ -363,8 +363,8 @@ class TestClock:
 
 
 class DockerLauncherTests(TestCase):
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_output")
+    @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
+    @mock.patch("solrorbit.utils.process.run_subprocess_with_output")
     def test_starts_container_successfully(self, run_subprocess_with_output, run_subprocess_with_logging):
         run_subprocess_with_logging.return_value = 0
         # Docker container id (from docker-compose ps), Docker container id (from docker ps --filter ...)
@@ -394,9 +394,9 @@ class DockerLauncherTests(TestCase):
             mock.call('docker ps -a --filter "id=de604d0d" --filter "status=running" --filter "health=healthy" -q')
         ])
 
-    @mock.patch("osbenchmark.time.sleep")
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_output")
+    @mock.patch("solrorbit.time.sleep")
+    @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
+    @mock.patch("solrorbit.utils.process.run_subprocess_with_output")
     def test_container_not_started(self, run_subprocess_with_output, run_subprocess_with_logging, sleep):
         run_subprocess_with_logging.return_value = 0
         # Docker container id (from docker-compose ps), but NO Docker container id (from docker ps --filter...) twice
@@ -415,8 +415,8 @@ class DockerLauncherTests(TestCase):
         with self.assertRaisesRegex(exceptions.LaunchError, "No healthy running container after 600 seconds!"):
             docker.start([node_config])
 
-    @mock.patch("osbenchmark.telemetry.add_metadata_for_node")
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
+    @mock.patch("solrorbit.telemetry.add_metadata_for_node")
+    @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
     def test_stops_container_successfully_with_metrics_store(self, run_subprocess_with_logging, add_metadata_for_node):
         cfg = config.Config()
         cfg.add(config.Scope.application, "system", "env.name", "test")
@@ -432,8 +432,8 @@ class DockerLauncherTests(TestCase):
 
         run_subprocess_with_logging.assert_called_once_with("docker-compose -f /bin/docker-compose.yml down")
 
-    @mock.patch("osbenchmark.telemetry.add_metadata_for_node")
-    @mock.patch("osbenchmark.utils.process.run_subprocess_with_logging")
+    @mock.patch("solrorbit.telemetry.add_metadata_for_node")
+    @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
     def test_stops_container_when_no_metrics_store_is_provided(self, run_subprocess_with_logging, add_metadata_for_node):
         cfg = config.Config()
         metrics_store = None

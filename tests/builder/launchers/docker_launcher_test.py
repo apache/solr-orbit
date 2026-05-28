@@ -3,10 +3,10 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark import telemetry
-from osbenchmark.builder import cluster
-from osbenchmark.builder.launchers.docker_launcher import DockerLauncher
-from osbenchmark.builder.provisioner import NodeConfiguration
+from solrorbit import telemetry
+from solrorbit.builder import cluster
+from solrorbit.builder.launchers.docker_launcher import DockerLauncher
+from solrorbit.builder.provisioner import NodeConfiguration
 
 
 class DockerLauncherTests(TestCase):
@@ -52,7 +52,7 @@ class DockerLauncherTests(TestCase):
         with self.assertRaises(TimeoutError):
             self.launcher.start(self.host, [self.node_config])
 
-    @mock.patch("osbenchmark.telemetry.add_metadata_for_node")
+    @mock.patch("solrorbit.telemetry.add_metadata_for_node")
     def test_stops_container_successfully_with_metrics_store(self, add_metadata_for_node):
         nodes = [cluster.Node(0, "/bin", "127.0.0.1", "testnode", telemetry.Telemetry())]
         self.launcher.stop(self.host, nodes)
@@ -60,7 +60,7 @@ class DockerLauncherTests(TestCase):
         add_metadata_for_node.assert_called_once_with(self.metrics_store, "testnode", "127.0.0.1")
         self.shell_executor.execute.assert_called_once_with(self.host, "docker-compose -f /bin/docker-compose.yml down")
 
-    @mock.patch("osbenchmark.telemetry.add_metadata_for_node")
+    @mock.patch("solrorbit.telemetry.add_metadata_for_node")
     def test_stops_container_when_no_metrics_store_is_provided(self, add_metadata_for_node):
         self.launcher.metrics_store = None
 

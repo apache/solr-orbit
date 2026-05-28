@@ -2,8 +2,8 @@ import os
 from unittest import TestCase
 from unittest.mock import Mock
 
-from osbenchmark.builder.configs.listers.plugin_config_instance_lister import PluginConfigInstanceLister
-from osbenchmark.builder.models.plugin_config_instance import PluginConfigInstance
+from solrorbit.builder.configs.listers.plugin_config_instance_lister import PluginConfigInstanceLister
+from solrorbit.builder.models.plugin_config_instance import PluginConfigInstance
 
 
 class PluginConfigInstanceListerTest(TestCase):

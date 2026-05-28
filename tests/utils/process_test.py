@@ -31,7 +31,7 @@ from unittest import TestCase
 
 import psutil
 
-from osbenchmark.utils import process
+from solrorbit.utils import process
 
 
 class ProcessTests(TestCase):

@@ -1,8 +1,8 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.utils.path_manager import PathManager
-from osbenchmark.exceptions import ExecutorError
+from solrorbit.builder.utils.path_manager import PathManager
+from solrorbit.exceptions import ExecutorError
 
 
 class PathManagerTest(TestCase):
@@ -13,7 +13,7 @@ class PathManagerTest(TestCase):
         self.executor = Mock()
         self.path_manager = PathManager(self.executor)
 
-    @mock.patch('osbenchmark.utils.io.ensure_dir')
+    @mock.patch('solrorbit.utils.io.ensure_dir')
     def test_create_path(self, ensure_dir):
         self.path_manager.create_path(self.host, self.path)
 
@@ -24,7 +24,7 @@ class PathManagerTest(TestCase):
             mock.call(self.host, f"mkdir -m 0777 -p {self.path}")
         ])
 
-    @mock.patch('osbenchmark.utils.io.ensure_dir')
+    @mock.patch('solrorbit.utils.io.ensure_dir')
     def test_create_path_no_local_copy(self, ensure_dir):
         self.path_manager.create_path(self.host, self.path)
 

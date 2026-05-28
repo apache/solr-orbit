@@ -31,9 +31,9 @@ import it
 @it.random_benchmark_config
 def test_download_distribution(cfg):
     for d in it.DISTRIBUTIONS:
-        assert it.osbenchmark(cfg, f"download --distribution-version=\"{d}\" --quiet") == 0
+        assert it.solrorbit(cfg, f"download --distribution-version=\"{d}\" --quiet") == 0
 
 
 @it.random_benchmark_config
 def test_does_not_download_unsupported_distribution(cfg):
-    assert it.osbenchmark(cfg, "download --distribution-version=\"1.7.6\" --quiet") != 0
+    assert it.solrorbit(cfg, "download --distribution-version=\"1.7.6\" --quiet") != 0

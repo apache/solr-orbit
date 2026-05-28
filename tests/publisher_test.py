@@ -28,7 +28,7 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from osbenchmark import publisher
+from solrorbit import publisher
 
 # pylint: disable=protected-access
 class FormatterTests(TestCase):
@@ -62,7 +62,7 @@ class FormatterTests(TestCase):
         # 1 header line, no separation line + 3 data lines
         self.assertEqual(1 + 3, len(formatted.splitlines()))
 
-    @patch('osbenchmark.publisher.convert.to_bool')
+    @patch('solrorbit.publisher.convert.to_bool')
     def test_publish_throughput_handles_different_metrics(self, mock_to_bool):
         config = Mock()
 

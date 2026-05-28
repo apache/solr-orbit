@@ -1,8 +1,8 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock, patch, mock_open
 
-from osbenchmark.builder.models.node import Node
-from osbenchmark.builder.utils.config_applier import ConfigApplier
+from solrorbit.builder.models.node import Node
+from solrorbit.builder.utils.config_applier import ConfigApplier
 
 
 class ConfigApplierTest(TestCase):
@@ -19,7 +19,7 @@ class ConfigApplierTest(TestCase):
         self.config_applier = ConfigApplier(self.executor, self.template_renderer, self.path_manager)
 
     @mock.patch("os.walk")
-    @mock.patch("osbenchmark.utils.io.is_plain_text")
+    @mock.patch("solrorbit.utils.io.is_plain_text")
     def test_apply_config_binary_file(self, is_plain_text, os_walk):
         is_plain_text.return_value = False
         os_walk.return_value = [("/fake_config_path/sub_fake_config_path", "fake_something", ["fake_file"])]
@@ -38,7 +38,7 @@ class ConfigApplierTest(TestCase):
         ])
 
     @mock.patch("os.walk")
-    @mock.patch("osbenchmark.utils.io.is_plain_text")
+    @mock.patch("solrorbit.utils.io.is_plain_text")
     def test_apply_config_plaintext_file(self, is_plain_text, os_walk):
         is_plain_text.return_value = True
         os_walk.return_value = [("/fake_config_path/sub_fake_config_path", "fake_something", ["fake_file"])]

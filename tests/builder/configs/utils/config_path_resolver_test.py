@@ -1,8 +1,8 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.configs.utils.config_path_resolver import ConfigPathResolver
-from osbenchmark.exceptions import SystemSetupError
+from solrorbit.builder.configs.utils.config_path_resolver import ConfigPathResolver
+from solrorbit.exceptions import SystemSetupError
 
 
 class ConfigPathResolverTest(TestCase):
@@ -22,9 +22,9 @@ class ConfigPathResolverTest(TestCase):
         config_path = self.config_path_resolver.resolve_config_path(self.config_type, self.config_format_version)
         self.assertEqual(config_path, "/path/to/configs/red/v36")
 
-    @mock.patch('osbenchmark.utils.git.fetch')
-    @mock.patch('osbenchmark.utils.repo.BenchmarkRepository')
-    @mock.patch('osbenchmark.utils.repo.BenchmarkRepository.set_cluster_configs_dir')
+    @mock.patch('solrorbit.utils.git.fetch')
+    @mock.patch('solrorbit.utils.repo.BenchmarkRepository')
+    @mock.patch('solrorbit.utils.repo.BenchmarkRepository.set_cluster_configs_dir')
     @mock.patch('os.path.exists')
     def test_cluster_config_path_not_defined(self, path_exists, set_repo, benchmark_repo, git_fetch):
         path_exists.return_value = True

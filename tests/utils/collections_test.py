@@ -30,7 +30,7 @@ from typing import Any, Mapping
 
 import pytest  # type: ignore
 
-from osbenchmark.utils import collections
+from solrorbit.utils import collections
 
 
 class TestMergeDicts:

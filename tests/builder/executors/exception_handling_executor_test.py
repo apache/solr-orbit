@@ -1,8 +1,8 @@
 import unittest.mock as mock
 from unittest import TestCase
 
-from osbenchmark.builder.executors.exception_handling_shell_executor import ExceptionHandlingShellExecutor
-from osbenchmark.exceptions import ExecutorError
+from solrorbit.builder.executors.exception_handling_shell_executor import ExceptionHandlingShellExecutor
+from solrorbit.exceptions import ExecutorError
 
 
 class ExceptionHandlingShellExecutorTests(TestCase):

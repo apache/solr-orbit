@@ -1,9 +1,9 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.installers.bare_installer import BareInstaller
-from osbenchmark.builder.models.host import Host
-from osbenchmark.builder.cluster_config import ClusterConfigInstance, BootstrapPhase
+from solrorbit.builder.installers.bare_installer import BareInstaller
+from solrorbit.builder.models.host import Host
+from solrorbit.builder.cluster_config import ClusterConfigInstance, BootstrapPhase
 
 
 class BareInstallerTests(TestCase):

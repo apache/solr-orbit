@@ -1,9 +1,9 @@
 from unittest import TestCase, mock
 from unittest.mock import Mock
 
-from osbenchmark.builder.downloaders.distribution_downloader import DistributionDownloader
-from osbenchmark.builder.cluster_config import ClusterConfigInstance
-from osbenchmark.exceptions import ExecutorError
+from solrorbit.builder.downloaders.distribution_downloader import DistributionDownloader
+from solrorbit.builder.cluster_config import ClusterConfigInstance
+from solrorbit.exceptions import ExecutorError
 
 
 class DistributionDownloaderTest(TestCase):

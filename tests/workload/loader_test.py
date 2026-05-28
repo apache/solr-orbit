@@ -32,9 +32,9 @@ import unittest.mock as mock
 import urllib.error
 from unittest import TestCase
 
-from osbenchmark import exceptions, config
-from osbenchmark.workload import loader, workload
-from osbenchmark.utils import io
+from solrorbit import exceptions, config
+from solrorbit.workload import loader, workload
+from solrorbit.utils import io
 
 
 def strip_ws(s):
@@ -183,7 +183,7 @@ class GitRepositoryTests(TestCase):
 
 
 class WorkloadPreparationTests(TestCase):
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_does_nothing_if_document_file_available(self, is_file, get_size, prepare_file_offset_table):
@@ -207,7 +207,7 @@ class WorkloadPreparationTests(TestCase):
         prepare_file_offset_table.assert_called_with(
             "/tmp/docs.json", None, None, InstanceOf(loader.Downloader))
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_decompresses_if_archive_available(self, is_file, get_size, prepare_file_offset_table):
@@ -231,7 +231,7 @@ class WorkloadPreparationTests(TestCase):
         prepare_file_offset_table.assert_called_with(
             "/tmp/docs.json", None, None, InstanceOf(loader.Downloader))
 
-    @mock.patch("osbenchmark.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.decompress")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_raise_error_on_wrong_uncompressed_file_size(self, is_file, get_size, decompress):
@@ -261,7 +261,7 @@ class WorkloadPreparationTests(TestCase):
 
         decompress.assert_called_with("/tmp/docs.json.bz2", "/tmp")
 
-    @mock.patch("osbenchmark.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.decompress")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_raise_error_if_compressed_does_not_contain_expected_document_file(self, is_file, get_size, decompress):
@@ -291,10 +291,10 @@ class WorkloadPreparationTests(TestCase):
 
         decompress.assert_called_with("/tmp/docs.json.bz2", "/tmp")
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.io.decompress")
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.decompress")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_download_document_archive_if_no_file_available(self, is_file, get_size, ensure_dir, download, decompress,
@@ -337,10 +337,10 @@ class WorkloadPreparationTests(TestCase):
         prepare_file_offset_table.assert_called_with("/tmp/docs.json", 'http://benchmarks.opensearch.org/corpora/unit-test',
                                                      None, InstanceOf(loader.Downloader))
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.io.decompress")
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.decompress")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_download_document_archive_with_source_url_compressed(self, is_file, get_size, ensure_dir, download, decompress,
@@ -384,10 +384,10 @@ class WorkloadPreparationTests(TestCase):
                                                      'http://benchmarks.opensearch.org/corpora/unit-test/docs.json.bz2',
                                                      InstanceOf(loader.Downloader))
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.io.decompress")
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.decompress")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_download_document_with_source_url_uncompressed(self, is_file, get_size, ensure_dir, download, decompress,
@@ -425,10 +425,10 @@ class WorkloadPreparationTests(TestCase):
                                                      f"{scheme}://benchmarks.opensearch.org/corpora/unit-test/docs.json",
                                                      InstanceOf(loader.Downloader))
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.io.decompress")
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.decompress")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_download_document_with_trailing_baseurl_slash(self, is_file, get_size, ensure_dir, download, decompress,
@@ -465,9 +465,9 @@ class WorkloadPreparationTests(TestCase):
         prepare_file_offset_table.assert_called_with("/tmp/docs.json", f"{scheme}://benchmarks.opensearch.org/corpora/unit-test/",
                                                      None, InstanceOf(loader.Downloader))
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_download_document_file_if_no_file_available(self, is_file, get_size, ensure_dir, download, prepare_file_offset_table):
@@ -502,8 +502,8 @@ class WorkloadPreparationTests(TestCase):
         prepare_file_offset_table.assert_called_with("/tmp/docs.json", 'http://benchmarks.opensearch.org/corpora/unit-test',
                                                      None, InstanceOf(loader.Downloader))
 
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.isfile")
     def test_raise_download_error_if_offline(self, is_file, ensure_dir, download):
         # uncompressed file does not exist
@@ -528,8 +528,8 @@ class WorkloadPreparationTests(TestCase):
         self.assertEqual(0, ensure_dir.call_count)
         self.assertEqual(0, download.call_count)
 
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.isfile")
     def test_raise_download_error_if_no_url_provided_and_file_missing(self, is_file, ensure_dir, download):
         # uncompressed file does not exist
@@ -555,8 +555,8 @@ class WorkloadPreparationTests(TestCase):
         self.assertEqual(0, ensure_dir.call_count)
         self.assertEqual(0, download.call_count)
 
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_raise_download_error_if_no_url_provided_and_wrong_file_size(self, is_file, get_size, ensure_dir, download):
@@ -583,8 +583,8 @@ class WorkloadPreparationTests(TestCase):
         self.assertEqual(0, ensure_dir.call_count)
         self.assertEqual(0, download.call_count)
 
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.isfile")
     def test_raise_download_error_no_test_mode_file(self, is_file, ensure_dir, download):
         # uncompressed file does not exist
@@ -613,8 +613,8 @@ class WorkloadPreparationTests(TestCase):
         download.assert_called_with("http://benchmarks.opensearch.org/corpora/unit-test/docs-1k.json",
                                     "/tmp/docs-1k.json", None, progress_indicator=mock.ANY)
 
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.isfile")
     def test_raise_download_error_on_connection_problems(self, is_file, ensure_dir, download):
         # uncompressed file does not exist
@@ -643,8 +643,8 @@ class WorkloadPreparationTests(TestCase):
         download.assert_called_with("http://benchmarks.opensearch.org/corpora/unit-test/docs.json",
                                     "/tmp/docs.json", 2000, progress_indicator=mock.ANY)
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.decompress")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_prepare_bundled_document_set_if_document_file_available(self, is_file, get_size, decompress, prepare_file_offset_table):
@@ -669,8 +669,8 @@ class WorkloadPreparationTests(TestCase):
         prepare_file_offset_table.assert_called_with(
             "./docs.json", None, None, InstanceOf(loader.Downloader))
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.decompress")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_prepare_bundled_document_set_does_nothing_if_no_document_files(self, is_file, get_size, decompress, prepare_file_offset_table):
@@ -828,8 +828,8 @@ class WorkloadPreparationTests(TestCase):
         self.assertEqual({"documents-201998.unparsed.json.bz2"},
                          {d.document_archive for d in used_corpora[1].documents})
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.decompress")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_prepare_bundled_document_set_decompresses_compressed_docs(self, is_file, get_size, decompress, prepare_file_offset_table):
@@ -886,8 +886,8 @@ class WorkloadPreparationTests(TestCase):
         self.assertEqual("[./docs.json.bz2] is present but does not have the expected size of [200] bytes.",
                          ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.io.decompress")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.io.decompress")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     def test_prepare_bundled_document_set_uncompressed_docs_wrong_size(self, is_file, get_size, decompress, prepare_file_offset_table):
@@ -916,9 +916,9 @@ class WorkloadPreparationTests(TestCase):
 
 
 class WorkloadPreparationTests_1(TestCase):
-    @mock.patch("osbenchmark.utils.io.prepare_file_offset_table")
-    @mock.patch("osbenchmark.utils.net.download")
-    @mock.patch("osbenchmark.utils.io.ensure_dir")
+    @mock.patch("solrorbit.utils.io.prepare_file_offset_table")
+    @mock.patch("solrorbit.utils.net.download")
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     @mock.patch("os.path.getsize")
     @mock.patch("os.path.isfile")
     @mock.patch("os.remove")
@@ -964,7 +964,7 @@ class WorkloadPreparationTests_1(TestCase):
                                                      None, InstanceOf(loader.Downloader))
 
 class TemplateSource(TestCase):
-    @mock.patch("osbenchmark.utils.io.dirname")
+    @mock.patch("solrorbit.utils.io.dirname")
     @mock.patch.object(loader.TemplateSource, "read_glob_files")
     def test_entrypoint_of_replace_includes(self, patched_read_glob, patched_dirname):
         workload = textwrap.dedent("""
@@ -2292,7 +2292,7 @@ class WorkloadSpecificationReaderTests(TestCase):
         self.assertEqual(
             "Workload 'unittest' is invalid. Mandatory element 'document-count' is missing.", ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_with_mixed_warmup_iterations_and_measurement(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",
@@ -2348,7 +2348,7 @@ class WorkloadSpecificationReaderTests(TestCase):
                          "defines '3' warmup iterations and a time period of '60' seconds. Please do not mix time periods and iterations.",
                          ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_missing_test_procedure_or_test_procedures(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",
@@ -2383,7 +2383,7 @@ class WorkloadSpecificationReaderTests(TestCase):
                          "'schedule' but none is specified.",
                          ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_iteration_and_ramp_up_period(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",
@@ -2440,7 +2440,7 @@ class WorkloadSpecificationReaderTests(TestCase):
         self.assertEqual("Workload 'unittest' is invalid. Operation 'index-append' in test_procedure 'default-challenge' defines a ramp-up time period of "
                          "120 seconds as well as 3 warmup iterations and 5 iterations but mixing time periods and iterations is not allowed.", ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_valid_ramp_down_period(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",
@@ -2477,7 +2477,7 @@ class WorkloadSpecificationReaderTests(TestCase):
         self.assertEqual(60, task.ramp_up_time_period)
         self.assertEqual(60, task.ramp_down_time_period)
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_iteration_and_ramp_down_period_error(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",
@@ -2513,7 +2513,7 @@ class WorkloadSpecificationReaderTests(TestCase):
         self.assertEqual("Workload 'unittest' is invalid. Operation 'index-append' in test_procedure 'default-challenge' defines '3' warmup iterations and "
                          "a time period of '300' seconds. Please do not mix time periods and iterations.", ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_ramp_down_without_time_period_error(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",
@@ -2546,7 +2546,7 @@ class WorkloadSpecificationReaderTests(TestCase):
         self.assertEqual("Workload 'unittest' is invalid. Operation 'index-append' in test_procedure 'default-challenge' defines a ramp-down time period of "
                          "60 seconds but no time-period.", ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_ramp_down_exceeds_time_period_error(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",
@@ -2581,7 +2581,7 @@ class WorkloadSpecificationReaderTests(TestCase):
                          "60 seconds but must be greater than or equal to the ramp-down-time-period of 120 seconds.", ctx.exception.args[0])
 
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_test_procedure_and_test_procedures_are_defined(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",
@@ -2619,7 +2619,7 @@ class WorkloadSpecificationReaderTests(TestCase):
                          "are defined but only "
                          "one of them is allowed.", ctx.exception.args[0])
 
-    @mock.patch("osbenchmark.workload.loader.register_all_params_in_workload")
+    @mock.patch("solrorbit.workload.loader.register_all_params_in_workload")
     def test_parse_with_mixed_warmup_time_period_and_iterations(self, mocked_params_checker):
         workload_specification = {
             "description": "description for unit test",

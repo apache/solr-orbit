@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 import h5py
 import numpy as np
 
-from osbenchmark.utils.dataset import Context, BigANNVectorDataSet, HDF5DataSet, BigANNGroundTruthDataSet
+from solrorbit.utils.dataset import Context, BigANNVectorDataSet, HDF5DataSet, BigANNGroundTruthDataSet
 
 DEFAULT_RANDOM_STRING_LENGTH = 8
 

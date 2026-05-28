@@ -27,8 +27,8 @@
 
 from unittest import TestCase
 
-from osbenchmark import exceptions
-from osbenchmark.workload import workload
+from solrorbit import exceptions
+from solrorbit.workload import workload
 
 
 class WorkloadTests(TestCase):
