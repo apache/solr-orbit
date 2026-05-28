@@ -57,7 +57,7 @@ The `geonames` workload benchmarks search and geospatial scenarios using geograp
 
 The dataset contains around 11.4 million documents and is suitable for small clusters. A `--test-mode` run uses a small document subset and completes in minutes.
 
-**Test procedures:**
+**Test procedures:** Each procedure defines a different benchmarking scenario; select one with `--test-procedure` (omit to use the default). See [Test Procedures](../../reference/workloads/test-procedures.html) for details.
 
 | Procedure | Description |
 |-----------|-------------|
