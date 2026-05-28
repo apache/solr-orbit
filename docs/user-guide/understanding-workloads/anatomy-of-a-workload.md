@@ -114,7 +114,7 @@ A workload always includes the following elements:
 
 ### `collections`
 
-The `collections` element replaces the `indices` concept from OpenSearch Benchmark. Each entry
+The `collections` element defines the Solr collections used in the workload. Each entry
 describes a Solr collection and the configset to use when creating it.
 
 | Field | Type | Description |
@@ -183,9 +183,7 @@ selected at run time with `--test-procedure=<name>`. For details see
 
 ## Configsets
 
-Instead of an `index.json` mapping file (as used by OpenSearch Benchmark), Solr workloads
-provide a **configset** — a directory that Solr Orbit uploads to the Solr cluster before
-creating a collection.
+Solr workloads define schema and configuration via a **configset** — a directory that Solr Orbit uploads to the Solr cluster before creating a collection.
 
 A minimal configset directory contains:
 

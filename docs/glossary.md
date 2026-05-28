@@ -32,13 +32,13 @@ The dataset used by a workload. Corpora are defined in the workload and referenc
 ## Apache Solr concepts
 
 **Collection**
-The Solr equivalent of an OpenSearch index. A collection is a logical grouping of documents, distributed across one or more shards. In OSB terminology: *index*.
+A logical grouping of documents, distributed across one or more shards.
 
 **Configset**
 A named set of Solr configuration files (`schema.xml`, `solrconfig.xml`) stored in ZooKeeper. Collections reference a configset by name.
 
 **Shard Leader**
-The primary replica of a shard responsible for accepting writes and coordinating replication. In OSB terminology: *primary shard*.
+The primary replica of a shard responsible for accepting writes and coordinating replication.
 
 **NRT Replica**
 A near-real-time replica that receives updates directly from the shard leader and participates in leader election.
@@ -50,16 +50,5 @@ A transaction-log replica that receives updates via replication from the shard l
 A read-only replica that only receives index segments from the shard leader, not transaction log entries.
 
 **Facets**
-Solr's aggregation mechanism for computing counts, statistics, and groupings over search results. In OSB terminology: *aggregations*.
+Solr's aggregation mechanism for computing counts, statistics, and groupings over search results.
 
-## Terminology mapping
-
-| OpenSearch Benchmark Term | Apache Solr Orbit Canonical Term |
-|---------------------------|--------------------------------------|
-| index | collection |
-| indices | collections |
-| create-index | create-collection |
-| delete-index | delete-collection |
-| primary shard | shard leader |
-| aggregation / aggregations | facet / facets |
-| mapping | schema |

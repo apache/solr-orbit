@@ -5,7 +5,7 @@ nav_order: 1
 
 # Apache Solr Orbit
 
-Apache Solr Orbit is a performance benchmarking tool for [Apache Solr](https://solr.apache.org) clusters, derived from [OpenSearch Benchmark](https://github.com/opensearch-project/opensearch-benchmark).
+Apache Solr Orbit is a performance benchmarking tool for [Apache Solr](https://solr.apache.org) clusters.
 
 Use Apache Solr Orbit to measure the performance of your Apache Solr clusters across a variety of workloads — from simple keyword queries to complex faceted search and aggregations.
 

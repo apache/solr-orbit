@@ -34,7 +34,7 @@ A *pipeline* is a sequence of high-level phases that a benchmark run executes:
 
 ## Collections
 
-A *collection* is the Solr equivalent of an OpenSearch index — a logical grouping of documents distributed across shards. Collections are defined in the workload's `"collections"` array and are created before benchmarking begins.
+A *collection* is a logical grouping of documents distributed across shards. Collections are defined in the workload's `"collections"` array and are created before benchmarking begins.
 
 ## Configsets
 
@@ -66,7 +66,7 @@ A *schedule* controls how an operation executes: number of iterations, target th
 
 ## Facets
 
-*Facets* are Solr's aggregation mechanism — the Solr equivalent of OpenSearch aggregations. When using the [Converter Tool](../converter/), OpenSearch aggregation expressions are translated into Solr facet syntax.
+*Facets* are Solr's aggregation mechanism for computing counts, statistics, and groupings over search results.
 
 ---
 

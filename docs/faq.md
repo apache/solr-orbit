@@ -25,9 +25,6 @@ solr-orbit convert-workload \
 
 See [Converter Tool](converter/) for details on what gets converted automatically.
 
-**How is a collection different from an index?**
-In Apache Solr, the equivalent of an OpenSearch index is a *collection*. A collection is a logical grouping of documents distributed across shards. See [Glossary](glossary.html) for a full terminology mapping.
-
 **Can I benchmark a multi-node Solr cluster?**
 Yes. Pass multiple hosts to `--target-hosts`, separated by commas:
 
