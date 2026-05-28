@@ -61,7 +61,7 @@
     if (searchData) { cb(); return; }
     var base = document.querySelector('base') ? document.querySelector('base').href : '';
     // Derive the baseurl from a known asset link
-    var cssLink = document.querySelector('link[rel=stylesheet]');
+    var cssLink = document.querySelector('link[rel=stylesheet][href*="/assets/css/"]');
     var baseurl = '';
     if (cssLink) {
       var m = cssLink.getAttribute('href').match(/^(.*?)\/assets\/css\//);
