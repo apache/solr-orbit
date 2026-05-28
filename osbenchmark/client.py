@@ -228,7 +228,16 @@ class SolrAdminClient:
                     name, num_shards, replication_factor, tlog_replicas, pull_replicas)
 
     def delete_collection(self, name: str) -> None:
-        """Delete a Solr collection via DELETE /api/collections/{name}."""
+        """
+        Delete a Solr collection.
+
+        Tries the SolrCloud Collections API first
+        (``DELETE /api/collections/{name}``).  When Solr is running in
+        standalone (non-cloud) mode it returns HTTP 500 with a message that
+        references "non-cloud context"; in that case the method transparently
+        falls back to the V1 Cores API
+        (``/solr/admin/cores?action=UNLOAD``) which works for both modes.
+        """
         resp = self._get_session().delete(
             f"{self.api_url}/collections/{name}",
             timeout=self.timeout,
@@ -241,8 +250,54 @@ class SolrAdminClient:
             msg = body.get("error", {}).get("msg", "") if isinstance(body, dict) else ""
             if "could not find collection" in msg.lower():
                 raise CollectionNotFoundError(f"Collection '{name}' not found")
+        # Standalone (non-SolrCloud) Solr returns HTTP 500 when the Collections
+        # API tries to inspect aliases via ZooKeeper.  Fall back to the Cores API
+        # which is available in all deployment modes.
+        if resp.status_code == 500:
+            body = self._try_parse_json(resp)
+            msg = body.get("error", {}).get("msg", "") if isinstance(body, dict) else resp.text
+            if "non-cloud context" in msg.lower():
+                logger.info(
+                    "Solr is running in standalone mode; falling back to Cores API "
+                    "to delete '%s'.",
+                    name,
+                )
+                self._delete_core(name)
+                return
         self._raise_for_solr_error(resp, f"delete collection '{name}'")
         logger.info("Deleted collection '%s'", name)
+
+    def _delete_core(self, core_name: str) -> None:
+        """
+        Unload (delete) a Solr core via the V1 Cores API.
+
+        Used as a fallback for standalone (non-SolrCloud) Solr instances where
+        the Collections API is not available.
+
+        Passes ``deleteIndex=true`` and ``deleteDataDir=true`` so the on-disk
+        data is removed, matching the behaviour of the Collections API DELETE.
+        """
+        resp = self._get_session().get(
+            f"{self.base_url}/solr/admin/cores",
+            params={
+                "action": "UNLOAD",
+                "core": core_name,
+                "deleteIndex": "true",
+                "deleteDataDir": "true",
+                "deleteInstanceDir": "true",
+                "wt": "json",
+            },
+            timeout=self.timeout,
+        )
+        if resp.status_code == 404:
+            raise CollectionNotFoundError(f"Core '{core_name}' not found")
+        if resp.status_code == 400:
+            body = self._try_parse_json(resp)
+            msg = body.get("error", {}).get("msg", "") if isinstance(body, dict) else ""
+            if "no such core" in msg.lower() or "does not exist" in msg.lower():
+                raise CollectionNotFoundError(f"Core '{core_name}' not found")
+        self._raise_for_solr_error(resp, f"unload core '{core_name}'")
+        logger.info("Unloaded core '%s' via Cores API", core_name)
 
     # ------------------------------------------------------------------
     # Cluster status

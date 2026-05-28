@@ -188,6 +188,59 @@ class TestSolrAdminClientDeleteCollection(unittest.TestCase):
         with self.assertRaises(CollectionNotFoundError):
             client.delete_collection("my-coll")
 
+    def test_delete_collection_400_could_not_find(self):
+        """Solr 9.x returns HTTP 400 with 'Could not find collection' for missing collections."""
+        client = self._make_client_with_mock_session()
+        body = {"error": {"msg": "Could not find collection: my-coll"}}
+        resp = _make_response(status_code=400, json_data=body)
+        client._session.delete.return_value = resp
+        with self.assertRaises(CollectionNotFoundError):
+            client.delete_collection("my-coll")
+
+    def test_delete_collection_standalone_falls_back_to_cores_api(self):
+        """HTTP 500 with 'non-cloud context' triggers a Cores API UNLOAD fallback."""
+        client = self._make_client_with_mock_session()
+        # Simulate the SolrCloud Collections API failing in standalone mode
+        body = {"error": {"msg": "Aliases don't exist in a non-cloud context, check isZookeeperAware() before calling this method."}}
+        delete_resp = _make_response(status_code=500, json_data=body)
+        client._session.delete.return_value = delete_resp
+        # Simulate the Cores API UNLOAD call succeeding
+        cores_resp = _make_response(status_code=200, json_data={"responseHeader": {"status": 0}})
+        client._session.get.return_value = cores_resp
+
+        client.delete_collection("my-coll")
+
+        # Verify the Cores API was called with UNLOAD action
+        client._session.get.assert_called_once()
+        call_kwargs = client._session.get.call_args
+        url = call_kwargs[0][0] if call_kwargs[0] else call_kwargs[1].get("url", "")
+        params = call_kwargs[1].get("params", {}) if call_kwargs[1] else {}
+        self.assertIn("/solr/admin/cores", url)
+        self.assertEqual("UNLOAD", params.get("action"))
+        self.assertEqual("my-coll", params.get("core"))
+        self.assertEqual("true", params.get("deleteIndex"))
+
+    def test_delete_collection_standalone_cores_api_not_found(self):
+        """Cores API fallback raises CollectionNotFoundError when core is missing."""
+        client = self._make_client_with_mock_session()
+        body = {"error": {"msg": "Aliases don't exist in a non-cloud context, check isZookeeperAware() before calling this method."}}
+        delete_resp = _make_response(status_code=500, json_data=body)
+        client._session.delete.return_value = delete_resp
+        cores_resp = _make_response(status_code=404)
+        client._session.get.return_value = cores_resp
+
+        with self.assertRaises(CollectionNotFoundError):
+            client.delete_collection("my-coll")
+
+    def test_delete_collection_other_500_raises(self):
+        """HTTP 500 errors unrelated to non-cloud mode are still raised."""
+        client = self._make_client_with_mock_session()
+        body = {"error": {"msg": "Internal server error"}}
+        resp = _make_response(status_code=500, json_data=body)
+        client._session.delete.return_value = resp
+        with self.assertRaises(Exception):
+            client.delete_collection("my-coll")
+
 
 class TestSolrAdminClientGetNodeMetrics(unittest.TestCase):
     def _make_client_with_mock_session(self):
