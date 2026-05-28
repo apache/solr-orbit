@@ -109,7 +109,6 @@ docs/
 ├── Gemfile                      ← Ruby gem dependencies
 ├── index.md                     ← Home page
 ├── quickstart.md
-├── glossary.md
 ├── faq.md
 ├── about.md                     ← License, attribution, trademarks
 ├── _includes/

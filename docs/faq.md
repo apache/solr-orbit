@@ -33,10 +33,7 @@ solr-orbit run --target-hosts node1:8983,node2:8983,node3:8983 ...
 ```
 
 **What pipelines are available?**
-- `benchmark-only` — run against an existing cluster (no provisioning)
-- `docker` — start a Solr cluster via Docker, then benchmark, then tear down
-- `from-distribution` — download and install Solr, then benchmark, then tear down
-- `from-sources` — build Solr from source, install, benchmark, then tear down
+See [Pipelines](user-guide/concepts.html#pipelines) in the Concepts page.
 
 **How do I run in test mode?**
 Pass `--test-mode` to limit the workload to a small subset of documents (at most 1,000) for quick validation:
