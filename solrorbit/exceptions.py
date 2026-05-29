@@ -28,7 +28,7 @@
 
 class BenchmarkError(Exception):
     """
-    Base class for all ASB exceptions
+    Base class for all Solr Orbit exceptions
     """
 
     def __init__(self, message, cause=None):

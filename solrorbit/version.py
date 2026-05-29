@@ -39,7 +39,7 @@ __BENCHMARK_VERSION_PATTERN = re.compile(r"^(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:.(.+
 
 def revision():
     """
-    :return: The current git revision if ASB is installed in development mode or ``None``.
+    :return: The current git revision if Solr Orbit is installed in development mode or ``None``.
     """
     # noinspection PyBroadException
     try:
@@ -53,14 +53,14 @@ def revision():
 
 def version():
     """
-    :return: The release version string and an optional suffix for the current git revision if ASB is installed in development mode.
+    :return: The release version string and an optional suffix for the current git revision if Solr Orbit is installed in development mode.
     """
     release = __version__
     benchmark_revision = revision()
     if benchmark_revision:
         return "%s (git revision: %s)" % (release, benchmark_revision.strip())
     else:
-        # cannot determine head revision so user has probably installed ASB via pip instead of git clone
+        # cannot determine head revision so user has probably installed Solr Orbit via pip instead of git clone
         return release
 
 

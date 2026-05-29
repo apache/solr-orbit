@@ -432,7 +432,7 @@ class SolrClient(RequestContextHolder):  # pylint: disable=too-many-public-metho
     # ------------------------------------------------------------------
 
     def info(self) -> dict:
-        """Return cluster info in an ASB-compatible shape: {name, version.number}."""
+        """Return cluster info in an Solr Orbit-compatible shape: {name, version.number}."""
         data = self._admin.info()
         return {
             "name": "Apache Solr",

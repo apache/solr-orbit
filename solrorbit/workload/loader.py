@@ -55,7 +55,7 @@ class WorkloadSyntaxError(exceptions.InvalidSyntax):
 class WorkloadProcessor:
     def on_after_load_workload(self, input_workload, **kwargs):
         """
-        This method is called by ASB after a workload has been loaded. Implementations are expected to modify the
+        This method is called by Solr Orbit after a workload has been loaded. Implementations are expected to modify the
         provided workload object in place.
 
         :param workload: The current workload.
@@ -63,7 +63,7 @@ class WorkloadProcessor:
 
     def on_prepare_workload(self, workload, data_root_dir):
         """
-        This method is called by ASB after the "after_load_workload" phase. Here, any data that is necessary for
+        This method is called by Solr Orbit after the "after_load_workload" phase. Here, any data that is necessary for
         benchmark run should be prepared, e.g. by downloading data or generating it. Implementations should
         be aware that this method might be called on a different machine than "on_after_load_workload" and they cannot
         share any state in between phases.
@@ -1247,7 +1247,7 @@ class WorkloadFileReader:
 
         self.logger.info("Reading workload specification file [%s].", workload_spec_file)
         # render the workload to a temporary file instead of dumping it into the logs. It is easier to check for error messages
-        # involving lines numbers and it also does not bloat ASB's log file so much.
+        # involving lines numbers and it also does not bloat Solr Orbit's log file so much.
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
         try:
             rendered = render_template_from_file(
@@ -1314,11 +1314,11 @@ class WorkloadFileReader:
                 workload_name, str(raw_version)))
         if WorkloadFileReader.MINIMUM_SUPPORTED_TRACK_VERSION > workload_version:
             raise exceptions.BenchmarkError("Workload {} is on version {} but needs to be updated at least to version {} to work with the "
-                                        "current version of ASB.".format(workload_name, workload_version,
+                                        "current version of Solr Orbit.".format(workload_name, workload_version,
                                                                            WorkloadFileReader.MINIMUM_SUPPORTED_TRACK_VERSION))
         if WorkloadFileReader.MAXIMUM_SUPPORTED_TRACK_VERSION < workload_version:
-            raise exceptions.BenchmarkError("Workload {} requires a newer version of ASB. "
-                        "Please upgrade ASB (supported workload version: {}, "
+            raise exceptions.BenchmarkError("Workload {} requires a newer version of Solr Orbit. "
+                        "Please upgrade Solr Orbit (supported workload version: {}, "
                                         "required workload version: {}).".format(
                                             workload_name,
                                             WorkloadFileReader.MAXIMUM_SUPPORTED_TRACK_VERSION,

@@ -35,7 +35,7 @@ from solrorbit.utils import io, git, console, versions
 
 class BenchmarkRepository:
     """
-    Manages ASB resources (e.g. cluster_configs or workloads).
+    Manages Solr Orbit resources (e.g. cluster_configs or workloads).
     """
 
     default = "default-cluster-config"

@@ -154,7 +154,7 @@ class Runner:
         return False
 
     def _default_kw_params(self, params):
-        # map of API kwargs to ASB config parameters
+        # map of API kwargs to Solr Orbit config parameters
         kw_dict = {
             "body": "body",
             "headers": "headers",

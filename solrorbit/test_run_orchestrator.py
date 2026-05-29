@@ -307,7 +307,7 @@ class BenchmarkCoordinator:
         self.metrics_store.bulk_add(new_metrics)
 
     def on_benchmark_complete(self, new_metrics):
-        self.logger.info("ASB is complete.")
+        self.logger.info("Solr Orbit is complete.")
         self.logger.info("Bulk adding request metrics to metrics store.")
         self.metrics_store.bulk_add(new_metrics)
         self.metrics_store.flush()
@@ -347,7 +347,7 @@ def run_test(cfg, sources=False, distribution=False, external=False, docker=Fals
     try:
         result = actor_system.ask(benchmark_actor, Setup(cfg, sources, distribution, external, docker))
         if isinstance(result, Success):
-            logger.info("ASB has finished successfully.")
+            logger.info("Solr Orbit has finished successfully.")
         # may happen if one of the load generators has detected that the user has cancelled the benchmark.
         elif isinstance(result, actor.BenchmarkCancelled):
             logger.info("User has cancelled the benchmark (detected by actor).")

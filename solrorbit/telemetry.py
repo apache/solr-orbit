@@ -495,7 +495,7 @@ class DiskIo(InternalTelemetryDevice):
                 else:
                     disk_end = sysstats.disk_io_counters()
                     if self.node_count_on_host > 1:
-                        self.logger.info("There are [%d] nodes on this host and ASB fell back to disk I/O counters. "
+                        self.logger.info("There are [%d] nodes on this host and Solr Orbit fell back to disk I/O counters. "
                                          "Attributing [1/%d] of total I/O to [%s].",
                                          self.node_count_on_host, self.node_count_on_host, node.node_name)
 

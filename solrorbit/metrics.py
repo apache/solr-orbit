@@ -263,7 +263,7 @@ class MetricsStore:
 
     def _clear_meta_info(self):
         """
-        Clears all internally stored meta-info. This is considered ASB internal API and not intended for normal client consumption.
+        Clears all internally stored meta-info. This is considered Solr Orbit internal API and not intended for normal client consumption.
         """
         self._meta_info = {
             MetaInfoScope.cluster: {},
@@ -1650,11 +1650,11 @@ class GlobalStats:
             })
 
     def tasks(self):
-        # ensure we can read test_run.json files before ASB 0.8.0
+        # ensure we can read test_run.json files before Solr Orbit 0.8.0
         return [v.get("task", v["operation"]) for v in self.op_metrics]
 
     def metrics(self, task):
-        # ensure we can read test_run.json files before ASB 0.8.0
+        # ensure we can read test_run.json files before Solr Orbit 0.8.0
         for r in self.op_metrics:
             if r.get("task", r["operation"]) == task:
                 return r

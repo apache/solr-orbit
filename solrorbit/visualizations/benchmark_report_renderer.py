@@ -60,8 +60,8 @@ def render_results_html(test_run, cfg) -> str:
 
     # 2) Pull top-level fields
     test_id       = doc.get("test-run-id", "<unknown>")
-    asb_ver       = doc.get("benchmark-version", "")
-    asb_rev       = doc.get("benchmark-revision", "")
+    orbit_ver       = doc.get("benchmark-version", "")
+    orbit_rev       = doc.get("benchmark-revision", "")
     environment   = doc.get("environment", "")
     pipeline      = doc.get("pipeline", "")
     workload      = doc.get("workload", "")
@@ -75,8 +75,8 @@ def render_results_html(test_run, cfg) -> str:
 
     # 4) Config table dict
     config_dict = {
-        "ASB Version":               asb_ver,
-        "ASB Revision (git)":        asb_rev,
+        "Solr Orbit Version":               orbit_ver,
+        "Solr Orbit Revision (git)":        orbit_rev,
         "Environment":               environment,
         "Pipeline":                  pipeline,
         "Workload":                  workload,
@@ -277,7 +277,7 @@ def render_results_html(test_run, cfg) -> str:
             <div class="card">
               <h2>Cluster & Benchmark Configuration</h2>
               <div class="subtitle">
-                ASB version, Git revision, environment, pipeline, workload, distro info, etc.
+                Solr Orbit version, Git revision, environment, pipeline, workload, distro info, etc.
               </div>
               {cfg_table_html}
             </div>

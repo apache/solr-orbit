@@ -146,7 +146,7 @@ Note: `parallelgc` is available in the `main` cluster config bundle but not in `
 
 ## vanilla
 
-The base cluster configuration. All other heap and GC configs extend `vanilla`. Use this when you want to run Solr with no heap or GC overrides beyond ASB defaults.
+The base cluster configuration. All other heap and GC configs extend `vanilla`. Use this when you want to run Solr with no heap or GC overrides beyond Solr Orbit defaults.
 
 **Usage:**
 ```bash

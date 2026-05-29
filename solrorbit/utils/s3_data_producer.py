@@ -127,7 +127,7 @@ class S3DataProducer(DataProducer):
             fh.write(rsl)
 
     def generate_chunked_data(self):
-        "Generate chunked output ready for ingestion by ASB clients."
+        "Generate chunked output ready for ingestion by Solr Orbit clients."
         chunk_id = 0
         partial_line = ""
         downloaders = self._get_next_downloader()

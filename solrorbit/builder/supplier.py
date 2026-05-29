@@ -318,7 +318,7 @@ class SourceSupplier:
                                 self.template_renderer.render(self.cluster_config.mandatory_var("system.artifact_path_pattern")))
             return glob.glob(path)[0]
         except IndexError:
-            raise SystemSetupError("Couldn't find a tar.gz distribution. Please run ASB with the pipeline 'from-sources'.")
+            raise SystemSetupError("Couldn't find a tar.gz distribution. Please run Solr Orbit with the pipeline 'from-sources'.")
 
 
 
