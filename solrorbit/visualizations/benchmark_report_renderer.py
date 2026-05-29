@@ -60,8 +60,8 @@ def render_results_html(test_run, cfg) -> str:
 
     # 2) Pull top-level fields
     test_id       = doc.get("test-run-id", "<unknown>")
-    orbit_ver       = doc.get("benchmark-version", "")
-    orbit_rev       = doc.get("benchmark-revision", "")
+    orbit_ver     = doc.get("benchmark-version", "")
+    orbit_rev     = doc.get("benchmark-revision", "")
     environment   = doc.get("environment", "")
     pipeline      = doc.get("pipeline", "")
     workload      = doc.get("workload", "")
