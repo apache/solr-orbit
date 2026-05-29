@@ -84,8 +84,8 @@ def main():
     console.init(assume_tty=False)
 
     parser = argparse.ArgumentParser(prog=PROGRAM_NAME,
-                                     description=BANNER + "\n\n ASB daemon to support remote benchmarks",
-                                     epilog="Find out more about ASB at {}".format(console.format.link(doc_link())),
+                                     description=BANNER + "\n\n Solr Orbit daemon to support remote benchmarks",
+                                     epilog="Find out more about Solr Orbit at {}".format(console.format.link(doc_link())),
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--version', action='version', version="%(prog)s " + version.version())
 
@@ -95,8 +95,8 @@ def main():
         help="")
     subparsers.required = True
 
-    start_command = subparsers.add_parser("start", help="Starts the ASB daemon")
-    restart_command = subparsers.add_parser("restart", help="Restarts the ASB daemon")
+    start_command = subparsers.add_parser("start", help="Starts the Solr Orbit daemon")
+    restart_command = subparsers.add_parser("restart", help="Restarts the Solr Orbit daemon")
     for p in [start_command, restart_command]:
         p.add_argument(
             "--node-ip",
@@ -107,8 +107,8 @@ def main():
             required=True,
             help="The IP of the coordinator node."
         )
-    subparsers.add_parser("stop", help="Stops the ASB daemon")
-    subparsers.add_parser("status", help="Shows the current status of the local ASB daemon")
+    subparsers.add_parser("stop", help="Stops the Solr Orbit daemon")
+    subparsers.add_parser("status", help="Shows the current status of the local Solr Orbit daemon")
 
     args = parser.parse_args()
 
