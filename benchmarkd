@@ -41,7 +41,7 @@ cd "${BENCHMARK_SRC_HOME}" >/dev/null 2>&1
 export PYTHONPATH="${BENCHMARK_SRC_HOME}:${PYTHONPATH:-}"
 
 # set variables that are needed for run.sh
-__BENCHMARK_INTERNAL_BINARY_NAME="solrorbitd"
+__BENCHMARK_INTERNAL_BINARY_NAME="solr-orbitd"
 __BENCHMARK_INTERNAL_HUMAN_NAME="Apache Solr Orbit Daemon"
 
 source run.sh
