@@ -75,8 +75,8 @@ def render_results_html(test_run, cfg) -> str:
 
     # 4) Config table dict
     config_dict = {
-        "Solr Orbit Version":               orbit_ver,
-        "Solr Orbit Revision (git)":        orbit_rev,
+        "Solr Orbit Version":        orbit_ver,
+        "Solr Orbit Revision (git)": orbit_rev,
         "Environment":               environment,
         "Pipeline":                  pipeline,
         "Workload":                  workload,
