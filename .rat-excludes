@@ -29,8 +29,13 @@
 .ruff_cache/**
 *.egg-info/**
 
-# Empty __init__.py namespace markers (no content to annotate)
-**/__init__.py
+# Truly empty __init__.py namespace markers (0 bytes, no content to annotate).
+# Non-empty __init__.py files carry a full license header and are checked by RAT.
+solrorbit/builder/**/__init__.py
+solrorbit/tools/__init__.py
+solrorbit/visualizations/__init__.py
+tests/builder/**/__init__.py
+tests/unit/__init__.py
 
 # Version / lock / pin files (no meaningful content to annotate)
 version.txt
