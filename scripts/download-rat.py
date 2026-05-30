@@ -28,16 +28,29 @@ import hashlib
 import io
 import sys
 import tarfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 
-BASE_URL = "https://downloads.apache.org/creadur"
+PRIMARY_URL = "https://downloads.apache.org/creadur"
+ARCHIVE_URL = "https://archive.apache.org/dist/creadur"
 
 
 def download(url: str) -> bytes:
     print(f"Downloading {url}", flush=True)
     with urllib.request.urlopen(url) as resp:
         return resp.read()
+
+
+def download_with_fallback(primary: str, archive: str) -> bytes:
+    """Try the primary mirror; fall back to the archive mirror on 404."""
+    try:
+        return download(primary)
+    except urllib.error.HTTPError as exc:
+        if exc.code != 404:
+            raise
+        print(f"Primary URL returned 404; trying archive mirror …", flush=True)
+        return download(archive)
 
 
 def main() -> None:
@@ -47,11 +60,14 @@ def main() -> None:
 
     version, target = sys.argv[1], Path(sys.argv[2])
     tarball_name = f"apache-rat-{version}-bin.tar.gz"
-    tar_url = f"{BASE_URL}/apache-rat-{version}/{tarball_name}"
+    subpath = f"apache-rat-{version}/{tarball_name}"
+    tar_url = f"{PRIMARY_URL}/{subpath}"
     sha_url = f"{tar_url}.sha512"
+    tar_archive_url = f"{ARCHIVE_URL}/{subpath}"
+    sha_archive_url = f"{tar_archive_url}.sha512"
 
-    tarball = download(tar_url)
-    expected_hex = download(sha_url).decode().strip()
+    tarball = download_with_fallback(tar_url, tar_archive_url)
+    expected_hex = download_with_fallback(sha_url, sha_archive_url).decode().strip()
 
     actual_hex = hashlib.sha512(tarball).hexdigest()
     if actual_hex != expected_hex:
