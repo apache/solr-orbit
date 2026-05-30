@@ -19,8 +19,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-release_version=$1
-next_version=$2
+release_version=${1:-}
+next_version=${2:-}
 
 if [ -z "$release_version" ] || [ -z "$next_version" ]; then
     echo "Usage: $0 <release_version> <next_version>"
