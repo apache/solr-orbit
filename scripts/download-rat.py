@@ -49,7 +49,7 @@ def download_with_fallback(primary: str, archive: str) -> bytes:
     except urllib.error.HTTPError as exc:
         if exc.code != 404:
             raise
-        print(f"Primary URL returned 404; trying archive mirror …", flush=True)
+        print("Primary URL returned 404; trying archive mirror …", flush=True)
         return download(archive)
 
 
