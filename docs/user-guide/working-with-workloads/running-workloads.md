@@ -29,6 +29,9 @@ solr-orbit run [--pipeline PIPELINE] [--target-hosts HOSTS] \
   [--workload WORKLOAD | --workload-path PATH] [OPTIONS]
 ```
 
+{: .important }
+When using the `benchmark-only` pipeline, the target Solr cluster must be running in **SolrCloud (ZooKeeper) mode** — standalone/user-managed mode is not supported. For Solr 9.x, start Solr with the `-c` flag (e.g. `bin/solr start -c` or `docker run -d -p 8983:8983 solr:9 -c`). For Solr 10.0.0 and later, SolrCloud is the default.
+
 ---
 
 ## Using a named workload

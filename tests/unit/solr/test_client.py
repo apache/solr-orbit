@@ -241,5 +241,56 @@ class TestBuildConfigsetZip(unittest.TestCase):
         self.assertTrue(any("solrconfig.xml" in n for n in names))
 
 
+class TestSolrAdminClientIsCloudMode(unittest.TestCase):
+    def _make_client_with_mock_session(self):
+        client = SolrAdminClient("localhost")
+        client._session = MagicMock()
+        return client
+
+    def test_returns_true_when_clusterstatus_succeeds(self):
+        client = self._make_client_with_mock_session()
+        resp = _make_response(status_code=200, json_data={"cluster": {"collections": {}}})
+        client._session.get.return_value = resp
+        self.assertTrue(client.is_cloud_mode())
+
+    def test_returns_false_when_solrcloud_not_running(self):
+        client = self._make_client_with_mock_session()
+        resp = _make_response(
+            status_code=400,
+            json_data={"error": {"msg": "Solr instance is not running in SolrCloud mode."}},
+            text='{"error": {"msg": "Solr instance is not running in SolrCloud mode."}}',
+        )
+        client._session.get.return_value = resp
+        self.assertFalse(client.is_cloud_mode())
+
+    def test_returns_false_when_user_managed_mode(self):
+        client = self._make_client_with_mock_session()
+        resp = _make_response(
+            status_code=400,
+            json_data={"error": {"msg": "Collections API is disabled in user-managed mode."}},
+            text='{"error": {"msg": "Collections API is disabled in user-managed mode."}}',
+        )
+        client._session.get.return_value = resp
+        self.assertFalse(client.is_cloud_mode())
+
+    def test_raises_on_unexpected_error_status(self):
+        client = self._make_client_with_mock_session()
+        resp = _make_response(
+            status_code=503,
+            json_data={},
+            text="Service Unavailable",
+        )
+        client._session.get.return_value = resp
+        with self.assertRaises(SolrClientError):
+            client.is_cloud_mode()
+
+    def test_raises_on_connection_error(self):
+        import requests as _requests
+        client = self._make_client_with_mock_session()
+        client._session.get.side_effect = _requests.exceptions.ConnectionError("refused")
+        with self.assertRaises(SolrClientError):
+            client.is_cloud_mode()
+
+
 if __name__ == "__main__":
     unittest.main()

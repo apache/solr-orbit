@@ -377,9 +377,45 @@ def set_default_hosts(cfg, host="127.0.0.1", port=9200):
         cfg.add(config.Scope.benchmark, "client", "hosts", default_host_object)
 
 
+def _check_cloud_mode(cfg):
+    """Fail fast with a clear error if the target Solr cluster is not in SolrCloud mode."""
+    from solrorbit.client import SolrAdminClient, SolrClientError  # local import to avoid circular
+
+    configured_hosts = cfg.opts("client", "hosts")
+    hosts = configured_hosts.default
+    if not hosts:
+        return
+
+    entry = hosts[0]
+    if isinstance(entry, dict):
+        host = entry.get("host", "localhost")
+        port = int(entry.get("port", 8983))
+    else:
+        parts = str(entry).rsplit(":", 1)
+        host = parts[0]
+        port = int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else 8983
+
+    client = SolrAdminClient(host=host, port=port)
+    try:
+        if not client.is_cloud_mode():
+            raise exceptions.SystemSetupError(
+                f"Solr at {host}:{port} is not running in SolrCloud (ZooKeeper) mode.\n"
+                "Solr Orbit currently only supports SolrCloud mode.\n"
+                "  \u2022 For Solr 9.x: start with the '-c' flag, e.g.:\n"
+                "      docker run -d -p 8983:8983 solr:9 -c\n"
+                "      bin/solr start -c\n"
+                "  \u2022 For Solr 10.0.0+: SolrCloud is the default; no extra flag is needed."
+            )
+    except SolrClientError as exc:
+        raise exceptions.SystemSetupError(
+            f"Could not verify Solr mode at {host}:{port}: {exc}"
+        ) from exc
+
+
 # Poor man's curry
 def benchmark_only(cfg):
     set_default_hosts(cfg)
+    _check_cloud_mode(cfg)
     return run_test(cfg, external=True)
 
 

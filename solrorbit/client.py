@@ -330,6 +330,38 @@ class SolrAdminClient:
             return resp.text
         return resp.json()
 
+    def is_cloud_mode(self) -> bool:
+        """
+        Return True if this Solr node is running in SolrCloud (ZooKeeper) mode.
+
+        Calls the Collections CLUSTERSTATUS API, which only succeeds in cloud mode.
+        Returns False if Solr responds with a 400 indicating standalone/user-managed mode.
+        Raises SolrClientError on connection errors or unexpected failures.
+        """
+        try:
+            resp = self._get_session().get(
+                f"{self.base_url}/solr/admin/collections",
+                params={"action": "CLUSTERSTATUS", "wt": "json"},
+                timeout=self.timeout,
+            )
+        except requests.exceptions.RequestException as exc:
+            raise SolrClientError(
+                f"Could not connect to Solr at {self.base_url}: {exc}"
+            ) from exc
+        if resp.ok:
+            return True
+        # HTTP 400 with a message about SolrCloud/user-managed → definitely standalone mode
+        body = self._try_parse_json(resp)
+        msg = str(body.get("error", {}).get("msg", "")).lower()
+        if resp.status_code == 400 and any(
+            kw in msg for kw in ("solrcloud", "user-managed", "collections api")
+        ):
+            return False
+        # Auth error, unexpected status, etc. — surface to caller
+        raise SolrClientError(
+            f"Unexpected response from CLUSTERSTATUS (HTTP {resp.status_code}): {resp.text[:300]}"
+        )
+
     # ------------------------------------------------------------------
     # Raw request (for the raw-request workload operation)
     # ------------------------------------------------------------------
@@ -477,6 +509,9 @@ class SolrClient(RequestContextHolder):  # pylint: disable=too-many-public-metho
 
     def wait_for_cluster_ready(self, **kwargs):
         return self._admin.wait_for_cluster_ready(**kwargs)
+
+    def is_cloud_mode(self) -> bool:
+        return self._admin.is_cloud_mode()
 
     def raw_request(self, method, path, body=None, headers=None):
         return self._admin.raw_request(method, path, body=body, headers=headers)

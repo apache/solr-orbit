@@ -60,6 +60,9 @@ Test procedures define named benchmark scenarios within a workload. A workload t
 
 ## Selecting a test procedure at run time
 
+{: .important }
+The target Solr cluster must be running in **SolrCloud (ZooKeeper) mode**. For Solr 9.x, start with `-c` (e.g. `docker run -d -p 8983:8983 solr:9 -c`). For Solr 10.0.0+, SolrCloud is the default.
+
 ```bash
 solr-orbit run \
   --pipeline benchmark-only \
