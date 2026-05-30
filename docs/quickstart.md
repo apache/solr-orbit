@@ -18,12 +18,12 @@ To perform the quickstart steps, you'll need the following:
 ## Set up a Solr cluster
 
 {: .important }
-Solr Orbit requires Solr to run in **SolrCloud (ZooKeeper) mode**. Standalone/user-managed mode is not supported. For Solr 9.x, start Solr with the `-c` flag to enable SolrCloud mode. For Solr 10.0.0 and later, SolrCloud is the default and no extra flag is required.
+Solr Orbit requires Solr to run in **SolrCloud mode**. Standalone/user-managed mode is not supported. For Solr 9.x, start Solr with the `-c` flag to enable SolrCloud mode. For Solr 10.0.0 and later, SolrCloud is the default and no extra flag is required.
 
 If you don't already have a running Solr cluster, the easiest way to start one is with Docker:
 
 ```bash
-# Solr 9.x — the -c flag enables SolrCloud (ZooKeeper) mode
+# Solr 9.x — the -c flag enables SolrCloud mode
 docker run -d --name solr-orbit -p 8983:8983 solr:9 -c
 ```
 
