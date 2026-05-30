@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -35,6 +35,7 @@ class RequestContextManager:
     This means that we can span a top-level request context, open sub-request contexts that can be used to measure
     individual timings and still measure the proper total time on the top-level request context.
     """
+
     def __init__(self, request_context_holder):
         self.ctx_holder = request_context_holder
         self.ctx = None
@@ -86,6 +87,7 @@ class RequestContextHolder:
     """
     Holds request context variables. This class is only meant to be used together with RequestContextManager.
     """
+
     request_context = contextvars.ContextVar("benchmark_request_context")
 
     def new_request_context(self):

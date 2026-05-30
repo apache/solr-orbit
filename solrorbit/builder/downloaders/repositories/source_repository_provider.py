@@ -18,28 +18,15 @@ class SourceRepositoryProvider:
         self.update_scenarios = self._generate_update_repository_scenarios()
 
     def _generate_update_repository_scenarios(self):
-        return OrderedDict([
-            (
-                lambda revision, is_remote_defined: revision == "latest" and is_remote_defined,
-                self._update_repository_to_latest
-            ),
-            (
-                lambda revision, is_remote_defined: revision == "current",
-                self._update_repository_to_current
-            ),
-            (
-                lambda revision, is_remote_defined: revision.startswith("@") and is_remote_defined,
-                self._update_repository_to_timestamp
-            ),
-            (
-                lambda revision, is_remote_defined: is_remote_defined,
-                self._update_repository_to_commit_hash
-            ),
-            (
-                lambda revision, is_remote_defined: True,
-                self._update_repository_to_local_revision
-            ),
-        ])
+        return OrderedDict(
+            [
+                (lambda revision, is_remote_defined: revision == "latest" and is_remote_defined, self._update_repository_to_latest),
+                (lambda revision, is_remote_defined: revision == "current", self._update_repository_to_current),
+                (lambda revision, is_remote_defined: revision.startswith("@") and is_remote_defined, self._update_repository_to_timestamp),
+                (lambda revision, is_remote_defined: is_remote_defined, self._update_repository_to_commit_hash),
+                (lambda revision, is_remote_defined: True, self._update_repository_to_local_revision),
+            ]
+        )
 
     def fetch_repository(self, host, remote_url, revision, target_dir):
         if not self.path_manager.is_path_present(host, os.path.join(target_dir, ".git")):
@@ -83,8 +70,7 @@ class SourceRepositoryProvider:
     def _update_repository_to_timestamp(self, host, revision, target_dir):
         # convert timestamp annotated for OSB to something git understands -> we strip leading and trailing " and the @.
         git_timestamp_revision = revision[1:]
-        self.logger.info("Fetching from remote and checking out revision with timestamp [%s] for "
-                         "%s.", git_timestamp_revision, self.repository_name)
+        self.logger.info("Fetching from remote and checking out revision with timestamp [%s] for %s.", git_timestamp_revision, self.repository_name)
         self.git_manager.fetch(host, target_dir)
         revision_from_timestamp = self.git_manager.get_revision_from_timestamp(host, target_dir, git_timestamp_revision)
         self.git_manager.checkout(host, target_dir, revision_from_timestamp)
@@ -101,8 +87,7 @@ class SourceRepositoryProvider:
     def _get_revision(self, host, revision, target_dir):
         if self.path_manager.is_path_present(host, os.path.join(target_dir, ".git")):
             git_revision = self.git_manager.get_revision_from_local_repository(host, target_dir)
-            self.logger.info("User-specified revision [%s] for [%s] results in git revision [%s]",
-                             revision, self.repository_name, git_revision)
+            self.logger.info("User-specified revision [%s] for [%s] results in git revision [%s]", revision, self.repository_name, git_revision)
 
             return git_revision
 

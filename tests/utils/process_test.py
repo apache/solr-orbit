@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -59,28 +59,22 @@ class ProcessTests(TestCase):
 
     @mock.patch("psutil.process_iter")
     def test_find_other_benchmark_processes(self, process_iter):
-        benchmark_os_5_process = ProcessTests.Process(100, "java",
-                                                  ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Enode.name=benchmark-node0",
-                                                   "org.elasticsearch.bootstrap.Elasticsearch"])
-        benchmark_os_1_process = ProcessTests.Process(101, "java",
-                                                  ["/usr/lib/jvm/java-8-oracle/bin/java",
-                                                  "-Xms2g", "-Xmx2g",
-                                                  "-Des.node.name=benchmark-node0",
-                                                   "org.elasticsearch.bootstrap.Elasticsearch"])
-        metrics_store_process = ProcessTests.Process(102, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g",
-                                                                   "-Des.path.home=~/benchmark/metrics/",
-                                                                   "org.elasticsearch.bootstrap.Elasticsearch"])
+        benchmark_os_5_process = ProcessTests.Process(
+            100, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Enode.name=benchmark-node0", "org.elasticsearch.bootstrap.Elasticsearch"]
+        )
+        benchmark_os_1_process = ProcessTests.Process(
+            101, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Des.node.name=benchmark-node0", "org.elasticsearch.bootstrap.Elasticsearch"]
+        )
+        metrics_store_process = ProcessTests.Process(
+            102, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Des.path.home=~/benchmark/metrics/", "org.elasticsearch.bootstrap.Elasticsearch"]
+        )
         random_python = ProcessTests.Process(103, "python3", ["/some/django/app"])
         other_process = ProcessTests.Process(104, "init", ["/usr/sbin/init"])
         benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
         benchmark_process_e = ProcessTests.Process(107, "solr-orbit", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
-        benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python",
-                                                                     "~/.local/bin/solr-orbit"])
+        benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/solr-orbit"])
         # fake own process by determining our pid
-        own_benchmark_process = ProcessTests.Process(
-            os.getpid(), "Python",
-            ["/Python.app/Contents/MacOS/Python",
-            "~/.local/bin/solr-orbit"])
+        own_benchmark_process = ProcessTests.Process(os.getpid(), "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/solr-orbit"])
         night_benchmark_process = ProcessTests.Process(110, "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/night_benchmark"])
 
         process_iter.return_value = [
@@ -96,45 +90,39 @@ class ProcessTests(TestCase):
             night_benchmark_process,
         ]
 
-        self.assertEqual([benchmark_process_p, benchmark_process_e, benchmark_process_mac],
-                         process.find_all_other_benchmark_processes())
+        self.assertEqual([benchmark_process_p, benchmark_process_e, benchmark_process_mac], process.find_all_other_benchmark_processes())
 
     @mock.patch("psutil.process_iter")
     def test_find_no_other_benchmark_process_running(self, process_iter):
-        metrics_store_process = ProcessTests.Process(102, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g",
-                                                                   "-Des.path.home=~/benchmark/metrics/",
-                                                                   "org.elasticsearch.bootstrap.Elasticsearch"])
+        metrics_store_process = ProcessTests.Process(
+            102, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Des.path.home=~/benchmark/metrics/", "org.elasticsearch.bootstrap.Elasticsearch"]
+        )
         random_python = ProcessTests.Process(103, "python3", ["/some/django/app"])
 
-        process_iter.return_value = [ metrics_store_process, random_python]
+        process_iter.return_value = [metrics_store_process, random_python]
 
         self.assertEqual(0, len(process.find_all_other_benchmark_processes()))
 
     @mock.patch("psutil.process_iter")
     def test_kills_only_benchmark_processes(self, process_iter):
-        benchmark_os_5_process = ProcessTests.Process(100, "java",
-                                                  ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Enode.name=benchmark-node0",
-                                                   "org.elasticsearch.bootstrap.Elasticsearch"])
-        benchmark_os_1_process = ProcessTests.Process(101, "java",
-                                                  ["/usr/lib/jvm/java-8-oracle/bin/java",
-                                                  "-Xms2g", "-Xmx2g",
-                                                  "-Des.node.name=benchmark-node0",
-                                                   "org.elasticsearch.bootstrap.Elasticsearch"])
-        metrics_store_process = ProcessTests.Process(102, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g",
-                                                                   "-Des.path.home=~/benchmark/metrics/",
-                                                                   "org.elasticsearch.bootstrap.Elasticsearch"])
+        benchmark_os_5_process = ProcessTests.Process(
+            100, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Enode.name=benchmark-node0", "org.elasticsearch.bootstrap.Elasticsearch"]
+        )
+        benchmark_os_1_process = ProcessTests.Process(
+            101, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Des.node.name=benchmark-node0", "org.elasticsearch.bootstrap.Elasticsearch"]
+        )
+        metrics_store_process = ProcessTests.Process(
+            102, "java", ["/usr/lib/jvm/java-8-oracle/bin/java", "-Xms2g", "-Xmx2g", "-Des.path.home=~/benchmark/metrics/", "org.elasticsearch.bootstrap.Elasticsearch"]
+        )
         random_python = ProcessTests.Process(103, "python3", ["/some/django/app"])
         other_process = ProcessTests.Process(104, "init", ["/usr/sbin/init"])
         benchmark_process_p = ProcessTests.Process(105, "python3", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
         # On Linux, process names are truncated to 15 chars; "solr-orbit" (9 chars) fits within that limit.
         benchmark_process_l = ProcessTests.Process(106, "solr-orbit", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
         benchmark_process_e = ProcessTests.Process(107, "solr-orbit", ["/usr/bin/python3", "~/.local/bin/solr-orbit"])
-        benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python",
-                                                                     "~/.local/bin/solr-orbit"])
+        benchmark_process_mac = ProcessTests.Process(108, "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/solr-orbit"])
         # fake own process by determining our pid
-        own_benchmark_process = ProcessTests.Process(
-            os.getpid(), "Python",
-            ["/Python.app/Contents/MacOS/Python", "~/.local/bin/solr-orbit"])
+        own_benchmark_process = ProcessTests.Process(os.getpid(), "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/solr-orbit"])
         night_benchmark_process = ProcessTests.Process(110, "Python", ["/Python.app/Contents/MacOS/Python", "~/.local/bin/night_benchmark"])
 
         process_iter.return_value = [

@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -125,9 +125,13 @@ def list_workloads(cfg):
 
     data = []
     for t in available_workloads:
-        line = [t.name, t.description, convert.number_to_human_string(t.number_of_documents),
-                convert.bytes_to_human_string(t.compressed_size_in_bytes),
-                convert.bytes_to_human_string(t.uncompressed_size_in_bytes)]
+        line = [
+            t.name,
+            t.description,
+            convert.number_to_human_string(t.number_of_documents),
+            convert.bytes_to_human_string(t.compressed_size_in_bytes),
+            convert.bytes_to_human_string(t.uncompressed_size_in_bytes),
+        ]
         if not only_auto_generated_test_procedures:
             line.append(t.default_test_procedure)
             line.append(",".join(map(str, t.test_procedures)))
@@ -211,19 +215,13 @@ def _load_single_workload(cfg, workload_repository, workload_name):
         return current_workload
     except FileNotFoundError as e:
         logging.getLogger(__name__).exception("Cannot load workload [%s]", workload_name)
-        raise exceptions.SystemSetupError(f"Cannot load workload [{workload_name}]. "
-                                          f"List the available workloads with [{PROGRAM_NAME} list workloads].") from e
+        raise exceptions.SystemSetupError(f"Cannot load workload [{workload_name}]. List the available workloads with [{PROGRAM_NAME} list workloads].") from e
     except BaseException:
         logging.getLogger(__name__).exception("Cannot load workload [%s]", workload_name)
         raise
 
 
-def load_workload_plugins(cfg,
-                       workload_name,
-                       register_runner=None,
-                       register_scheduler=None,
-                       register_workload_processor=None,
-                       force_update=False):
+def load_workload_plugins(cfg, workload_name, register_runner=None, register_scheduler=None, register_workload_processor=None, force_update=False):
     """
     Loads plugins that are defined for the current workload (as specified by the configuration).
 
@@ -422,8 +420,7 @@ class DefaultWorkloadPreparator(WorkloadProcessor):
         for document_set in corpus.documents:
             if document_set.is_supported_source_format:
                 data_root = data_dir(cfg, workload.name, corpus.name)
-                logging.getLogger(__name__).info("Resolved data root directory for document corpus [%s] in workload [%s] "
-                                                 "to [%s].", corpus.name, workload.name, data_root)
+                logging.getLogger(__name__).info("Resolved data root directory for document corpus [%s] in workload [%s] to [%s].", corpus.name, workload.name, data_root)
                 if len(data_root) == 1:
                     preparator.prepare_document_set(document_set, data_root[0])
                 # attempt to prepare everything in the current directory and fallback to the corpus directory
@@ -433,12 +430,7 @@ class DefaultWorkloadPreparator(WorkloadProcessor):
     def on_prepare_workload(self, workload, data_root_dir):
         prep = DocumentSetPreparator(workload.name, self.downloader, self.decompressor)
         for corpus in used_corpora(workload):
-            params = {
-                "cfg": self.cfg,
-                "workload": workload,
-                "corpus": corpus,
-                "preparator": prep
-            }
+            params = {"cfg": self.cfg, "workload": workload, "corpus": corpus, "preparator": prep}
             yield DefaultWorkloadPreparator.prepare_docs, params
 
 
@@ -448,8 +440,7 @@ class Decompressor:
 
     def decompress(self, archive_path, documents_path, uncompressed_size):
         if uncompressed_size:
-            msg = f"Decompressing workload data from [{archive_path}] to [{documents_path}] (resulting size: " \
-                  f"[{convert.bytes_to_gb(uncompressed_size):.2f}] GB) ... "
+            msg = f"Decompressing workload data from [{archive_path}] to [{documents_path}] (resulting size: [{convert.bytes_to_gb(uncompressed_size):.2f}] GB) ... "
         else:
             msg = f"Decompressing workload data from [{archive_path}] to [{documents_path}] ... "
 
@@ -458,13 +449,12 @@ class Decompressor:
         console.println("[OK]")
         if not os.path.isfile(documents_path):
             raise exceptions.DataError(
-                f"Decompressing [{archive_path}] did not create [{documents_path}]. Please check with the workload "
-                f"author if the compressed archive has been created correctly.")
+                f"Decompressing [{archive_path}] did not create [{documents_path}]. Please check with the workload author if the compressed archive has been created correctly."
+            )
 
         extracted_bytes = os.path.getsize(documents_path)
         if uncompressed_size is not None and extracted_bytes != uncompressed_size:
-            raise exceptions.DataError(f"[{documents_path}] is corrupt. Extracted [{extracted_bytes}] bytes "
-                                       f"but [{uncompressed_size}] bytes are expected.")
+            raise exceptions.DataError(f"[{documents_path}] is corrupt. Extracted [{extracted_bytes}] bytes but [{uncompressed_size}] bytes are expected.")
 
 
 class Downloader:
@@ -499,15 +489,13 @@ class Downloader:
                 self.logger.info("Downloading data from [%s] to [%s].", data_url, target_path)
 
             # we want to have a bit more accurate download progress as these files are typically very large
-            progress = net.Progress("[INFO] Downloading workload data file: " + os.path.basename(target_path),
-                                    accuracy=1)
+            progress = net.Progress("[INFO] Downloading workload data file: " + os.path.basename(target_path), accuracy=1)
             net.download(data_url, target_path, size_in_bytes, progress_indicator=progress)
             progress.finish()
             self.logger.info("Downloaded data from [%s] to [%s].", data_url, target_path)
         except urllib.error.HTTPError as e:
             if e.code == 404 and self.test_mode:
-                raise exceptions.DataError("This workload does not support test mode. Ask the workload author to add it or"
-                                           " disable test mode and retry.") from None
+                raise exceptions.DataError("This workload does not support test mode. Ask the workload author to add it or disable test mode and retry.") from None
             else:
                 msg = f"Could not download [{data_url}] to [{target_path}]"
                 if e.reason:
@@ -519,13 +507,11 @@ class Downloader:
             raise exceptions.DataError(f"Could not download [{data_url}] to [{target_path}].") from e
 
         if not os.path.isfile(target_path):
-            raise exceptions.SystemSetupError(f"Could not download [{data_url}] to [{target_path}]. Verify data "
-                                              f"are available at [{data_url}] and check your Internet connection.")
+            raise exceptions.SystemSetupError(f"Could not download [{data_url}] to [{target_path}]. Verify data are available at [{data_url}] and check your Internet connection.")
 
         actual_size = os.path.getsize(target_path)
         if size_in_bytes is not None and actual_size != size_in_bytes:
-            raise exceptions.DataError(f"[{target_path}] is corrupt. Downloaded [{actual_size}] bytes "
-                                       f"but [{size_in_bytes}] bytes are expected.")
+            raise exceptions.DataError(f"[{target_path}] is corrupt. Downloaded [{actual_size}] bytes but [{size_in_bytes}] bytes are expected.")
 
 
 class DocumentSetPreparator:
@@ -546,8 +532,9 @@ class DocumentSetPreparator:
         lines_read = io.prepare_file_offset_table(document_file_path, base_url, source_url, self.downloader)
         if lines_read and lines_read != expected_number_of_lines:
             io.remove_file_offset_table(document_file_path)
-            raise exceptions.DataError(f"Data in [{document_file_path}] for workload [{self.workload_name}] are invalid. "
-                                       f"Expected [{expected_number_of_lines}] lines but got [{lines_read}].")
+            raise exceptions.DataError(
+                f"Data in [{document_file_path}] for workload [{self.workload_name}] are invalid. Expected [{expected_number_of_lines}] lines but got [{lines_read}]."
+            )
 
     def prepare_document_set(self, document_set, data_root):
         """
@@ -568,12 +555,9 @@ class DocumentSetPreparator:
         doc_path = os.path.join(data_root, document_set.document_file)
         archive_path = os.path.join(data_root, document_set.document_archive) if document_set.has_compressed_corpus() else None
         while True:
-            if self.is_locally_available(doc_path) and \
-                    self.has_expected_size(doc_path, document_set.uncompressed_size_in_bytes):
+            if self.is_locally_available(doc_path) and self.has_expected_size(doc_path, document_set.uncompressed_size_in_bytes):
                 break
-            if document_set.has_compressed_corpus() and \
-                    self.is_locally_available(archive_path) and \
-                    self.has_expected_size(archive_path, document_set.compressed_size_in_bytes):
+            if document_set.has_compressed_corpus() and self.is_locally_available(archive_path) and self.has_expected_size(archive_path, document_set.compressed_size_in_bytes):
                 self.decompressor.decompress(archive_path, doc_path, document_set.uncompressed_size_in_bytes)
             else:
                 if document_set.has_compressed_corpus():
@@ -592,8 +576,11 @@ class DocumentSetPreparator:
                             self.downloader.download(document_set.base_url, None, os.path.join(data_root, part["name"]), part["size"])
                         try:
                             with open(target_path, "wb") as outfile:
-                                console.info(f"Concatenating file parts {', '.join([p['name'] for p in document_set.document_file_parts])}"
-                                             f" into {os.path.basename(target_path)}", flush=True, logger=self.logger)
+                                console.info(
+                                    f"Concatenating file parts {', '.join([p['name'] for p in document_set.document_file_parts])} into {os.path.basename(target_path)}",
+                                    flush=True,
+                                    logger=self.logger,
+                                )
                                 for part in document_set.document_file_parts:
                                     part_name = os.path.join(data_root, part["name"])
                                     with open(part_name, "rb") as infile:
@@ -604,11 +591,12 @@ class DocumentSetPreparator:
                     else:
                         self.downloader.download(document_set.base_url, document_set.source_url, target_path, expected_size)
                 except exceptions.DataError as e:
-                    if e.message == "Cannot download data because no base URL is provided." and \
-                       self.is_locally_available(target_path):
-                        raise exceptions.DataError(f"[{target_path}] is present but does not have the expected "
-                                                   f"size of [{expected_size}] bytes and it cannot be downloaded "
-                                                   f"because no base URL is provided.") from None
+                    if e.message == "Cannot download data because no base URL is provided." and self.is_locally_available(target_path):
+                        raise exceptions.DataError(
+                            f"[{target_path}] is present but does not have the expected "
+                            f"size of [{expected_size}] bytes and it cannot be downloaded "
+                            f"because no base URL is provided."
+                        ) from None
                     else:
                         raise
         if document_set.support_file_offset_table:
@@ -642,8 +630,7 @@ class DocumentSetPreparator:
                     self.create_file_offset_table(doc_path, document_set.base_url, document_set.source_url, document_set.number_of_lines)
                     return True
                 else:
-                    raise exceptions.DataError(f"[{doc_path}] is present but does not have the expected size "
-                                               f"of [{document_set.uncompressed_size_in_bytes}] bytes.")
+                    raise exceptions.DataError(f"[{doc_path}] is present but does not have the expected size of [{document_set.uncompressed_size_in_bytes}] bytes.")
 
             if document_set.has_compressed_corpus() and self.is_locally_available(archive_path):
                 if self.has_expected_size(archive_path, document_set.compressed_size_in_bytes):
@@ -652,8 +639,7 @@ class DocumentSetPreparator:
                     # treat this is an error because if the file is present but the size does not match, something is
                     # really fishy. It is likely that the user is currently creating a new workload and did not specify
                     # the file size correctly.
-                    raise exceptions.DataError(f"[{archive_path}] is present but does not have "
-                                               f"the expected size of [{document_set.compressed_size_in_bytes}] bytes.")
+                    raise exceptions.DataError(f"[{archive_path}] is present but does not have the expected size of [{document_set.compressed_size_in_bytes}] bytes.")
             else:
                 return False
 
@@ -678,9 +664,7 @@ class TemplateSource:
     def load_template_from_file(self):
         loader = jinja2.FileSystemLoader(self.base_path)
         try:
-            base_workload = loader.get_source(jinja2.Environment(
-                autoescape=select_autoescape(['html', 'xml'])),
-                self.template_file_name)
+            base_workload = loader.get_source(jinja2.Environment(autoescape=select_autoescape(["html", "xml"])), self.template_file_name)
         except jinja2.TemplateNotFound:
             self.logger.exception("Could not load workload from [%s].", self.template_file_name)
             raise WorkloadSyntaxError("Could not load workload from '{}'".format(self.template_file_name))
@@ -718,8 +702,7 @@ class TemplateSource:
 # A Jinja filter that tests if a version string lies within a specified range.
 # For instance, "1.2.3" lies between "1.0.0" and "2.0.0".
 def version_between(version, frm, to):
-    return list(map(int, version.split('.'))) >= list(map(int, frm.split('.'))) and \
-        list(map(int, version.split('.'))) <= list(map(int, to.split('.')))
+    return list(map(int, version.split("."))) >= list(map(int, frm.split("."))) and list(map(int, version.split("."))) <= list(map(int, to.split(".")))
 
 
 def default_internal_template_vars(glob_helper=lambda f: [], clock=time.Clock):
@@ -727,15 +710,7 @@ def default_internal_template_vars(glob_helper=lambda f: [], clock=time.Clock):
     Dict of internal global variables used by our jinja2 renderers
     """
 
-    return {
-        "globals": {
-            "now": clock.now(),
-            "glob": glob_helper
-        },
-        "filters": {
-            "days_ago": time.days_ago
-        }
-    }
+    return {"globals": {"now": clock.now(), "glob": glob_helper}, "filters": {"days_ago": time.days_ago}}
 
 
 def render_template(template_source, template_vars=None, template_internal_vars=None, loader=None):
@@ -760,17 +735,12 @@ def render_template(template_source, template_vars=None, template_internal_vars=
                 {% endif %}
               {% endif %}
         {%- endmacro %}
-        """
+        """,
     ]
 
     # place helpers dict loader first to prevent users from overriding our macros.
     env = jinja2.Environment(
-        loader=jinja2.ChoiceLoader([
-            jinja2.DictLoader({"benchmark.helpers": "".join(macros)}),
-            jinja2.BaseLoader(),
-            loader
-        ]),
-        autoescape=select_autoescape(['html', 'xml'])
+        loader=jinja2.ChoiceLoader([jinja2.DictLoader({"benchmark.helpers": "".join(macros)}), jinja2.BaseLoader(), loader]), autoescape=select_autoescape(["html", "xml"])
     )
 
     if template_vars:
@@ -788,7 +758,7 @@ def render_template(template_source, template_vars=None, template_internal_vars=
 
 
 def register_all_params_in_workload(assembled_source, complete_workload_params=None):
-    j2env = jinja2.Environment(autoescape=select_autoescape(['html', 'xml']))
+    j2env = jinja2.Environment(autoescape=select_autoescape(["html", "xml"]))
 
     # we don't need the following j2 filters/macros but we define them anyway to prevent parsing failures
     internal_template_vars = default_internal_template_vars()
@@ -815,10 +785,12 @@ def render_template_from_file(template_file_name, template_vars, complete_worklo
     template_source.load_template_from_file()
     register_all_params_in_workload(template_source.assembled_source, complete_workload_params)
 
-    return render_template(loader=jinja2.FileSystemLoader(base_path),
-                           template_source=template_source.assembled_source,
-                           template_vars=template_vars,
-                           template_internal_vars=default_internal_template_vars(glob_helper=lambda f: relative_glob(base_path, f)))
+    return render_template(
+        loader=jinja2.FileSystemLoader(base_path),
+        template_source=template_source.assembled_source,
+        template_vars=template_vars,
+        template_internal_vars=default_internal_template_vars(glob_helper=lambda f: relative_glob(base_path, f)),
+    )
 
 
 class TaskFilterWorkloadProcessor(WorkloadProcessor):
@@ -848,8 +820,7 @@ class TaskFilterWorkloadProcessor(WorkloadProcessor):
                     elif spec[0] == "tag":
                         filters.append(workload.TaskTagFilter(spec[1]))
                     else:
-                        raise exceptions.SystemSetupError(f"Invalid format for filtered tasks: [{t}]. "
-                                                          f"Expected [type] but got [{spec[0]}].")
+                        raise exceptions.SystemSetupError(f"Invalid format for filtered tasks: [{t}]. Expected [type] but got [{spec[0]}].")
                 else:
                     raise exceptions.SystemSetupError(f"Invalid format for filtered tasks: [{t}]")
         return filters
@@ -878,8 +849,7 @@ class TaskFilterWorkloadProcessor(WorkloadProcessor):
                         if self._filter_out_match(leaf_task):
                             leafs_to_remove.append(leaf_task)
                     for leaf_task in leafs_to_remove:
-                        self.logger.info("Removing sub-task [%s] from test_procedure [%s] due to task filter.",
-                                         leaf_task, test_procedure)
+                        self.logger.info("Removing sub-task [%s] from test_procedure [%s] due to task filter.", leaf_task, test_procedure)
                         task.remove_task(leaf_task)
             for task in tasks_to_remove:
                 self.logger.info("Removing task [%s] from test_procedure [%s] due to task filter.", task, test_procedure)
@@ -915,8 +885,7 @@ class TestModeWorkloadProcessor(WorkloadProcessor):
                         path, ext = io.splitext(document_set.document_file)
                         document_set.document_file = f"{path}-1k{ext}"
                     else:
-                        raise exceptions.BenchmarkAssertionError(f"Document corpus [{corpus.name}] has neither compressed "
-                                                             f"nor uncompressed corpus.")
+                        raise exceptions.BenchmarkAssertionError(f"Document corpus [{corpus.name}] has neither compressed nor uncompressed corpus.")
 
                     # we don't want to check sizes
                     document_set.compressed_size_in_bytes = None
@@ -941,13 +910,11 @@ class TestModeWorkloadProcessor(WorkloadProcessor):
                     if leaf_task.warmup_time_period is not None and leaf_task.warmup_time_period > 0:
                         leaf_task.warmup_time_period = 0
                         if self.logger.isEnabledFor(logging.DEBUG):
-                            self.logger.debug("Resetting warmup time period for [%s] to [%d] seconds.",
-                                              str(leaf_task), leaf_task.warmup_time_period)
+                            self.logger.debug("Resetting warmup time period for [%s] to [%d] seconds.", str(leaf_task), leaf_task.warmup_time_period)
                     if leaf_task.time_period is not None and leaf_task.time_period > 10:
                         leaf_task.time_period = 10
                         if self.logger.isEnabledFor(logging.DEBUG):
-                            self.logger.debug("Resetting measurement time period for [%s] to [%d] seconds.",
-                                              str(leaf_task), leaf_task.time_period)
+                            self.logger.debug("Resetting measurement time period for [%s] to [%d] seconds.", str(leaf_task), leaf_task.time_period)
 
                     # Keep throttled to expose any errors but increase the target throughput for short execution times.
                     if leaf_task.target_throughput:
@@ -958,8 +925,8 @@ class TestModeWorkloadProcessor(WorkloadProcessor):
 
         return input_workload
 
-class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
 
+class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
     class QueryRandomizationInfo:
         # A class containing information about which values to replace when randomizing queries.
         # For example, QueryRandomizationInfo("range", [["gte", "gt"], ["lte", "lt"]], ["format"])
@@ -982,13 +949,11 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
             for parameter_name_options in parameter_name_options_list:
                 for parameter_name_option in parameter_name_options:
                     if parameter_name_option == query_name:
-                        raise exceptions.ExecutorError(
-                            f"Cannot have a randomized value name {query_name} which is the same as the name of its query!")
+                        raise exceptions.ExecutorError(f"Cannot have a randomized value name {query_name} which is the same as the name of its query!")
                     all_values.append(parameter_name_option)
                     distinct_values.add(parameter_name_option)
             if len(all_values) != len(distinct_values):
-                raise exceptions.ExecutorError(
-                    f"Duplicate option for value name in query_randomization_info: {parameter_name_options_list}")
+                raise exceptions.ExecutorError(f"Duplicate option for value name in query_randomization_info: {parameter_name_options_list}")
 
         def check_one_of_each_name_present(self, obj):
             # Return true if one version of the value name is present in obj for each set of value options.
@@ -1008,6 +973,7 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
     DEFAULT_N = 5000
     DEFAULT_ALPHA = 1
     DEFAULT_QUERY_RANDOMIZATION_INFO = QueryRandomizationInfo("range", [["gte", "gt"], ["lte", "lt"]], ["format"])
+
     def __init__(self, cfg):
         self.randomization_enabled = cfg.opts("workload", "randomization.enabled", mandatory=False, default_value=False)
         self.rf = float(cfg.opts("workload", "randomization.repeat_frequency", mandatory=False, default_value=self.DEFAULT_RF))
@@ -1019,12 +985,12 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
     # Helper functions for computing Zipf distribution
     def H(self, i, H_list):
         # compute the harmonic number H_n,m = sum over i from 1 to n of (1 / i^m)
-        return H_list[i-1]
+        return H_list[i - 1]
 
     def precompute_H(self, n, m):
         H_list = [1]
-        for j in range(2, n+1):
-            H_list.append(H_list[-1] + 1 / (j ** m))
+        for j in range(2, n + 1):
+            H_list.append(H_list[-1] + 1 / (j**m))
         return H_list
 
     def zipf_cdf_inverse(self, u, H_list):
@@ -1032,9 +998,8 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
         # as the zipf cdf is discontinuous there is no real inverse but we can use this solution:
         # https://math.stackexchange.com/questions/53671/how-to-calculate-the-inverse-cdf-for-the-zipf-distribution
         # Precompute all values H_i,alpha for a fixed alpha and pass in as H_list
-        if (u < 0 or u >= 1):
-            raise exceptions.ExecutorError(
-                "Input u must have 0 <= u < 1. This error shouldn't appear, please raise an issue if it does")
+        if u < 0 or u >= 1:
+            raise exceptions.ExecutorError("Input u must have 0 <= u < 1. This error shouldn't appear, please raise an issue if it does")
         n = len(H_list)
         candidate_return = 1
         denominator = self.H(n, H_list)
@@ -1055,7 +1020,7 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
     def extract_fields_helper(self, root, current_path, query_randomization_info):
         # Recursively called to find the location of ranges in a range query.
         # Return the field and the current path if we're currently scanning the field name in a range query, otherwise return an empty list.
-        fields = [] # pairs of (field, path_to_field)
+        fields = []  # pairs of (field, path_to_field)
         curr = self.get_dict_from_previous_path(root, current_path)
         if isinstance(curr, dict) and curr != {}:
             if len(current_path) > 0 and current_path[-1] == query_randomization_info.query_name:
@@ -1085,8 +1050,9 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
             root = params["body"]["query"]
         except KeyError:
             raise exceptions.SystemSetupError(
-                f"Cannot extract range query fields from these params: {params}\n, missing params[\"body\"][\"query\"]\n"
-                f"Make sure the operation in operations/default.json is well-formed")
+                f'Cannot extract range query fields from these params: {params}\n, missing params["body"]["query"]\n'
+                f"Make sure the operation in operations/default.json is well-formed"
+            )
         fields_and_paths = self.extract_fields_helper(root, [], query_randomization_info)
         return fields_and_paths
 
@@ -1110,10 +1076,15 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
         # minus 1 for mapping [1, N] to [0, N-1] of list indices
         return self.zipf_cdf_inverse(random.random(), self.H_list) - 1
 
-    def get_randomized_values(self, input_workload, input_params, query_randomization_info,
-                              get_standard_value=params.get_standard_value,
-                              get_standard_value_source=params.get_standard_value_source, # Made these configurable for simpler unit tests
-                              **kwargs):
+    def get_randomized_values(
+        self,
+        input_workload,
+        input_params,
+        query_randomization_info,
+        get_standard_value=params.get_standard_value,
+        get_standard_value_source=params.get_standard_value_source,  # Made these configurable for simpler unit tests
+        **kwargs,
+    ):
         # The queries as listed in operations/default.json don't have the index param,
         # unlike the custom ones you would specify in workload.py, so we have to add them ourselves
         if "index" not in input_params:
@@ -1134,16 +1105,21 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
         return input_params
 
     def create_param_source_lambda(self, op_name, get_standard_value, get_standard_value_source, get_query_randomization_info):
-        return lambda w, p, **kwargs: self.get_randomized_values(w, p, query_randomization_info=get_query_randomization_info(op_name),
-                                                                 get_standard_value=get_standard_value,
-                                                                 get_standard_value_source=get_standard_value_source,
-                                                                 op_name=op_name, **kwargs)
+        return lambda w, p, **kwargs: self.get_randomized_values(
+            w,
+            p,
+            query_randomization_info=get_query_randomization_info(op_name),
+            get_standard_value=get_standard_value,
+            get_standard_value_source=get_standard_value_source,
+            op_name=op_name,
+            **kwargs,
+        )
 
     def on_after_load_workload(self, input_workload, **kwargs):
         if not self.randomization_enabled:
             self.logger.info("Query randomization is disabled.")
             return input_workload
-        self.logger.info("Query randomization is enabled, with repeat frequency = %d, n = %d",self.rf, self.N)
+        self.logger.info("Query randomization is enabled, with repeat frequency = %d, n = %d", self.rf, self.N)
 
         # By default, use params for standard values and generate new standard values the first time an op/field is seen.
         # In unit tests, we should be able to supply our own sources independent of params.
@@ -1170,22 +1146,28 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
                     op_type = None
                     self.logger.info(
                         "Found operation %s in default schedule with type %s, which couldn't be converted to a known OperationType",
-                        leaf_task.operation.name, leaf_task.operation.type)
+                        leaf_task.operation.name,
+                        leaf_task.operation.type,
+                    )
                 if op_type == workload.OperationType.Search:
                     op_name = leaf_task.operation.name
                     param_source_name = op_name + "-randomized"
                     params.register_param_source_for_name(
                         param_source_name,
-                        self.create_param_source_lambda(op_name, get_standard_value=kwargs["get_standard_value"],
-                                                        get_standard_value_source=kwargs["get_standard_value_source"],
-                                                        get_query_randomization_info=params.get_query_randomization_info))
+                        self.create_param_source_lambda(
+                            op_name,
+                            get_standard_value=kwargs["get_standard_value"],
+                            get_standard_value_source=kwargs["get_standard_value_source"],
+                            get_query_randomization_info=params.get_query_randomization_info,
+                        ),
+                    )
                     leaf_task.operation.param_source = param_source_name
                     # Generate the right number of standard values for this field, if not already present
-                    for field_and_path in self.extract_fields_and_paths(leaf_task.operation.params,
-                                                                        params.get_query_randomization_info(op_name)):
+                    for field_and_path in self.extract_fields_and_paths(leaf_task.operation.params, params.get_query_randomization_info(op_name)):
                         if generate_new_standard_values:
                             params.generate_standard_values_if_absent(op_name, field_and_path[0], self.N)
         return input_workload
+
 
 class CompleteWorkloadParams:
     def __init__(self, user_specified_workload_params=None):
@@ -1231,7 +1213,7 @@ class WorkloadFileReader:
         self.read_workload = WorkloadSpecificationReader(
             workload_params=self.workload_params,
             complete_workload_params=self.complete_workload_params,
-            selected_test_procedure=cfg.opts("workload", "test_procedure.name", mandatory=False)
+            selected_test_procedure=cfg.opts("workload", "test_procedure.name", mandatory=False),
         )
         self.logger = logging.getLogger(__name__)
 
@@ -1250,9 +1232,7 @@ class WorkloadFileReader:
         # involving lines numbers and it also does not bloat Solr Orbit's log file so much.
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".json")
         try:
-            rendered = render_template_from_file(
-                workload_spec_file, self.workload_params,
-                complete_workload_params=self.complete_workload_params)
+            rendered = render_template_from_file(workload_spec_file, self.workload_params, complete_workload_params=self.complete_workload_params)
             with open(tmp.name, "wt", encoding="utf-8") as f:
                 f.write(rendered)
             self.logger.info("Final rendered workload for '%s' has been written to '%s'.", workload_spec_file, tmp.name)
@@ -1264,16 +1244,14 @@ class WorkloadFileReader:
 
         except jinja2.exceptions.TemplateSyntaxError as e:
             exception_message = f"Jinja2 Exception TemplateSyntaxError: {e}\n"
-            if 'endif' in exception_message:
-                exception_message = exception_message + \
-                    "There is an extra Jinja2 \"endif\" somewhere in the workload's files. " + \
-                    "Please remove it so that the workload can be rendered and run.\n"
-            if 'Missing end of raw directive' in exception_message:
-                exception_message += \
-                    "In the workload files, \"{% raw -%}\" was provided but is missing it's associated \"{% endraw -%}\" tag.\n"
+            if "endif" in exception_message:
+                exception_message = (
+                    exception_message + 'There is an extra Jinja2 "endif" somewhere in the workload\'s files. ' + "Please remove it so that the workload can be rendered and run.\n"
+                )
+            if "Missing end of raw directive" in exception_message:
+                exception_message += 'In the workload files, "{% raw -%}" was provided but is missing it\'s associated "{% endraw -%}" tag.\n'
 
             raise exceptions.SystemSetupError(exception_message)
-
 
         except json.JSONDecodeError as e:
             self.logger.exception("Could not load [%s].", workload_spec_file)
@@ -1288,20 +1266,23 @@ class WorkloadFileReader:
                 erroneous_lines.insert(line_idx - ctx_start + 1, "-" * (e.colno - 1) + "^ Error is here")
                 msg += " Lines containing the error:\n\n{}\n\n".format("\n".join(erroneous_lines))
             msg += "The complete workload has been written to '{}' for diagnosis. \n\n".format(tmp.name)
-            console_message = f"Suggestion: Verify that [{workload_name}] workload has correctly formatted JSON files and " + \
-                "Jinja Templates. For Jinja2 errors, consider using a live Jinja2 parser. " + \
-                f"See common workload formatting errors:{WorkloadFileReader.COMMON_WORKLOAD_FORMAT_ERRORS}"
+            console_message = (
+                f"Suggestion: Verify that [{workload_name}] workload has correctly formatted JSON files and "
+                + "Jinja Templates. For Jinja2 errors, consider using a live Jinja2 parser. "
+                + f"See common workload formatting errors:{WorkloadFileReader.COMMON_WORKLOAD_FORMAT_ERRORS}"
+            )
             msg += console_message
             raise WorkloadSyntaxError(msg)
 
         except Exception as e:
             # TypeErrors get logged here
             self.logger.exception("Could not load [%s].", workload_spec_file)
-            msg = "Could not load '{}'. The complete workload has been written to '{}' for diagnosis. \n\n".format(
-                workload_spec_file, tmp.name)
-            console_message = f"Suggestion: Verify that [{workload_name}] workload has correctly formatted JSON files and " + \
-                "Jinja Templates. For Jinja2 errors, consider using a live Jinja2 parser. " + \
-                f"See common workload formatting errors:{WorkloadFileReader.COMMON_WORKLOAD_FORMAT_ERRORS}"
+            msg = "Could not load '{}'. The complete workload has been written to '{}' for diagnosis. \n\n".format(workload_spec_file, tmp.name)
+            console_message = (
+                f"Suggestion: Verify that [{workload_name}] workload has correctly formatted JSON files and "
+                + "Jinja Templates. For Jinja2 errors, consider using a live Jinja2 parser. "
+                + f"See common workload formatting errors:{WorkloadFileReader.COMMON_WORKLOAD_FORMAT_ERRORS}"
+            )
             msg += console_message
             # Convert to string early on to avoid serialization errors with Jinja exceptions.
             raise WorkloadSyntaxError(msg, str(e))
@@ -1310,27 +1291,27 @@ class WorkloadFileReader:
         try:
             workload_version = int(raw_version)
         except ValueError:
-            raise exceptions.InvalidSyntax("version identifier for workload %s must be numeric but was [%s]" % (
-                workload_name, str(raw_version)))
+            raise exceptions.InvalidSyntax("version identifier for workload %s must be numeric but was [%s]" % (workload_name, str(raw_version)))
         if WorkloadFileReader.MINIMUM_SUPPORTED_TRACK_VERSION > workload_version:
-            raise exceptions.BenchmarkError("Workload {} is on version {} but needs to be updated at least to version {} to work with the "
-                                        "current version of Solr Orbit.".format(workload_name, workload_version,
-                                                                           WorkloadFileReader.MINIMUM_SUPPORTED_TRACK_VERSION))
+            raise exceptions.BenchmarkError(
+                "Workload {} is on version {} but needs to be updated at least to version {} to work with the current version of Solr Orbit.".format(
+                    workload_name, workload_version, WorkloadFileReader.MINIMUM_SUPPORTED_TRACK_VERSION
+                )
+            )
         if WorkloadFileReader.MAXIMUM_SUPPORTED_TRACK_VERSION < workload_version:
-            raise exceptions.BenchmarkError("Workload {} requires a newer version of Solr Orbit. "
-                        "Please upgrade Solr Orbit (supported workload version: {}, "
-                                        "required workload version: {}).".format(
-                                            workload_name,
-                                            WorkloadFileReader.MAXIMUM_SUPPORTED_TRACK_VERSION,
-                                                                              workload_version))
+            raise exceptions.BenchmarkError(
+                "Workload {} requires a newer version of Solr Orbit. Please upgrade Solr Orbit (supported workload version: {}, required workload version: {}).".format(
+                    workload_name, WorkloadFileReader.MAXIMUM_SUPPORTED_TRACK_VERSION, workload_version
+                )
+            )
         try:
             jsonschema.validate(workload_spec, self.workload_schema)
         except jsonschema.exceptions.ValidationError as ve:
             raise WorkloadSyntaxError(
                 "Workload '{}' is invalid.\n\nError details: {}\nInstance: {}\nPath: {}\nSchema path: {}".format(
-                    workload_name, ve.message, json.dumps(
-                        ve.instance, indent=4, sort_keys=True),
-                        ve.absolute_path, ve.absolute_schema_path))
+                    workload_name, ve.message, json.dumps(ve.instance, indent=4, sort_keys=True), ve.absolute_path, ve.absolute_schema_path
+                )
+            )
 
         try:
             current_workload = self.read_workload(workload_name, workload_spec, mapping_dir)
@@ -1347,19 +1328,20 @@ class WorkloadFileReader:
                 "All parameters exposed by this workload:\n"
                 "{}".format(
                     ",".join(opts.double_quoted_list_of(sorted(unused_user_defined_workload_params))),
-                    ",".join(opts.double_quoted_list_of(sorted(opts.make_list_of_close_matches(
-                        unused_user_defined_workload_params,
-                        self.complete_workload_params.workload_defined_params
-                    )))),
+                    ",".join(
+                        opts.double_quoted_list_of(
+                            sorted(opts.make_list_of_close_matches(unused_user_defined_workload_params, self.complete_workload_params.workload_defined_params))
+                        )
+                    ),
                     "\n".join(opts.bulleted_list_of(sorted(list(self.workload_params.keys())))),
-                    "\n".join(opts.bulleted_list_of(self.complete_workload_params.sorted_workload_defined_params))))
+                    "\n".join(opts.bulleted_list_of(self.complete_workload_params.sorted_workload_defined_params)),
+                )
+            )
 
             self.logger.critical(err_msg)
             # also dump the message on the console
             console.println(err_msg)
-            raise exceptions.WorkloadConfigError(
-                "Unused workload parameters {}.".format(sorted(unused_user_defined_workload_params))
-            )
+            raise exceptions.WorkloadConfigError("Unused workload parameters {}.".format(sorted(unused_user_defined_workload_params)))
         return current_workload
 
 
@@ -1411,10 +1393,7 @@ class WorkloadPluginReader:
 
     @property
     def meta_data(self):
-        return {
-            "benchmark_version": version.release_version(),
-            "async_runner": True
-        }
+        return {"benchmark_version": version.release_version(), "async_runner": True}
 
 
 class WorkloadSpecificationReader:
@@ -1435,15 +1414,11 @@ class WorkloadSpecificationReader:
         description = self._r(workload_specification, "description", mandatory=False, default_value="")
 
         meta_data = self._r(workload_specification, "meta", mandatory=False)
-        collections = [self._create_collection(col, mapping_dir)
-                       for col in self._r(workload_specification, "collections", mandatory=False, default_value=[])]
-        corpora = self._create_corpora(self._r(workload_specification, "corpora", mandatory=False, default_value=[]),
-                                       collections=collections)
+        collections = [self._create_collection(col, mapping_dir) for col in self._r(workload_specification, "collections", mandatory=False, default_value=[])]
+        corpora = self._create_corpora(self._r(workload_specification, "corpora", mandatory=False, default_value=[]), collections=collections)
         test_procedures = self._create_test_procedures(workload_specification)
         # at this point, *all* workload params must have been referenced in the templates
-        return workload.Workload(name=self.name, meta_data=meta_data,
-                                 description=description, test_procedures=test_procedures,
-                                 corpora=corpora, collections=collections)
+        return workload.Workload(name=self.name, meta_data=meta_data, description=description, test_procedures=test_procedures, corpora=corpora, collections=collections)
 
     def _error(self, msg):
         raise WorkloadSyntaxError("Workload '%s' is invalid. %s" % (self.name, msg))
@@ -1492,8 +1467,7 @@ class WorkloadSpecificationReader:
         self.logger.info("Loading template [%s].", description)
         register_all_params_in_workload(contents, self.complete_workload_params)
         try:
-            rendered = render_template(template_source=contents,
-                                       template_vars=self.workload_params)
+            rendered = render_template(template_source=contents, template_vars=self.workload_params)
             return json.loads(rendered)
         except Exception as e:
             self.logger.exception("Could not load file template for %s.", description)
@@ -1511,15 +1485,12 @@ class WorkloadSpecificationReader:
             known_corpora_names.add(name)
 
             meta_data = self._r(corpus_spec, "meta", error_ctx=name, mandatory=False)
-            streaming_ingestion = self._r(corpus_spec, "streaming-ingestion", mandatory=False,
-                                          default_value="")
+            streaming_ingestion = self._r(corpus_spec, "streaming-ingestion", mandatory=False, default_value="")
             corpus = workload.DocumentCorpus(name=name, streaming_ingestion=streaming_ingestion, meta_data=meta_data)
             # defaults on corpus level
             default_base_url = self._r(corpus_spec, "base-url", mandatory=False, default_value=None)
-            default_source_format = self._r(corpus_spec, "source-format", mandatory=False,
-                                            default_value=workload.Documents.SOURCE_FORMAT_BULK)
-            default_action_and_meta_data = self._r(corpus_spec, "includes-action-and-meta-data", mandatory=False,
-                                                   default_value=False)
+            default_source_format = self._r(corpus_spec, "source-format", mandatory=False, default_value=workload.Documents.SOURCE_FORMAT_BULK)
+            default_action_and_meta_data = self._r(corpus_spec, "includes-action-and-meta-data", mandatory=False, default_value=False)
             corpus_target_idx = None
 
             if len(collections) == 1:
@@ -1548,30 +1519,31 @@ class WorkloadSpecificationReader:
                     uncompressed_bytes = self._r(doc_spec, "uncompressed-bytes", mandatory=False)
                     doc_meta_data = self._r(doc_spec, "meta", error_ctx=name, mandatory=False)
 
-                    includes_action_and_meta_data = self._r(doc_spec, "includes-action-and-meta-data", mandatory=False,
-                                                            default_value=default_action_and_meta_data)
+                    includes_action_and_meta_data = self._r(doc_spec, "includes-action-and-meta-data", mandatory=False, default_value=default_action_and_meta_data)
                     if includes_action_and_meta_data:
                         target_idx = None
                         target_type = None
                     else:
                         target_type = None
-                        target_idx = self._r(doc_spec, "target-collection",
-                                             mandatory=len(collections) > 0 and corpus_target_idx is None,
-                                             default_value=corpus_target_idx,
-                                             error_ctx=docs)
+                        target_idx = self._r(
+                            doc_spec, "target-collection", mandatory=len(collections) > 0 and corpus_target_idx is None, default_value=corpus_target_idx, error_ctx=docs
+                        )
 
-                    docs = workload.Documents(source_format=source_format,
-                                             document_file=document_file,
-                                             document_file_parts=document_file_parts,
-                                             document_archive=document_archive,
-                                             base_url=base_url,
-                                             source_url=source_url,
-                                             includes_action_and_meta_data=includes_action_and_meta_data,
-                                             number_of_documents=num_docs,
-                                             compressed_size_in_bytes=compressed_bytes,
-                                             uncompressed_size_in_bytes=uncompressed_bytes,
-                                             target_collection=target_idx, target_type=target_type,
-                                             meta_data=doc_meta_data)
+                    docs = workload.Documents(
+                        source_format=source_format,
+                        document_file=document_file,
+                        document_file_parts=document_file_parts,
+                        document_archive=document_archive,
+                        base_url=base_url,
+                        source_url=source_url,
+                        includes_action_and_meta_data=includes_action_and_meta_data,
+                        number_of_documents=num_docs,
+                        compressed_size_in_bytes=compressed_bytes,
+                        uncompressed_size_in_bytes=uncompressed_bytes,
+                        target_collection=target_idx,
+                        target_type=target_type,
+                        meta_data=doc_meta_data,
+                    )
                     corpus.documents.append(docs)
                 else:
                     self._error("Unknown source-format [%s] in document corpus [%s]." % (source_format, name))
@@ -1596,8 +1568,7 @@ class WorkloadSpecificationReader:
             default = number_of_test_procedures == 1 or self._r(test_procedure_spec, "default", error_ctx=name, mandatory=False)
             selected = number_of_test_procedures == 1 or self.selected_test_procedure == name
             if default and default_test_procedure is not None:
-                self._error("Both '%s' and '%s' are defined as default test_procedures. Please define only one of them as default."
-                            % (default_test_procedure.name, name))
+                self._error("Both '%s' and '%s' are defined as default test_procedures. Please define only one of them as default." % (default_test_procedure.name, name))
             if name in known_test_procedure_names:
                 self._error("Duplicate test_procedure with name '%s'." % name)
             known_test_procedure_names.add(name)
@@ -1606,8 +1577,9 @@ class WorkloadSpecificationReader:
 
             for op in self._r(test_procedure_spec, "schedule", error_ctx=name):
                 if "clients_list" in op:
-                    self.logger.info("Clients list specified: %s. Running multiple search tasks, "\
-                                     "each scheduled with the corresponding number of clients from the list.", op["clients_list"])
+                    self.logger.info(
+                        "Clients list specified: %s. Running multiple search tasks, each scheduled with the corresponding number of clients from the list.", op["clients_list"]
+                    )
                     for num_clients in op["clients_list"]:
                         op["clients"] = num_clients
 
@@ -1630,23 +1602,27 @@ class WorkloadSpecificationReader:
             for task in schedule:
                 for sub_task in task:
                     if sub_task.name in known_task_names:
-                        self._error("TestProcedure '%s' contains multiple tasks with the name '%s'. Please use the task's name property to "
-                                    "assign a unique name for each task." % (name, sub_task.name))
+                        self._error(
+                            "TestProcedure '%s' contains multiple tasks with the name '%s'. Please use the task's name property to "
+                            "assign a unique name for each task." % (name, sub_task.name)
+                        )
                     else:
                         known_task_names.add(sub_task.name)
 
             # merge params
             final_test_procedure_params = dict(collections.merge_dicts(workload_params, test_procedure_params))
 
-            test_procedure = workload.TestProcedure(name=name,
-                                        parameters=final_test_procedure_params,
-                                        meta_data=meta_data,
-                                        description=description,
-                                        user_info=user_info,
-                                        default=default,
-                                        selected=selected,
-                                        auto_generated=auto_generated,
-                                        schedule=schedule)
+            test_procedure = workload.TestProcedure(
+                name=name,
+                parameters=final_test_procedure_params,
+                meta_data=meta_data,
+                description=description,
+                user_info=user_info,
+                default=default,
+                selected=selected,
+                auto_generated=auto_generated,
+                schedule=schedule,
+            )
             if default:
                 default_test_procedure = test_procedure
 
@@ -1654,16 +1630,16 @@ class WorkloadSpecificationReader:
 
         if test_procedures and default_test_procedure is None:
             self._error(
-                "No default test_procedure specified. Please edit the workload and add \"default\": true to one of the test_procedures %s."
-                        % ", ".join([c.name for c in test_procedures]))
+                'No default test_procedure specified. Please edit the workload and add "default": true to one of the test_procedures %s.'
+                % ", ".join([c.name for c in test_procedures])
+            )
         return test_procedures
 
     def _rename_task_based_on_num_clients(self, name: str, num_clients: int) -> str:
         has_underscore = "_" in name
         has_hyphen = "-" in name
         if has_underscore and has_hyphen:
-            self.logger.warning("The test procedure name %s contains a mix of _ and -. "\
-                                "Consider changing the name to avoid frustrating bugs in the future.", name)
+            self.logger.warning("The test procedure name %s contains a mix of _ and -. Consider changing the name to avoid frustrating bugs in the future.", name)
             return name + "_" + str(num_clients) + "_clients"
         elif has_hyphen:
             return name + "-" + str(num_clients) + "-clients"
@@ -1686,14 +1662,9 @@ class WorkloadSpecificationReader:
         elif test_procedures is not None:
             return test_procedures, False
         elif schedule is not None:
-            return [{
-                "name": "default",
-                "schedule": schedule
-            }], True
+            return [{"name": "default", "schedule": schedule}], True
         else:
-            raise AssertionError(
-                "Unexpected: schedule=[{}], test_procedure=[{}], test_procedures=[{}]".format(
-                    schedule, test_procedure, test_procedures))
+            raise AssertionError("Unexpected: schedule=[{}], test_procedure=[{}], test_procedures=[{}]".format(schedule, test_procedure, test_procedures))
 
     def parse_parallel(self, ops_spec, ops, test_procedure_name):
         # use same default values as #parseTask() in case the 'parallel' element did not specify anything
@@ -1709,25 +1680,38 @@ class WorkloadSpecificationReader:
         # now descent to each operation
         tasks = []
         for task in self._r(ops_spec, "tasks", error_ctx="parallel"):
-            tasks.append(self.parse_task(task, ops, test_procedure_name, default_warmup_iterations, default_iterations,
-                                         default_warmup_time_period, default_time_period, default_ramp_up_time_period,
-                                         default_ramp_down_time_period, completed_by))
+            tasks.append(
+                self.parse_task(
+                    task,
+                    ops,
+                    test_procedure_name,
+                    default_warmup_iterations,
+                    default_iterations,
+                    default_warmup_time_period,
+                    default_time_period,
+                    default_ramp_up_time_period,
+                    default_ramp_down_time_period,
+                    completed_by,
+                )
+            )
 
         for task in tasks:
             if task.ramp_up_time_period != default_ramp_up_time_period:
                 if default_ramp_up_time_period is None:
-                    self._error(f"task '{task.name}' in 'parallel' element of test-procedure '{test_procedure_name}' specifies "
-                                f"a ramp-up-time-period but it is only allowed on the 'parallel' element.")
+                    self._error(
+                        f"task '{task.name}' in 'parallel' element of test-procedure '{test_procedure_name}' specifies "
+                        f"a ramp-up-time-period but it is only allowed on the 'parallel' element."
+                    )
                 else:
-                    self._error(f"task '{task.name}' specifies a different ramp-up-time-period than its enclosing "
-                                f"'parallel' element in test-procedure '{test_procedure_name}'.")
+                    self._error(f"task '{task.name}' specifies a different ramp-up-time-period than its enclosing 'parallel' element in test-procedure '{test_procedure_name}'.")
             if task.ramp_down_time_period != default_ramp_down_time_period:
                 if default_ramp_down_time_period is None:
-                    self._error(f"task '{task.name}' in 'parallel' element of test-procedure '{test_procedure_name}' specifies "
-                                f"a ramp-down-time-period but it is only allowed on the 'parallel' element.")
+                    self._error(
+                        f"task '{task.name}' in 'parallel' element of test-procedure '{test_procedure_name}' specifies "
+                        f"a ramp-down-time-period but it is only allowed on the 'parallel' element."
+                    )
                 else:
-                    self._error(f"task '{task.name}' specifies a different ramp-down-time-period than its enclosing "
-                                f"'parallel' element in test-procedure '{test_procedure_name}'.")
+                    self._error(f"task '{task.name}' specifies a different ramp-down-time-period than its enclosing 'parallel' element in test-procedure '{test_procedure_name}'.")
         if completed_by:
             completion_task = None
             for task in tasks:
@@ -1736,15 +1720,28 @@ class WorkloadSpecificationReader:
                 elif task.completes_parent:
                     self._error(
                         "'parallel' element for test_procedure '%s' contains multiple tasks with the name '%s' which are marked with "
-                                "'completed-by' but only task is allowed to match." % (test_procedure_name, completed_by))
+                        "'completed-by' but only task is allowed to match." % (test_procedure_name, completed_by)
+                    )
             if not completion_task:
-                self._error("'parallel' element for test_procedure '%s' is marked with 'completed-by' with task name '%s' but no task with "
-                            "this name exists." % (test_procedure_name, completed_by))
+                self._error(
+                    "'parallel' element for test_procedure '%s' is marked with 'completed-by' with task name '%s' but no task with "
+                    "this name exists." % (test_procedure_name, completed_by)
+                )
         return workload.Parallel(tasks, clients)
 
-    def parse_task(self, task_spec, ops, test_procedure_name, default_warmup_iterations=None, default_iterations=None,
-                   default_warmup_time_period=None, default_time_period=None, default_ramp_up_time_period=None, default_ramp_down_time_period=None,
-                   completed_by_name=None):
+    def parse_task(
+        self,
+        task_spec,
+        ops,
+        test_procedure_name,
+        default_warmup_iterations=None,
+        default_iterations=None,
+        default_warmup_time_period=None,
+        default_time_period=None,
+        default_ramp_up_time_period=None,
+        default_ramp_down_time_period=None,
+        completed_by_name=None,
+    ):
 
         op_spec = task_spec["operation"]
         if isinstance(op_spec, str) and op_spec in ops:
@@ -1755,62 +1752,71 @@ class WorkloadSpecificationReader:
 
         schedule = self._r(task_spec, "schedule", error_ctx=op.name, mandatory=False)
         task_name = self._r(task_spec, "name", error_ctx=op.name, mandatory=False, default_value=op.name)
-        task = workload.Task(name=task_name,
-                          operation=op,
-                          tags=self._r(task_spec, "tags", error_ctx=op.name, mandatory=False),
-                          meta_data=self._r(task_spec, "meta", error_ctx=op.name, mandatory=False),
-                          warmup_iterations=self._r(task_spec, "warmup-iterations", error_ctx=op.name, mandatory=False,
-                                                    default_value=default_warmup_iterations),
-                          iterations=self._r(task_spec, "iterations", error_ctx=op.name, mandatory=False, default_value=default_iterations),
-                          warmup_time_period=self._r(task_spec, "warmup-time-period", error_ctx=op.name,
-                                                     mandatory=False,
-                                                     default_value=default_warmup_time_period),
-                          time_period=self._r(task_spec, "time-period", error_ctx=op.name, mandatory=False,
-                                              default_value=default_time_period),
-                          ramp_up_time_period=self._r(task_spec, "ramp-up-time-period", error_ctx=op.name,
-                                                         mandatory=False, default_value=default_ramp_up_time_period),
-                          ramp_down_time_period=self._r(task_spec, "ramp-down-time-period", error_ctx=op.name,
-                                                           mandatory=False, default_value=default_ramp_down_time_period),
-                          clients=self._r(task_spec, "clients", error_ctx=op.name, mandatory=False, default_value=1),
-                          completes_parent=(task_name == completed_by_name),
-                          schedule=schedule,
-                          # this is to provide scheduler-specific parameters for custom schedulers.
-                          params=task_spec)
+        task = workload.Task(
+            name=task_name,
+            operation=op,
+            tags=self._r(task_spec, "tags", error_ctx=op.name, mandatory=False),
+            meta_data=self._r(task_spec, "meta", error_ctx=op.name, mandatory=False),
+            warmup_iterations=self._r(task_spec, "warmup-iterations", error_ctx=op.name, mandatory=False, default_value=default_warmup_iterations),
+            iterations=self._r(task_spec, "iterations", error_ctx=op.name, mandatory=False, default_value=default_iterations),
+            warmup_time_period=self._r(task_spec, "warmup-time-period", error_ctx=op.name, mandatory=False, default_value=default_warmup_time_period),
+            time_period=self._r(task_spec, "time-period", error_ctx=op.name, mandatory=False, default_value=default_time_period),
+            ramp_up_time_period=self._r(task_spec, "ramp-up-time-period", error_ctx=op.name, mandatory=False, default_value=default_ramp_up_time_period),
+            ramp_down_time_period=self._r(task_spec, "ramp-down-time-period", error_ctx=op.name, mandatory=False, default_value=default_ramp_down_time_period),
+            clients=self._r(task_spec, "clients", error_ctx=op.name, mandatory=False, default_value=1),
+            completes_parent=(task_name == completed_by_name),
+            schedule=schedule,
+            # this is to provide scheduler-specific parameters for custom schedulers.
+            params=task_spec,
+        )
         if task.warmup_iterations is not None and task.time_period is not None:
             self._error(
                 "Operation '%s' in test_procedure '%s' defines '%d' warmup iterations and a time period of '%d' seconds. Please do not "
-                "mix time periods and iterations." % (op.name, test_procedure_name, task.warmup_iterations, task.time_period))
+                "mix time periods and iterations." % (op.name, test_procedure_name, task.warmup_iterations, task.time_period)
+            )
         elif task.warmup_time_period is not None and task.iterations is not None:
             self._error(
                 "Operation '%s' in test_procedure '%s' defines a warmup time period of '%d' seconds and '%d' iterations. Please do not "
-                "mix time periods and iterations." % (op.name, test_procedure_name, task.warmup_time_period, task.iterations))
+                "mix time periods and iterations." % (op.name, test_procedure_name, task.warmup_time_period, task.iterations)
+            )
 
         if (task.warmup_iterations is not None or task.iterations is not None) and task.ramp_up_time_period is not None:
-            self._error(f"Operation '{op.name}' in test_procedure '{test_procedure_name}' defines a ramp-up time period of "
-                        f"{task.ramp_up_time_period} seconds as well as {task.warmup_iterations} warmup iterations and "
-                        f"{task.iterations} iterations but mixing time periods and iterations is not allowed.")
+            self._error(
+                f"Operation '{op.name}' in test_procedure '{test_procedure_name}' defines a ramp-up time period of "
+                f"{task.ramp_up_time_period} seconds as well as {task.warmup_iterations} warmup iterations and "
+                f"{task.iterations} iterations but mixing time periods and iterations is not allowed."
+            )
 
         if task.ramp_up_time_period is not None:
             if task.warmup_time_period is None:
-                self._error(f"Operation '{op.name}' in test_procedure '{test_procedure_name}' defines a ramp-up time period of "
-                            f"{task.ramp_up_time_period} seconds but no warmup-time-period.")
+                self._error(
+                    f"Operation '{op.name}' in test_procedure '{test_procedure_name}' defines a ramp-up time period of "
+                    f"{task.ramp_up_time_period} seconds but no warmup-time-period."
+                )
             elif task.warmup_time_period < task.ramp_up_time_period:
-                self._error(f"The warmup-time-period of operation '{op.name}' in test_procedure '{test_procedure_name}' is "
-                            f"{task.warmup_time_period} seconds but must be greater than or equal to the "
-                            f"ramp-up-time-period of {task.ramp_up_time_period} seconds.")
+                self._error(
+                    f"The warmup-time-period of operation '{op.name}' in test_procedure '{test_procedure_name}' is "
+                    f"{task.warmup_time_period} seconds but must be greater than or equal to the "
+                    f"ramp-up-time-period of {task.ramp_up_time_period} seconds."
+                )
         if task.ramp_down_time_period is not None:
             if task.time_period is None:
-                self._error(f"Operation '{op.name}' in test_procedure '{test_procedure_name}' defines a ramp-down time period of "
-                            f"{task.ramp_down_time_period} seconds but no time-period.")
+                self._error(
+                    f"Operation '{op.name}' in test_procedure '{test_procedure_name}' defines a ramp-down time period of {task.ramp_down_time_period} seconds but no time-period."
+                )
             elif task.time_period < task.ramp_down_time_period:
-                self._error(f"The time-period of operation '{op.name}' in test_procedure '{test_procedure_name}' is "
-                            f"{task.time_period} seconds but must be greater than or equal to the "
-                            f"ramp-down-time-period of {task.ramp_down_time_period} seconds.")
+                self._error(
+                    f"The time-period of operation '{op.name}' in test_procedure '{test_procedure_name}' is "
+                    f"{task.time_period} seconds but must be greater than or equal to the "
+                    f"ramp-down-time-period of {task.ramp_down_time_period} seconds."
+                )
 
         if (task.warmup_iterations is not None or task.iterations is not None) and task.ramp_down_time_period is not None:
-            self._error(f"Operation '{op.name}' in test_procedure '{test_procedure_name}' defines a ramp-down time period of "
-                        f"{task.ramp_down_time_period} seconds as well as {task.warmup_iterations} warmup iterations and "
-                        f"{task.iterations} iterations but mixing time periods and iterations is not allowed.")
+            self._error(
+                f"Operation '{op.name}' in test_procedure '{test_procedure_name}' defines a ramp-down time period of "
+                f"{task.ramp_down_time_period} seconds as well as {task.warmup_iterations} warmup iterations and "
+                f"{task.iterations} iterations but mixing time periods and iterations is not allowed."
+            )
 
         return task
 
@@ -1853,8 +1859,6 @@ class WorkloadSpecificationReader:
             self.logger.info("Using user-provided operation type [%s] for operation [%s].", op_type_name, op_name)
 
         try:
-            return workload.Operation(name=op_name, meta_data=meta_data,
-            operation_type=op_type_name, params=params,
-            param_source=param_source)
+            return workload.Operation(name=op_name, meta_data=meta_data, operation_type=op_type_name, params=params, param_source=param_source)
         except exceptions.InvalidSyntax as e:
             raise WorkloadSyntaxError("Invalid operation [%s]: %s" % (op_name, str(e)))

@@ -12,17 +12,8 @@ class JavaHomeResolverTests(TestCase):
         self.java_home_resolver = JavaHomeResolver(self.executor)
         self.java_home_resolver.jdk_resolver = Mock()
 
-        self.variables = {
-            "system": {
-                "runtime": {
-                    "jdk": {
-                        "version": "12,11,10,9,8"
-                    }
-                }
-            }
-        }
-        self.cluster_config = ClusterConfigInstance("fake_cluster_config", "/path/to/root",
-                                                                 ["/path/to/config"], variables=self.variables)
+        self.variables = {"system": {"runtime": {"jdk": {"version": "12,11,10,9,8"}}}}
+        self.cluster_config = ClusterConfigInstance("fake_cluster_config", "/path/to/root", ["/path/to/config"], variables=self.variables)
 
     def test_resolves_java_home_for_default_runtime_jdk(self):
         self.java_home_resolver.jdk_resolver.resolve_jdk_path.return_value = (12, "/opt/jdk12")

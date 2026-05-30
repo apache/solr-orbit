@@ -13,7 +13,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -61,7 +61,7 @@ def create_plot():
 
 
 def present(a_plot, name):
-    a_plot.savefig("%s.png" % name, bbox_inches='tight')
+    a_plot.savefig("%s.png" % name, bbox_inches="tight")
     # plt.show()  # alternatively only show it
     # explicitly close to free resources
     a_plot.close()
@@ -96,11 +96,13 @@ def plot_service_time(raw_data, label_key):
             service_time_metrics = op_metrics["service_time"]
             if operation not in service_time_per_op:
                 service_time_per_op[operation] = []
-            service_time_per_op[operation].append({
-                "data_series": data_series,
-                "percentiles": [decode_percentile_key(p) for p in service_time_metrics.keys()],
-                "percentile_values": list(service_time_metrics.values()),
-            })
+            service_time_per_op[operation].append(
+                {
+                    "data_series": data_series,
+                    "percentiles": [decode_percentile_key(p) for p in service_time_metrics.keys()],
+                    "percentile_values": list(service_time_metrics.values()),
+                }
+            )
 
     for op, results in service_time_per_op.items():
         _, ax = create_plot()
@@ -109,7 +111,7 @@ def plot_service_time(raw_data, label_key):
 
         for candidate in results:
             label = candidate["data_series"]
-            series = ax.plot(candidate["percentiles"], candidate["percentile_values"], marker='.', label=label)
+            series = ax.plot(candidate["percentiles"], candidate["percentile_values"], marker=".", label=label)
             legend_handles.append(series[0])
             legend_labels.append(label)
 
@@ -120,7 +122,7 @@ def plot_service_time(raw_data, label_key):
 
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        ax.legend(legend_handles, legend_labels, loc='center left', bbox_to_anchor=(1, 0.5))
+        ax.legend(legend_handles, legend_labels, loc="center left", bbox_to_anchor=(1, 0.5))
 
         present(plt, "service_time_%s" % op)
 
@@ -136,13 +138,15 @@ def plot_throughput(raw_data, label_key):
             throughput_metrics = op_metrics["throughput"]
             if operation not in throughput_per_op:
                 throughput_per_op[operation] = []
-            throughput_per_op[operation].append({
-                "data_series": data_series,
-                "max": throughput_metrics["max"],
-                "median": throughput_metrics["median"],
-                "min": throughput_metrics["min"],
-                "unit": throughput_metrics["unit"]
-            })
+            throughput_per_op[operation].append(
+                {
+                    "data_series": data_series,
+                    "max": throughput_metrics["max"],
+                    "median": throughput_metrics["median"],
+                    "min": throughput_metrics["min"],
+                    "unit": throughput_metrics["unit"],
+                }
+            )
 
     for op, results in throughput_per_op.items():
         _, ax = create_plot()
@@ -211,7 +215,7 @@ def plot_gc_times(raw_data, label_key):
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
-    ax.legend([old_bar[0], young_bar[0]], ["Old GC", "Young GC"], loc='center left', bbox_to_anchor=(1, 0.5))
+    ax.legend([old_bar[0], young_bar[0]], ["Old GC", "Young GC"], loc="center left", bbox_to_anchor=(1, 0.5))
     ax.set_ylim(ymin=0)
 
     present(plt, "gc_times")
@@ -230,11 +234,10 @@ def parse_args():
         "--label",
         help="defines which attribute to use for labelling data series (default: test-run-timestamp).",
         # choices=["environment", "test-run-timestamp", "user-tags", "test_procedure", "cluster-config-instance"],
-        default="test-run-timestamp")
+        default="test-run-timestamp",
+    )
 
-    parser.add_argument("path",
-                        nargs="+",
-                        help="Full path to one or more test_run.json files")
+    parser.add_argument("path", nargs="+", help="Full path to one or more test_run.json files")
 
     return parser.parse_args()
 
@@ -250,5 +253,5 @@ def main():
     plot(series, args.label)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

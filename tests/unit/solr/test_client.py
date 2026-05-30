@@ -78,6 +78,7 @@ class TestSolrAdminClientUploadConfigset(unittest.TestCase):
     def test_upload_configset_success(self):
         import tempfile
         import os
+
         client = self._make_client_with_mock_session()
         resp = _make_response(status_code=200)
         client._session.put.return_value = resp
@@ -100,6 +101,7 @@ class TestSolrAdminClientUploadConfigset(unittest.TestCase):
     def test_upload_configset_failure_raises(self):
         import tempfile
         import os
+
         client = self._make_client_with_mock_session()
         resp = _make_response(status_code=500, text="Server Error")
         client._session.post.return_value = resp
@@ -152,8 +154,7 @@ class TestSolrAdminClientCreateCollection(unittest.TestCase):
         client = self._make_client_with_mock_session()
         resp = _make_response(status_code=200, json_data={"responseHeader": {"status": 0}})
         client._session.post.return_value = resp
-        client.create_collection("my-coll", "my-config",
-                                 tlog_replicas=2, pull_replicas=1)
+        client.create_collection("my-coll", "my-config", tlog_replicas=2, pull_replicas=1)
         _, kwargs = client._session.post.call_args
         payload = kwargs["json"]
         self.assertEqual(2, payload["tlogReplicas"])
@@ -225,6 +226,7 @@ class TestBuildConfigsetZip(unittest.TestCase):
         import tempfile
         import os
         import zipfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             conf = os.path.join(tmpdir, "conf")
             os.makedirs(conf)

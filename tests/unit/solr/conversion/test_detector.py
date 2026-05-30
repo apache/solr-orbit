@@ -30,22 +30,12 @@ class TestWorkloadDetection(unittest.TestCase):
 
     def test_detect_solr_workload_with_collections_key(self):
         """Test detection of Solr workload by collections key."""
-        workload = {
-            "name": "test-workload",
-            "collections": [
-                {"name": "my-collection", "configset": "my-configset"}
-            ]
-        }
+        workload = {"name": "test-workload", "collections": [{"name": "my-collection", "configset": "my-configset"}]}
         self.assertFalse(is_opensearch_workload(workload))
 
     def test_detect_opensearch_workload_with_indices_key(self):
         """Test detection of OpenSearch workload by indices key."""
-        workload = {
-            "name": "test-workload",
-            "indices": [
-                {"name": "my-index", "body": "index.json"}
-            ]
-        }
+        workload = {"name": "test-workload", "indices": [{"name": "my-index", "body": "index.json"}]}
         self.assertTrue(is_opensearch_workload(workload))
 
     def test_detect_solr_by_operation_types(self):
@@ -59,9 +49,9 @@ class TestWorkloadDetection(unittest.TestCase):
                         {"operation": {"operation-type": "create-collection"}},
                         {"operation": {"operation-type": "bulk-index"}},
                         {"operation": {"operation-type": "commit"}},
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
         self.assertFalse(is_opensearch_workload(workload))
 
@@ -76,9 +66,9 @@ class TestWorkloadDetection(unittest.TestCase):
                         {"operation": {"operation-type": "create-index"}},
                         {"operation": {"operation-type": "index"}},
                         {"operation": {"operation-type": "force-merge"}},
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
         self.assertTrue(is_opensearch_workload(workload))
 
@@ -86,37 +76,13 @@ class TestWorkloadDetection(unittest.TestCase):
         """Test detection based on param-source values."""
         opensearch_workload = {
             "name": "test-workload",
-            "challenges": [
-                {
-                    "name": "default",
-                    "schedule": [
-                        {
-                            "operation": {
-                                "operation-type": "search",
-                                "param-source": "opensearch-search-source"
-                            }
-                        }
-                    ]
-                }
-            ]
+            "challenges": [{"name": "default", "schedule": [{"operation": {"operation-type": "search", "param-source": "opensearch-search-source"}}]}],
         }
         self.assertTrue(is_opensearch_workload(opensearch_workload))
 
         solr_workload = {
             "name": "test-workload",
-            "challenges": [
-                {
-                    "name": "default",
-                    "schedule": [
-                        {
-                            "operation": {
-                                "operation-type": "search",
-                                "param-source": "solr-search-source"
-                            }
-                        }
-                    ]
-                }
-            ]
+            "challenges": [{"name": "default", "schedule": [{"operation": {"operation-type": "search", "param-source": "solr-search-source"}}]}],
         }
         self.assertFalse(is_opensearch_workload(solr_workload))
 
@@ -135,12 +101,12 @@ class TestWorkloadDetection(unittest.TestCase):
                     "name": "default",
                     "schedule": [
                         {"operation": {"operation-type": "create-collection"}},  # Solr +2
-                        {"operation": {"operation-type": "bulk-index"}},         # Solr +2
-                        {"operation": {"operation-type": "commit"}},             # Solr +2
-                        {"operation": {"operation-type": "search"}},             # Neutral
-                    ]
+                        {"operation": {"operation-type": "bulk-index"}},  # Solr +2
+                        {"operation": {"operation-type": "commit"}},  # Solr +2
+                        {"operation": {"operation-type": "search"}},  # Neutral
+                    ],
                 }
-            ]
+            ],
         }
         self.assertFalse(is_opensearch_workload(workload))
 

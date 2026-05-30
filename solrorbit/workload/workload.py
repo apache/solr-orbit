@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -33,7 +33,6 @@ from enum import Enum, unique, auto
 from solrorbit import exceptions
 
 
-
 class Collection:
     """
     Defines a Solr collection (Solr-native equivalent of Index).
@@ -48,10 +47,9 @@ class Collection:
         tlog_replicas:      TLOG replicas per shard (default: 0).
     """
 
-    def __init__(self, name: str, configset: str = None,
-                 configset_path: str = None,
-                 num_shards: int = 1, replication_factor: int = 1,
-                 pull_replicas: int = 0, tlog_replicas: int = 0):
+    def __init__(
+        self, name: str, configset: str = None, configset_path: str = None, num_shards: int = 1, replication_factor: int = 1, pull_replicas: int = 0, tlog_replicas: int = 0
+    ):
         self.name = name
         self.configset = configset or name
         self.configset_path = configset_path
@@ -86,17 +84,28 @@ class Collection:
         return self.name == other.name
 
 
-
 class Documents:
     SOURCE_FORMAT_BULK = "bulk"
     SOURCE_FORMAT_HDF5 = "hdf5"
     SOURCE_FORMAT_BIG_ANN = "big-ann"
     SUPPORTED_SOURCE_FORMAT = [SOURCE_FORMAT_BULK, SOURCE_FORMAT_HDF5, SOURCE_FORMAT_BIG_ANN]
 
-    def __init__(self, source_format, document_file=None, document_file_parts=None, document_archive=None, base_url=None, source_url=None,
-                 includes_action_and_meta_data=False,
-                 number_of_documents=0, compressed_size_in_bytes=0, uncompressed_size_in_bytes=0, target_collection=None,
-                 target_type=None, meta_data=None):
+    def __init__(
+        self,
+        source_format,
+        document_file=None,
+        document_file_parts=None,
+        document_archive=None,
+        base_url=None,
+        source_url=None,
+        includes_action_and_meta_data=False,
+        number_of_documents=0,
+        compressed_size_in_bytes=0,
+        uncompressed_size_in_bytes=0,
+        target_collection=None,
+        target_type=None,
+        meta_data=None,
+    ):
         """
 
         :param source_format: The format of these documents. Mandatory.
@@ -199,19 +208,49 @@ class Documents:
         return ", ".join(r)
 
     def __hash__(self):
-        return hash(self.source_format) ^ hash(self.document_file) ^ hash(self.document_archive) ^ hash(self.base_url) ^ \
-               hash(self.source_url) ^ hash(self.includes_action_and_meta_data) ^ hash(self.number_of_documents) ^ \
-               hash(self.compressed_size_in_bytes) ^ hash(self.uncompressed_size_in_bytes) ^ hash(self.target_collection) ^ \
-               hash(self.target_type) ^ hash(frozenset(self.meta_data.items()))
+        return (
+            hash(self.source_format)
+            ^ hash(self.document_file)
+            ^ hash(self.document_archive)
+            ^ hash(self.base_url)
+            ^ hash(self.source_url)
+            ^ hash(self.includes_action_and_meta_data)
+            ^ hash(self.number_of_documents)
+            ^ hash(self.compressed_size_in_bytes)
+            ^ hash(self.uncompressed_size_in_bytes)
+            ^ hash(self.target_collection)
+            ^ hash(self.target_type)
+            ^ hash(frozenset(self.meta_data.items()))
+        )
 
     def __eq__(self, othr):
-        return (isinstance(othr, type(self)) and
-                (self.source_format, self.document_file, self.document_archive, self.base_url, self.source_url,
-                 self.includes_action_and_meta_data, self.number_of_documents, self.compressed_size_in_bytes,
-                 self.uncompressed_size_in_bytes, self.target_collection, self.target_type, self.meta_data) ==
-                (othr.source_format, othr.document_file, othr.document_archive, othr.base_url, othr.source_url,
-                 othr.includes_action_and_meta_data, othr.number_of_documents, othr.compressed_size_in_bytes,
-                 othr.uncompressed_size_in_bytes, othr.target_collection, othr.target_type, othr.meta_data))
+        return isinstance(othr, type(self)) and (
+            self.source_format,
+            self.document_file,
+            self.document_archive,
+            self.base_url,
+            self.source_url,
+            self.includes_action_and_meta_data,
+            self.number_of_documents,
+            self.compressed_size_in_bytes,
+            self.uncompressed_size_in_bytes,
+            self.target_collection,
+            self.target_type,
+            self.meta_data,
+        ) == (
+            othr.source_format,
+            othr.document_file,
+            othr.document_archive,
+            othr.base_url,
+            othr.source_url,
+            othr.includes_action_and_meta_data,
+            othr.number_of_documents,
+            othr.compressed_size_in_bytes,
+            othr.uncompressed_size_in_bytes,
+            othr.target_collection,
+            othr.target_type,
+            othr.meta_data,
+        )
 
 
 class DocumentCorpus:
@@ -262,8 +301,7 @@ class DocumentCorpus:
                 continue
 
             filtered.append(d)
-        return DocumentCorpus(self.name, filtered, streaming_ingestion=self.streaming_ingestion,
-                              meta_data=dict(self.meta_data))
+        return DocumentCorpus(self.name, filtered, streaming_ingestion=self.streaming_ingestion, meta_data=dict(self.meta_data))
 
     def union(self, other):
         """
@@ -282,10 +320,9 @@ class DocumentCorpus:
         if self is other:
             return self
         else:
-            return DocumentCorpus(name=self.name,
-                                  documents=list(set(self.documents).union(other.documents)),
-                                  streaming_ingestion=self.streaming_ingestion,
-                                  meta_data=dict(self.meta_data))
+            return DocumentCorpus(
+                name=self.name, documents=list(set(self.documents).union(other.documents)), streaming_ingestion=self.streaming_ingestion, meta_data=dict(self.meta_data)
+            )
 
     def __str__(self):
         return self.name
@@ -300,9 +337,7 @@ class DocumentCorpus:
         return hash(self.name) ^ hash(self.documents) ^ hash(frozenset(self.meta_data.items()))
 
     def __eq__(self, othr):
-        return (isinstance(othr, type(self)) and
-                (self.name, self.documents, self.meta_data) ==
-                (othr.name, othr.documents, othr.meta_data))
+        return isinstance(othr, type(self)) and (self.name, self.documents, self.meta_data) == (othr.name, othr.documents, othr.meta_data)
 
 
 class Workload:
@@ -310,8 +345,7 @@ class Workload:
     A workload defines the data set that is used. It corresponds loosely to a use case (e.g. logging, event processing, analytics, ...)
     """
 
-    def __init__(self, name, description=None, meta_data=None, test_procedures=None,
-                 corpora=None, has_plugins=False, collections=None):
+    def __init__(self, name, description=None, meta_data=None, test_procedures=None, corpora=None, has_plugins=False, collections=None):
         """
 
         Creates a new workload.
@@ -412,31 +446,28 @@ class Workload:
         return ", ".join(r)
 
     def __hash__(self):
-        return hash(self.name) ^ hash(self.meta_data) ^ hash(self.description) ^ hash(self.test_procedures) ^ \
-               hash(self.corpora)
+        return hash(self.name) ^ hash(self.meta_data) ^ hash(self.description) ^ hash(self.test_procedures) ^ hash(self.corpora)
 
     def __eq__(self, othr):
-        return (isinstance(othr, type(self)) and
-                (self.name, self.meta_data, self.description, self.test_procedures, self.collections, self.corpora) ==
-                (othr.name, othr.meta_data, othr.description, othr.test_procedures, othr.collections, othr.corpora))
+        return isinstance(othr, type(self)) and (self.name, self.meta_data, self.description, self.test_procedures, self.collections, self.corpora) == (
+            othr.name,
+            othr.meta_data,
+            othr.description,
+            othr.test_procedures,
+            othr.collections,
+            othr.corpora,
+        )
 
 
 class TestProcedure:
     """
     A test procedure defines the concrete operations that will be done.
     """
-    #Pytest throws a collection warning if the following line is removed
+
+    # Pytest throws a collection warning if the following line is removed
     __test__ = False
-    def __init__(self,
-                 name,
-                 description=None,
-                 user_info=None,
-                 default=False,
-                 selected=False,
-                 auto_generated=False,
-                 parameters=None,
-                 meta_data=None,
-                 schedule=None):
+
+    def __init__(self, name, description=None, user_info=None, default=False, selected=False, auto_generated=False, parameters=None, meta_data=None, schedule=None):
         self.name = name
         self.parameters = parameters if parameters else {}
         self.meta_data = meta_data if meta_data else {}
@@ -463,16 +494,29 @@ class TestProcedure:
         return ", ".join(r)
 
     def __hash__(self):
-        return hash(self.name) ^ hash(self.description) ^ hash(self.default) ^ \
-               hash(self.selected) ^ hash(self.auto_generated) ^ hash(self.parameters) ^ hash(self.meta_data) ^ \
-               hash(self.schedule)
+        return (
+            hash(self.name)
+            ^ hash(self.description)
+            ^ hash(self.default)
+            ^ hash(self.selected)
+            ^ hash(self.auto_generated)
+            ^ hash(self.parameters)
+            ^ hash(self.meta_data)
+            ^ hash(self.schedule)
+        )
 
     def __eq__(self, othr):
-        return (isinstance(othr, type(self)) and
-                (self.name, self.description, self.default, self.selected, self.auto_generated,
-                 self.parameters, self.meta_data, self.schedule) ==
-                (othr.name, othr.description, othr.default, othr.selected, othr.auto_generated,
-                 othr.parameters, othr.meta_data, othr.schedule))
+        return isinstance(othr, type(self)) and (self.name, self.description, self.default, self.selected, self.auto_generated, self.parameters, self.meta_data, self.schedule) == (
+            othr.name,
+            othr.description,
+            othr.default,
+            othr.selected,
+            othr.auto_generated,
+            othr.parameters,
+            othr.meta_data,
+            othr.schedule,
+        )
+
 
 @unique
 class AdminStatus(Enum):
@@ -539,6 +583,7 @@ class OperationType(Enum):
             return OperationType.Composite
         else:
             raise KeyError(f"No enum value for [{v}]")
+
 
 class TaskNameFilter:
     def __init__(self, name):
@@ -653,10 +698,23 @@ class Task:
     THROUGHPUT_PATTERN = re.compile(r"(?P<value>(\d*\.)?\d+)\s(?P<unit>\w+/s)")
     IGNORE_RESPONSE_ERROR_LEVEL_WHITELIST = ["non-fatal"]
 
-    def __init__(self, name, operation, tags=None, meta_data=None, warmup_iterations=None, iterations=None,
-                 warmup_time_period=None, time_period=None, ramp_up_time_period=None, ramp_down_time_period=None,
-                 clients=1, completes_parent=False,
-                 schedule=None, params=None):
+    def __init__(
+        self,
+        name,
+        operation,
+        tags=None,
+        meta_data=None,
+        warmup_iterations=None,
+        iterations=None,
+        warmup_time_period=None,
+        time_period=None,
+        ramp_up_time_period=None,
+        ramp_down_time_period=None,
+        clients=1,
+        completes_parent=False,
+        schedule=None,
+        params=None,
+    ):
         self.name = name
         self.operation = operation
         if isinstance(tags, str):
@@ -691,8 +749,9 @@ class Task:
         target_interval = self.params.get("target-interval")
 
         if target_interval is not None and target_throughput is not None:
-            raise exceptions.InvalidSyntax(f"Task [{self}] specifies target-interval [{target_interval}] and "
-                                           f"target-throughput [{target_throughput}] but only one of them is allowed.")
+            raise exceptions.InvalidSyntax(
+                f"Task [{self}] specifies target-interval [{target_interval}] and target-throughput [{target_throughput}] but only one of them is allowed."
+            )
 
         value = None
         unit = "ops/s"
@@ -712,8 +771,7 @@ class Task:
             elif numeric(target_throughput):
                 value = float(target_throughput)
             else:
-                raise exceptions.InvalidSyntax(f"Target throughput [{target_throughput}] for task [{self}] "
-                                               f"must be string or numeric.")
+                raise exceptions.InvalidSyntax(f"Target throughput [{target_throughput}] for task [{self}] must be string or numeric.")
 
         if value:
             return Throughput(value, unit)
@@ -724,11 +782,11 @@ class Task:
     def ignore_response_error_level(self):
         ignore_response_error_level = self.params.get("ignore-response-error-level")
 
-        if ignore_response_error_level and \
-                ignore_response_error_level not in Task.IGNORE_RESPONSE_ERROR_LEVEL_WHITELIST:
+        if ignore_response_error_level and ignore_response_error_level not in Task.IGNORE_RESPONSE_ERROR_LEVEL_WHITELIST:
             raise exceptions.InvalidSyntax(
                 f"Task [{self}] specifies ignore-response-error-level to [{ignore_response_error_level}] but "
-                f"the only allowed values are [{','.join(Task.IGNORE_RESPONSE_ERROR_LEVEL_WHITELIST)}].")
+                f"the only allowed values are [{','.join(Task.IGNORE_RESPONSE_ERROR_LEVEL_WHITELIST)}]."
+            )
 
         return ignore_response_error_level
 
@@ -751,20 +809,47 @@ class Task:
 
     def __hash__(self):
         # Note that we do not include `params` in __hash__ and __eq__ (the other attributes suffice to uniquely define a task)
-        return hash(self.name) ^ hash(self.operation) ^ hash(self.warmup_iterations) ^ hash(self.iterations) ^ \
-               hash(self.warmup_time_period) ^ hash(self.time_period) ^ hash(self.ramp_up_time_period) ^ \
-               hash(self.ramp_down_time_period) ^ hash(self.clients) ^ hash(self.schedule) ^ hash(self.completes_parent)
+        return (
+            hash(self.name)
+            ^ hash(self.operation)
+            ^ hash(self.warmup_iterations)
+            ^ hash(self.iterations)
+            ^ hash(self.warmup_time_period)
+            ^ hash(self.time_period)
+            ^ hash(self.ramp_up_time_period)
+            ^ hash(self.ramp_down_time_period)
+            ^ hash(self.clients)
+            ^ hash(self.schedule)
+            ^ hash(self.completes_parent)
+        )
 
     def __eq__(self, other):
         # Note that we do not include `params` in __hash__ and __eq__ (the other attributes suffice to uniquely define a task)
-        return isinstance(other, type(self)) and (self.name, self.operation, self.warmup_iterations, self.iterations,
-                                                  self.warmup_time_period, self.time_period, self.ramp_up_time_period,
-                                                  self.ramp_down_time_period, self.clients, self.schedule,
-                                                  self.completes_parent) == (other.name, other.operation, other.warmup_iterations,
-                                                                             other.iterations, other.warmup_time_period, other.time_period,
-                                                                             other.ramp_up_time_period, other.ramp_down_time_period,
-                                                                             other.clients, other.schedule,
-                                                                             other.completes_parent)
+        return isinstance(other, type(self)) and (
+            self.name,
+            self.operation,
+            self.warmup_iterations,
+            self.iterations,
+            self.warmup_time_period,
+            self.time_period,
+            self.ramp_up_time_period,
+            self.ramp_down_time_period,
+            self.clients,
+            self.schedule,
+            self.completes_parent,
+        ) == (
+            other.name,
+            other.operation,
+            other.warmup_iterations,
+            other.iterations,
+            other.warmup_time_period,
+            other.time_period,
+            other.ramp_up_time_period,
+            other.ramp_down_time_period,
+            other.clients,
+            other.schedule,
+            other.completes_parent,
+        )
 
     def __iter__(self):
         return iter([self])

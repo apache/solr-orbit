@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -27,11 +27,13 @@
 import os
 from solrorbit.utils.io import ensure_dir
 
+
 def benchmark_confdir():
     default_home = os.path.expanduser("~")
     benchmark_confdir_path = os.path.join(os.getenv("BENCHMARK_HOME", default_home), ".solr-orbit")
     ensure_dir(benchmark_confdir_path)
     return benchmark_confdir_path
+
 
 def benchmark_root():
     return os.path.dirname(os.path.realpath(__file__))
@@ -46,10 +48,12 @@ def test_run_root(cfg, test_run_id=None):
         test_run_id = cfg.opts("system", "test_run.id")
     return os.path.join(test_runs_root(cfg), test_run_id)
 
+
 def aggregated_results_root(cfg, test_run_id=None):
     if not test_run_id:
         test_run_id = cfg.opts("system", "test_run.id")
     return os.path.join(cfg.opts("node", "root.dir"), "aggregated_results", test_run_id)
+
 
 def install_root(cfg=None):
     install_id = cfg.opts("system", "install.id")

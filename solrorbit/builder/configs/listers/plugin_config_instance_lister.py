@@ -14,15 +14,19 @@ class PluginConfigInstanceLister:
     def list_plugin_config_instances(self):
         plugin_config_instances = []
         for config_format_version in ConfigInstanceTypes.PLUGIN.supported_config_format_versions:
-            plugins_root_directory = self.config_path_resolver.resolve_config_path(ConfigInstanceTypes.PLUGIN.config_type,
-                                                                                   config_format_version)
+            plugins_root_directory = self.config_path_resolver.resolve_config_path(ConfigInstanceTypes.PLUGIN.config_type, config_format_version)
 
             plugin_config_instances += self._list_core_plugins(plugins_root_directory, config_format_version)
             plugin_config_instances += self._list_configured_plugins(plugins_root_directory, config_format_version)
 
-        return sorted(plugin_config_instances, key=lambda plugin_config_instance: (
-            plugin_config_instance.format_version, plugin_config_instance.name,
-            plugin_config_instance.config_names[0] if plugin_config_instance.config_names else None))
+        return sorted(
+            plugin_config_instances,
+            key=lambda plugin_config_instance: (
+                plugin_config_instance.format_version,
+                plugin_config_instance.name,
+                plugin_config_instance.config_names[0] if plugin_config_instance.config_names else None,
+            ),
+        )
 
     def _list_core_plugins(self, plugins_root_directory, config_format_version):
         core_plugins_path = os.path.join(plugins_root_directory, "core-plugins.txt")
@@ -31,9 +35,11 @@ class PluginConfigInstanceLister:
 
     def _parse_core_plugins(self, core_plugins_path, config_format_version):
         with open(core_plugins_path, mode="rt", encoding="utf-8") as core_plugins_file:
-            return [PluginConfigInstance(name=line.strip().split(",")[0],
-                                         format_version=f"v{config_format_version}",
-                                         is_core_plugin=True) for line in core_plugins_file if not line.startswith("#")]
+            return [
+                PluginConfigInstance(name=line.strip().split(",")[0], format_version=f"v{config_format_version}", is_core_plugin=True)
+                for line in core_plugins_file
+                if not line.startswith("#")
+            ]
 
     def _list_configured_plugins(self, plugins_root_directory, config_format_version):
         configured_plugins = []
@@ -47,8 +53,11 @@ class PluginConfigInstanceLister:
         return configured_plugins
 
     def _parse_plugins_in_directory(self, plugin_path, plugin_directory, config_format_version):
-        return [self._parse_plugin_from_config_file(plugin_config_file, plugin_directory, config_format_version)
-                for plugin_config_file in os.listdir(plugin_path) if self._is_config_file(plugin_path, plugin_config_file)]
+        return [
+            self._parse_plugin_from_config_file(plugin_config_file, plugin_directory, config_format_version)
+            for plugin_config_file in os.listdir(plugin_path)
+            if self._is_config_file(plugin_path, plugin_config_file)
+        ]
 
     def _is_config_file(self, plugin_path, plugin_config_file):
         return os.path.isfile(os.path.join(plugin_path, plugin_config_file)) and io.has_extension(plugin_config_file, ".ini")
@@ -58,9 +67,7 @@ class PluginConfigInstanceLister:
         plugin_name = self._file_to_plugin_name(plugin_directory)
         config_name = io.basename(file_name)
 
-        return PluginConfigInstance(name=plugin_name,
-                                    format_version=f"v{config_format_version}",
-                                    config_names=[config_name])
+        return PluginConfigInstance(name=plugin_name, format_version=f"v{config_format_version}", config_names=[config_name])
 
     def _file_to_plugin_name(self, file_name):
         return file_name.replace("_", "-")

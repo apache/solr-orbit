@@ -13,32 +13,24 @@ class PathManagerTest(TestCase):
         self.executor = Mock()
         self.path_manager = PathManager(self.executor)
 
-    @mock.patch('solrorbit.utils.io.ensure_dir')
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     def test_create_path(self, ensure_dir):
         self.path_manager.create_path(self.host, self.path)
 
-        ensure_dir.assert_has_calls([
-            mock.call(self.path)
-        ])
-        self.executor.execute.assert_has_calls([
-            mock.call(self.host, f"mkdir -m 0777 -p {self.path}")
-        ])
+        ensure_dir.assert_has_calls([mock.call(self.path)])
+        self.executor.execute.assert_has_calls([mock.call(self.host, f"mkdir -m 0777 -p {self.path}")])
 
-    @mock.patch('solrorbit.utils.io.ensure_dir')
+    @mock.patch("solrorbit.utils.io.ensure_dir")
     def test_create_path_no_local_copy(self, ensure_dir):
         self.path_manager.create_path(self.host, self.path)
 
         ensure_dir.assert_has_calls([])
-        self.executor.execute.assert_has_calls([
-            mock.call(self.host, f"mkdir -m 0777 -p {self.path}")
-        ])
+        self.executor.execute.assert_has_calls([mock.call(self.host, f"mkdir -m 0777 -p {self.path}")])
 
     def test_delete_valid_path(self):
         self.path_manager.delete_path(self.host, self.path)
 
-        self.executor.execute.assert_has_calls([
-            mock.call(self.host, f"rm -r {self.path}")
-        ])
+        self.executor.execute.assert_has_calls([mock.call(self.host, f"rm -r {self.path}")])
 
     def test_delete_invalid_path(self):
         self.path_manager.delete_path(self.host, "/")

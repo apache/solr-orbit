@@ -78,7 +78,10 @@ tox-env-clean:
 
 lint:
 	ruff check .
-	# ruff format --check .  # uncomment once the codebase has been formatted
+	ruff format --check .
+
+format:
+	ruff format .
 
 test: develop
 	pytest tests/
@@ -105,4 +108,4 @@ release-checks:
 release: release-checks clean it
 	./release.sh $(release_version) $(next_version)
 
-.PHONY: install clean python-caches-clean tox-env-clean test it it312 benchmark coverage release release-checks pyinst
+.PHONY: install clean python-caches-clean tox-env-clean lint format test it it312 benchmark coverage release release-checks pyinst

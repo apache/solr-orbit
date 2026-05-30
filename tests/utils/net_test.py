@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -41,10 +41,8 @@ class TestNetUtils:
         expected_size = random.choice([None, random.randint(0, 1000)])
         progress_indicator = random.choice([None, "some progress indicator"])
 
-        net.download_from_bucket("s3", "s3://mybucket.opensearch.org/data/documents.json.bz2", "/tmp/documents.json.bz2",
-                                 expected_size, progress_indicator)
-        download.assert_called_once_with("mybucket.opensearch.org", "data/documents.json.bz2",
-                                         "/tmp/documents.json.bz2", expected_size, progress_indicator)
+        net.download_from_bucket("s3", "s3://mybucket.opensearch.org/data/documents.json.bz2", "/tmp/documents.json.bz2", expected_size, progress_indicator)
+        download.assert_called_once_with("mybucket.opensearch.org", "data/documents.json.bz2", "/tmp/documents.json.bz2", expected_size, progress_indicator)
 
     @mock.patch("solrorbit.utils.console.error")
     @mock.patch("solrorbit.utils.net._fake_import_boto3")
@@ -52,9 +50,7 @@ class TestNetUtils:
         import_boto3.side_effect = ImportError("no module named 'boto3'")
         with pytest.raises(ImportError, match="no module named 'boto3'"):
             net.download_from_bucket("s3", "s3://mybucket/data", "/tmp/data", None, None)
-        console_error.assert_called_once_with(
-            "S3 support is optional. Install it with `python -m pip install solr-orbit[s3]`"
-        )
+        console_error.assert_called_once_with("S3 support is optional. Install it with `python -m pip install solr-orbit[s3]`")
 
     @pytest.mark.parametrize("seed", range(1))
     @mock.patch("solrorbit.utils.net._download_from_gcs_bucket")
@@ -63,30 +59,25 @@ class TestNetUtils:
         expected_size = random.choice([None, random.randint(0, 1000)])
         progress_indicator = random.choice([None, "some progress indicator"])
 
-        net.download_from_bucket("gs", "gs://unittest-gcp-bucket.test.org/data/documents.json.bz2", "/tmp/documents.json.bz2",
-                                 expected_size, progress_indicator)
-        download.assert_called_once_with("unittest-gcp-bucket.test.org", "data/documents.json.bz2",
-                                         "/tmp/documents.json.bz2", expected_size, progress_indicator)
+        net.download_from_bucket("gs", "gs://unittest-gcp-bucket.test.org/data/documents.json.bz2", "/tmp/documents.json.bz2", expected_size, progress_indicator)
+        download.assert_called_once_with("unittest-gcp-bucket.test.org", "data/documents.json.bz2", "/tmp/documents.json.bz2", expected_size, progress_indicator)
 
     @pytest.mark.parametrize("seed", range(40))
     def test_gcs_object_url(self, seed):
         random.seed(seed)
-        bucket_name = random.choice(["unittest-bucket.test.me", "/unittest-bucket.test.me",
-                                     "/unittest-bucket.test.me/", "unittest-bucket.test.me/"])
-        bucket_path = random.choice(["path/to/object", "/path/to/object",
-                                     "/path/to/object/", "path/to/object/"])
+        bucket_name = random.choice(["unittest-bucket.test.me", "/unittest-bucket.test.me", "/unittest-bucket.test.me/", "unittest-bucket.test.me/"])
+        bucket_path = random.choice(["path/to/object", "/path/to/object", "/path/to/object/", "path/to/object/"])
 
         # pylint: disable=protected-access
-        assert net._build_gcs_object_url(bucket_name, bucket_path) == \
-               "https://storage.googleapis.com/storage/v1/b/unittest-bucket.test.me/o/path%2Fto%2Fobject?alt=media"
+        assert net._build_gcs_object_url(bucket_name, bucket_path) == "https://storage.googleapis.com/storage/v1/b/unittest-bucket.test.me/o/path%2Fto%2Fobject?alt=media"
 
     def test_add_url_param_encoding_and_update(self):
         url = "https://artifacts.opensearch.org/releases/bundle/opensearch/1.0.0/opensearch-1.0.0-darwin-x64.tar.gz?flag1=true"
         params = {"flag1": "test me", "flag2": "test@me"}
         # pylint: disable=protected-access
-        assert net._add_url_param(url, params) == \
-               ("https://artifacts.opensearch.org/releases/bundle/opensearch/"\
-                   "1.0.0/opensearch-1.0.0-darwin-x64.tar.gz?flag1=test+me&flag2=test%40me")
+        assert net._add_url_param(url, params) == (
+            "https://artifacts.opensearch.org/releases/bundle/opensearch/1.0.0/opensearch-1.0.0-darwin-x64.tar.gz?flag1=test+me&flag2=test%40me"
+        )
 
     def test_progress(self):
         progress = net.Progress("test")

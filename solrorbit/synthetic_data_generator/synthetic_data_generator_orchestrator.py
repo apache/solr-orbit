@@ -18,6 +18,7 @@ from solrorbit.synthetic_data_generator.synthetic_data_generator import Syntheti
 from solrorbit.synthetic_data_generator.strategies import CustomModuleStrategy, MappingStrategy
 from solrorbit.synthetic_data_generator.models import SDGConfig
 
+
 def orchestrate_data_generation(cfg):
     logger = logging.getLogger(__name__)
     sdg_metadata = create_sdg_metadata_from_args(cfg)
@@ -29,7 +30,7 @@ def orchestrate_data_generation(cfg):
     if helpers.host_has_available_disk_storage(sdg_metadata):
         if use_custom_synthetic_data_generator(sdg_metadata):
             logger.info("Generating data with Custom Module Strategy")
-            custom_module = helpers.load_user_module(sdg_metadata.custom_module_path) # load it as a callable
+            custom_module = helpers.load_user_module(sdg_metadata.custom_module_path)  # load it as a callable
             strategy = CustomModuleStrategy(sdg_metadata, sdg_config, custom_module)
 
         elif use_mappings_synthetic_data_generator(sdg_metadata):

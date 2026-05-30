@@ -19,16 +19,9 @@ DEFAULT_RANDOM_STRING_LENGTH = 8
 
 
 class DataSetTestCase(TestCase):
-
     def testHDF5AsAcceptableDataSetFormat(self):
         with tempfile.TemporaryDirectory() as data_set_dir:
-            valid_data_set_path = create_data_set(
-                DEFAULT_NUM_VECTORS,
-                DEFAULT_DIMENSION,
-                HDF5DataSet.FORMAT_NAME,
-                DEFAULT_CONTEXT,
-                data_set_dir
-            )
+            valid_data_set_path = create_data_set(DEFAULT_NUM_VECTORS, DEFAULT_DIMENSION, HDF5DataSet.FORMAT_NAME, DEFAULT_CONTEXT, data_set_dir)
             data_set_instance = get_data_set("hdf5", valid_data_set_path, Context.INDEX)
             self.assertEqual(data_set_instance.FORMAT_NAME, HDF5DataSet.FORMAT_NAME)
             self.assertEqual(data_set_instance.size(), DEFAULT_NUM_VECTORS)
@@ -37,13 +30,7 @@ class DataSetTestCase(TestCase):
         float_extension = "fbin"
         data_set_dir = tempfile.mkdtemp()
 
-        valid_data_set_path = create_data_set(
-            DEFAULT_NUM_VECTORS,
-            DEFAULT_DIMENSION,
-            float_extension,
-            DEFAULT_CONTEXT,
-            data_set_dir
-        )
+        valid_data_set_path = create_data_set(DEFAULT_NUM_VECTORS, DEFAULT_DIMENSION, float_extension, DEFAULT_CONTEXT, data_set_dir)
         data_set_instance = get_data_set("bigann", valid_data_set_path, Context.INDEX)
         self.assertEqual(data_set_instance.FORMAT_NAME, BigANNVectorDataSet.FORMAT_NAME)
         self.assertEqual(data_set_instance.size(), DEFAULT_NUM_VECTORS)
@@ -52,13 +39,7 @@ class DataSetTestCase(TestCase):
         bin_extension = "bin"
         data_set_dir = tempfile.mkdtemp()
 
-        valid_data_set_path = create_ground_truth(
-            100,
-            10,
-            bin_extension,
-            Context.NEIGHBORS,
-            data_set_dir
-        )
+        valid_data_set_path = create_ground_truth(100, 10, bin_extension, Context.NEIGHBORS, data_set_dir)
         data_set_instance = get_data_set("bigann", valid_data_set_path, Context.NEIGHBORS)
         self.assertEqual(data_set_instance.FORMAT_NAME, BigANNVectorDataSet.FORMAT_NAME)
         self.assertEqual(data_set_instance.size(), 100)

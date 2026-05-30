@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -43,7 +43,7 @@ CONFIG_NAMES = ["in-memory-it"]
 DISTRIBUTIONS = ["9.10.1", "10.1.0"]
 WORKLOADS = ["geonames", "nyc_taxis"]
 BASE_COMMANDS = ["solr-orbit"]
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def all_benchmark_configs(t):
@@ -92,7 +92,7 @@ def solrorbit(cfg, command_line):
     These commands may have different CLI options than test_run.
     """
     cmd = solrorbit_command_line_for(cfg, command_line)
-    print(f'\n{datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")} Invoking solr-orbit: {cmd}')
+    print(f"\n{datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')} Invoking solr-orbit: {cmd}")
     err, retcode = process.run_subprocess_with_stderr(cmd)
     if retcode != 0:
         print(err)
@@ -177,12 +177,10 @@ class TestCluster:
                 "solr-orbit install --configuration-name={cfg} --distribution-version={dist} --build-type=tar "
                 "--http-port={http_port} --node={node_name} --master-nodes="
                 "{node_name} --cluster-config={cluster_config} "
-                "--seed-hosts=\"127.0.0.1:{transport_port}\"".format(cfg=self.cfg,
-                                                                     dist=distribution_version,
-                                                                     http_port=http_port,
-                                                                     node_name=node_name,
-                                                                     cluster_config=cluster_config,
-                                                                     transport_port=transport_port))
+                '--seed-hosts="127.0.0.1:{transport_port}"'.format(
+                    cfg=self.cfg, dist=distribution_version, http_port=http_port, node_name=node_name, cluster_config=cluster_config, transport_port=transport_port
+                )
+            )
             if retcode != 0:
                 raise AssertionError("Failed to install node {}.".format(distribution_version), err)
             self.installation_id = json.loads(err)["installation-id"]
@@ -190,7 +188,7 @@ class TestCluster:
             raise AssertionError("Failed to install node {}.".format(distribution_version), e)
 
     def start(self, test_run_id):
-        cmd = "start --runtime-jdk=\"bundled\" --installation-id={} --test-run-id={}".format(self.installation_id, test_run_id)
+        cmd = 'start --runtime-jdk="bundled" --installation-id={} --test-run-id={}'.format(self.installation_id, test_run_id)
         if solrorbit(self.cfg, cmd) != 0:
             raise AssertionError("Failed to start test cluster.")
         solr_client = client.ClientFactory(hosts=[{"host": "127.0.0.1", "port": self.http_port}], client_options={}).create()
@@ -212,10 +210,7 @@ class MetricsStore:
         self.cluster = TestCluster("in-memory-it")
 
     def start(self):
-        self.cluster.install(distribution_version=MetricsStore.VERSION,
-                             node_name="metrics-store",
-                             cluster_config="defaults",
-                             http_port=10200)
+        self.cluster.install(distribution_version=MetricsStore.VERSION, node_name="metrics-store", cluster_config="defaults", http_port=10200)
         self.cluster.start(test_run_id="metrics-store")
 
     def stop(self):
@@ -241,7 +236,7 @@ METRICS_STORE = MetricsStore()
 
 
 def get_license():
-    with open(os.path.join(ROOT_DIR, 'LICENSE')) as license_file:
+    with open(os.path.join(ROOT_DIR, "LICENSE")) as license_file:
         return license_file.readlines()[1].strip()
 
 
@@ -249,12 +244,14 @@ def build_docker_image():
     benchmark_version = version.__version__
 
     env_variables = os.environ.copy()
-    env_variables['BENCHMARK_VERSION'] = benchmark_version
-    env_variables['BENCHMARK_LICENSE'] = get_license()
+    env_variables["BENCHMARK_VERSION"] = benchmark_version
+    env_variables["BENCHMARK_LICENSE"] = get_license()
 
-    command = f"docker build -t apache/solr-orbit:{benchmark_version}" \
-        f" --build-arg BENCHMARK_VERSION --build-arg BENCHMARK_LICENSE " \
-              f"-f {ROOT_DIR}/docker/Dockerfiles/Dockerfile-dev {ROOT_DIR}"
+    command = (
+        f"docker build -t apache/solr-orbit:{benchmark_version}"
+        f" --build-arg BENCHMARK_VERSION --build-arg BENCHMARK_LICENSE "
+        f"-f {ROOT_DIR}/docker/Dockerfiles/Dockerfile-dev {ROOT_DIR}"
+    )
 
     if process.run_subprocess_with_logging(command, env=env_variables) != 0:
         raise AssertionError("It was not possible to build the docker image from Dockerfile-dev")

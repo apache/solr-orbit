@@ -189,6 +189,7 @@ class TestSolrBulkIndex(unittest.TestCase):
 
     def test_bulk_index_reports_errors(self):
         import pysolr
+
         mock_sc = MagicMock()
         mock_sc.add.side_effect = pysolr.SolrError("Indexing error")
 
@@ -279,6 +280,7 @@ class TestSolrSearch(unittest.TestCase):
 class TestSolrCreateCollection(unittest.TestCase):
     def test_two_step_sequence(self):
         import tempfile
+
         mock_sc = MagicMock()
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -309,9 +311,7 @@ class TestSolrCreateCollection(unittest.TestCase):
         runner = SolrCreateCollection()
         _run(runner(mock_sc, params))
 
-        mock_sc.create_collection.assert_called_once_with(
-            "my-coll", "my-config", 2, 1, 2, 1
-        )
+        mock_sc.create_collection.assert_called_once_with("my-coll", "my-config", 2, 1, 2, 1)
 
     def test_create_collection_defaults_tlog_pull_to_zero(self):
         """Runner defaults tlog-replicas and pull-replicas to 0 when omitted."""
@@ -324,14 +324,13 @@ class TestSolrCreateCollection(unittest.TestCase):
         runner = SolrCreateCollection()
         _run(runner(mock_sc, params))
 
-        mock_sc.create_collection.assert_called_once_with(
-            "my-coll", "my-config", 1, 1, 0, 0
-        )
+        mock_sc.create_collection.assert_called_once_with("my-coll", "my-config", 1, 1, 0, 0)
 
 
 class TestSolrDeleteCollection(unittest.TestCase):
     def test_delete_ignores_missing_by_default(self):
         from solrorbit.client import CollectionNotFoundError
+
         mock_sc = MagicMock()
         mock_sc.delete_collection.side_effect = CollectionNotFoundError("not found")
 
@@ -356,11 +355,13 @@ class TestRunnerRegistrationSmoke(unittest.TestCase):
 
     def setUp(self):
         from solrorbit.worker_coordinator.runner import register_default_runners
+
         register_default_runners()
 
     def _run_via_framework(self, op_type, clients_dict, params):
         """Look up a registered runner and invoke it the same way execute_single does."""
         from solrorbit.worker_coordinator.runner import runner_for
+
         wrapped = runner_for(op_type)
         return _run(wrapped(clients_dict, params))
 

@@ -7,6 +7,7 @@ from solrorbit.metrics import FileTestRunStore, TestRun
 from solrorbit import metrics, workload, config
 from solrorbit.utils import io as rio
 
+
 class Aggregator:
     def __init__(self, cfg, test_runs_dict, args) -> None:
         self.config = cfg
@@ -80,7 +81,7 @@ class Aggregator:
             return next((obj for obj in json_elements if obj is not None), None)
 
         if isinstance(key_path, str):
-            key_path = key_path.split('.')
+            key_path = key_path.split(".")
 
         nested_values = [get_nested_value(json_result, key_path) for json_result in all_json_results]
         return aggregate_json_elements(nested_values)
@@ -122,7 +123,7 @@ class Aggregator:
             "total_transform_search_times": self.aggregate_json_by_key("total_transform_search_times"),
             "total_transform_index_times": self.aggregate_json_by_key("total_transform_index_times"),
             "total_transform_processing_times": self.aggregate_json_by_key("total_transform_processing_times"),
-            "total_transform_throughput": self.aggregate_json_by_key("total_transform_throughput")
+            "total_transform_throughput": self.aggregate_json_by_key("total_transform_throughput"),
         }
 
         for task, task_metrics in self.accumulated_results.items():
@@ -138,9 +139,9 @@ class Aggregator:
                 if isinstance(aggregated_task_metrics[metric], dict):
                     # Calculate RSD for the mean values across all test runs
                     # We use mean here as it's more sensitive to outliers, which is desirable for assessing variability
-                    mean_values = [v['mean'] for v in task_metrics[metric]]
+                    mean_values = [v["mean"] for v in task_metrics[metric]]
                     rsd = self.calculate_rsd(mean_values, f"{task}.{metric}.mean")
-                    op_metric[metric]['mean_rsd'] = rsd
+                    op_metric[metric]["mean_rsd"] = rsd
 
                 # Handle derived metrics (like error_rate, duration) which are stored as simple values
                 else:
@@ -158,15 +159,12 @@ class Aggregator:
         Uses the first test run as reference since configurations should be identical
         """
         current_timestamp = self.config.opts("system", "time.start")
-        self.config.add(config.Scope.applicationOverride, "builder",
-                        "cluster_config.names", test_run.cluster_config)
-        self.config.add(config.Scope.applicationOverride, "system",
-                        "env.name", test_run.environment_name)
+        self.config.add(config.Scope.applicationOverride, "builder", "cluster_config.names", test_run.cluster_config)
+        self.config.add(config.Scope.applicationOverride, "system", "env.name", test_run.environment_name)
         self.config.add(config.Scope.applicationOverride, "system", "time.start", current_timestamp)
         self.config.add(config.Scope.applicationOverride, "test_run", "pipeline", test_run.pipeline)
         self.config.add(config.Scope.applicationOverride, "workload", "params", test_run.workload_params)
-        self.config.add(config.Scope.applicationOverride, "builder",
-                        "cluster_config.params", test_run.cluster_config_instance_params)
+        self.config.add(config.Scope.applicationOverride, "builder", "cluster_config.params", test_run.cluster_config_instance_params)
         self.config.add(config.Scope.applicationOverride, "builder", "plugin.params", test_run.plugin_params)
         self.config.add(config.Scope.applicationOverride, "workload", "latency.percentiles", test_run.latency_percentiles)
         self.config.add(config.Scope.applicationOverride, "workload", "throughput.percentiles", test_run.throughput_percentiles)
@@ -175,13 +173,13 @@ class Aggregator:
         test_run = self.test_store.find_by_test_run_id(list(self.test_runs.keys())[0])
         aggregated_results = self.build_aggregated_results_dict()
 
-        if hasattr(self.args, 'results_file') and self.args.results_file != "":
+        if hasattr(self.args, "results_file") and self.args.results_file != "":
             normalized_results_file = rio.normalize_path(self.args.results_file, self.cwd)
             # ensure that the parent folder already exists when we try to write the file...
             rio.ensure_dir(rio.dirname(normalized_results_file))
             test_run_id = os.path.basename(normalized_results_file)
             self.config.add(config.Scope.applicationOverride, "system", "test_run.id", normalized_results_file)
-        elif hasattr(self.args, 'test_run_id') and self.args.test_run_id:
+        elif hasattr(self.args, "test_run_id") and self.args.test_run_id:
             test_run_id = f"aggregate_results_{test_run.workload}_{self.args.test_run_id}"
             self.config.add(config.Scope.applicationOverride, "system", "test_run.id", test_run_id)
         else:
@@ -196,9 +194,7 @@ class Aggregator:
         test_procedure_object = loaded_workload.find_test_procedure_or_default(self.test_procedure_name)
 
         test_run = metrics.create_test_run(self.config, loaded_workload, test_procedure_object, test_run.workload_revision)
-        test_run.user_tags = {
-            "aggregation-of-runs": list(self.test_runs.keys())
-        }
+        test_run.user_tags = {"aggregation-of-runs": list(self.test_runs.keys())}
         test_run.add_results(AggregatedResults(aggregated_results))
         test_run.distribution_version = test_run.distribution_version
         test_run.revision = test_run.revision
@@ -211,20 +207,19 @@ class Aggregator:
         weighted_metrics = {}
 
         # Get iterations for each test run
-        iterations_per_run = [self.accumulated_iterations[test_id][task_name]
-                                    for test_id in self.test_runs.keys()]
+        iterations_per_run = [self.accumulated_iterations[test_id][task_name] for test_id in self.test_runs.keys()]
         total_iterations = sum(iterations_per_run)
 
         for metric, values in task_metrics.items():
             if isinstance(values[0], dict):
                 weighted_metrics[metric] = {}
                 for metric_field in values[0].keys():
-                    if metric_field == 'unit':
+                    if metric_field == "unit":
                         weighted_metrics[metric][metric_field] = values[0][metric_field]
-                    elif metric_field == 'min':
-                        weighted_metrics[metric]['overall_min'] = min(value.get(metric_field, 0) for value in values)
-                    elif metric_field == 'max':
-                        weighted_metrics[metric]['overall_max'] = max(value.get(metric_field, 0) for value in values)
+                    elif metric_field == "min":
+                        weighted_metrics[metric]["overall_min"] = min(value.get(metric_field, 0) for value in values)
+                    elif metric_field == "max":
+                        weighted_metrics[metric]["overall_max"] = max(value.get(metric_field, 0) for value in values)
                     else:
                         # for items like median or containing percentile values
                         item_values = [value.get(metric_field, 0) for value in values]
@@ -243,7 +238,7 @@ class Aggregator:
             return "NA"  # RSD is not applicable for a single value
         mean = statistics.mean(values)
         std_dev = statistics.stdev(values)
-        return (std_dev / mean) * 100 if mean != 0 else float('inf')
+        return (std_dev / mean) * 100 if mean != 0 else float("inf")
 
     def test_run_compatibility_check(self) -> None:
         first_test_run = self.test_store.find_by_test_run_id(list(self.test_runs.keys())[0])
@@ -254,8 +249,7 @@ class Aggregator:
             if test_run:
                 if test_run.workload != workload:
                     raise ValueError(
-                        f"Incompatible workload: test {id} has workload '{test_run.workload}' instead of '{workload}'. "
-                        f"Ensure that all test IDs have the same workload."
+                        f"Incompatible workload: test {id} has workload '{test_run.workload}' instead of '{workload}'. Ensure that all test IDs have the same workload."
                     )
                 if test_run.test_procedure != test_procedure:
                     raise ValueError(
@@ -286,6 +280,7 @@ class Aggregator:
             file_test_run_store.store_aggregated_run(aggregated_results)
         else:
             raise ValueError("Incompatible test run results")
+
 
 class AggregatedResults:
     def __init__(self, results):

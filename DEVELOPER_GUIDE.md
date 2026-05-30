@@ -9,6 +9,7 @@ Apache Solr Orbit.
 - [Importing the project into an IDE](#importing-the-project-into-an-ide)
 - [Setting Up a Local Solr Instance (Optional)](#setting-up-a-local-solr-instance-optional)
 - [Running Tests](#running-tests)
+- [Code Style](#code-style)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Developing Breaking Changes](#developing-breaking-changes)
 - [Miscellaneous](#miscellaneous)
@@ -110,9 +111,29 @@ Integration tests require a running Solr instance (local or Docker).
 make it
 ```
 
+## Code Style
+
+The project uses [ruff](https://docs.astral.sh/ruff/) for both linting and formatting.
+`make lint` runs both checks and is enforced in CI on every PR.
+
+### Before committing
+
+Always run:
+
+```bash
+make format   # auto-format all Python files
+make lint     # verify lint and format are clean
+```
+
+Or set up your editor to format on save — the [ruff VS Code extension](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff) and the [ruff PyCharm plugin](https://plugins.jetbrains.com/plugin/20574-ruff) both support this.
+
+Configuration lives in `pyproject.toml` under `[tool.ruff]`. Key settings:
+- **Max line length**: 180 characters
+- **Rules**: pycodestyle (`E`) and pyflakes (`F`)
+
 ## Submitting a Pull Request
 
-1. **Run tests**: `make test` (and `make it` if applicable).
+1. **Run tests and lint**: `make test` and `make lint` (and `make it` if applicable).
 2. **Rebase** onto the latest `main` before opening a PR.
 3. Open the PR, referencing the related issue (`Closes #123`).
 4. Respond to review comments; squash commits if asked.

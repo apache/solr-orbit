@@ -38,6 +38,7 @@ from solrorbit.telemetry import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_admin_client(base_url="http://localhost:8983"):
     """Return a mock SolrAdminClient with a shared session."""
     client = MagicMock()
@@ -51,9 +52,7 @@ def _make_metrics_store():
     """Return a MagicMock metrics store and a dict capturing stored values."""
     stored = {}
     store = MagicMock()
-    store.put_value_cluster_level = MagicMock(
-        side_effect=lambda name, value, unit="": stored.update({name: value})
-    )
+    store.put_value_cluster_level = MagicMock(side_effect=lambda name, value, unit="": stored.update({name: value}))
     return store, stored
 
 
@@ -61,8 +60,8 @@ def _make_metrics_store():
 # T139: SegmentStats (Luke API)
 # ---------------------------------------------------------------------------
 
-class TestSegmentStats(unittest.TestCase):
 
+class TestSegmentStats(unittest.TestCase):
     def _make_response(self, json_data, status_code=200):
         resp = MagicMock()
         resp.status_code = status_code
@@ -140,17 +139,10 @@ CLUSTERSTATUS_RESPONSE = {
     }
 }
 
-CORE_STATUS_RESPONSE = {
-    "status": {
-        "my_coll_shard1_replica_n1": {
-            "index": {"numDocs": 500, "sizeInBytes": 10240}
-        }
-    }
-}
+CORE_STATUS_RESPONSE = {"status": {"my_coll_shard1_replica_n1": {"index": {"numDocs": 500, "sizeInBytes": 10240}}}}
 
 
 class TestShardStats(unittest.TestCase):
-
     def _make_session_resp(self, json_data, status_code=200):
         resp = MagicMock()
         resp.status_code = status_code
@@ -188,9 +180,7 @@ class TestShardStats(unittest.TestCase):
         metrics_store, stored = _make_metrics_store()
 
         admin_client.get_clusterstatus.return_value = CLUSTERSTATUS_RESPONSE
-        admin_client.get_core_status.return_value = {
-            "index": {"numDocs": 500, "sizeInBytes": 10240}
-        }
+        admin_client.get_core_status.return_value = {"index": {"numDocs": 500, "sizeInBytes": 10240}}
 
         recorder = ShardStatsRecorder(admin_client=admin_client, metrics_store=metrics_store, sample_interval=60)
         recorder.record()
@@ -213,6 +203,7 @@ class TestShardStats(unittest.TestCase):
     def test_shard_stats_invalid_interval(self):
         """ShardStats raises SystemSetupError for non-positive sample interval."""
         from solrorbit.exceptions import SystemSetupError
+
         admin_client, _ = _make_admin_client()
         metrics_store, _ = _make_metrics_store()
         with self.assertRaises(SystemSetupError):
@@ -235,7 +226,6 @@ SYSTEM_INFO_RESPONSE = {
 
 
 class TestClusterEnvironmentInfo(unittest.TestCase):
-
     def _make_session_resp(self, json_data, status_code=200):
         resp = MagicMock()
         resp.status_code = status_code
@@ -249,9 +239,7 @@ class TestClusterEnvironmentInfo(unittest.TestCase):
 
         meta_store = {}
         metrics_store = MagicMock()
-        metrics_store.add_meta_info = MagicMock(
-            side_effect=lambda scope, node, key, value: meta_store.update({key: value})
-        )
+        metrics_store.add_meta_info = MagicMock(side_effect=lambda scope, node, key, value: meta_store.update({key: value}))
 
         system_resp = self._make_session_resp(SYSTEM_INFO_RESPONSE)
         admin_client.raw_request.return_value = system_resp
@@ -279,8 +267,8 @@ class TestClusterEnvironmentInfo(unittest.TestCase):
 # T142: JVM device pipeline-skip behavior
 # ---------------------------------------------------------------------------
 
-class TestFlightRecorderPipelineSkip(unittest.TestCase):
 
+class TestFlightRecorderPipelineSkip(unittest.TestCase):
     def test_jfr_benchmark_only_returns_empty(self):
         """FlightRecorder returns [] when pipeline is benchmark-only."""
         with tempfile.TemporaryDirectory() as log_root:
@@ -318,7 +306,6 @@ class TestFlightRecorderPipelineSkip(unittest.TestCase):
 
 
 class TestGcPipelineSkip(unittest.TestCase):
-
     def test_gc_benchmark_only_returns_empty(self):
         """Gc returns [] when pipeline is benchmark-only."""
         with tempfile.TemporaryDirectory() as log_root:
@@ -344,7 +331,6 @@ class TestGcPipelineSkip(unittest.TestCase):
 
 
 class TestJitCompilerPipelineSkip(unittest.TestCase):
-
     def test_jit_benchmark_only_returns_empty(self):
         """JitCompiler returns [] when pipeline is benchmark-only."""
         with tempfile.TemporaryDirectory() as log_root:
@@ -369,7 +355,6 @@ class TestJitCompilerPipelineSkip(unittest.TestCase):
 
 
 class TestHeapdumpDockerSupport(unittest.TestCase):
-
     def test_heapdump_local_calls_jmap(self):
         """Heapdump calls jmap directly for non-Docker nodes."""
         with tempfile.TemporaryDirectory() as log_root:

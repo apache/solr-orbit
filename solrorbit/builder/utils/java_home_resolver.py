@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -43,7 +43,7 @@ class JavaHomeResolver:
         try:
             allowed_runtime_jdks = [int(v) for v in runtime_jdks.split(",")]
         except ValueError:
-            raise SystemSetupError(f"ClusterConfigInstance variable key \"runtime.jdk\" is invalid: \"{runtime_jdks}\" (must be int)")
+            raise SystemSetupError(f'ClusterConfigInstance variable key "runtime.jdk" is invalid: "{runtime_jdks}" (must be int)')
 
         self.logger.info("Allowed JDK versions are %s.", allowed_runtime_jdks)
         return self._detect_jdk(host, allowed_runtime_jdks)

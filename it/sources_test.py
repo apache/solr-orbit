@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -27,15 +27,27 @@
 
 import it
 
+
 @it.random_benchmark_config
 def test_sources(cfg):
     port = 19200
     it.wait_until_port_is_free(port_number=port)
-    assert it.run_test(cfg, f"--pipeline=from-sources --revision=latest \
+    assert (
+        it.run_test(
+            cfg,
+            f"--pipeline=from-sources --revision=latest \
                            --workload=geonames --test-mode  --target-hosts=127.0.0.1:{port} "
-                        f"--test-procedure=append-no-conflicts --cluster-config=4gheap "
-                        f"--opensearch-plugins=analysis-icu") == 0
+            f"--test-procedure=append-no-conflicts --cluster-config=4gheap "
+            f"--opensearch-plugins=analysis-icu",
+        )
+        == 0
+    )
 
     it.wait_until_port_is_free(port_number=port)
-    assert it.run_test(cfg, f"--pipeline=from-sources --workload=geonames --test-mode --target-hosts=127.0.0.1:{port} "
-                        f"--test-procedure=append-no-conflicts-index-only --cluster-config=\"4gheap,ea\"") == 0
+    assert (
+        it.run_test(
+            cfg,
+            f'--pipeline=from-sources --workload=geonames --test-mode --target-hosts=127.0.0.1:{port} --test-procedure=append-no-conflicts-index-only --cluster-config="4gheap,ea"',
+        )
+        == 0
+    )

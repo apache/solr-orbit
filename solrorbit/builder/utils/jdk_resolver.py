@@ -43,8 +43,7 @@ class JdkResolver:
         resolved_major_to_java_home_path = {}
         for java_home_env_var_name in java_home_env_var_names:
             if java_home_env_var_name in defined_env_vars:
-                major_to_java_home_path = self._resolve_major_from_java_home(host, java_home_env_var_name,
-                                                                             defined_env_vars[java_home_env_var_name])
+                major_to_java_home_path = self._resolve_major_from_java_home(host, java_home_env_var_name, defined_env_vars[java_home_env_var_name])
                 if major_to_java_home_path:
                     resolved_major_to_java_home_path.update(major_to_java_home_path)
 

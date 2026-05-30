@@ -68,7 +68,7 @@ logger = logging.getLogger(__name__)
 # Note: This is a best-effort mapping for common cases
 OPENSEARCH_TO_SOLR_TYPES = {
     # Numeric types
-    "scaled_float": "pdouble",      # Note: loses scaling_factor precision control
+    "scaled_float": "pdouble",  # Note: loses scaling_factor precision control
     "half_float": "pfloat",
     "float": "pfloat",
     "double": "pdouble",
@@ -76,18 +76,15 @@ OPENSEARCH_TO_SOLR_TYPES = {
     "short": "pint",
     "integer": "pint",
     "long": "plong",
-
     # String types
-    "keyword": "string",            # Exact match, no analysis
-    "text": "text_general",         # Analyzed text
-
+    "keyword": "string",  # Exact match, no analysis
+    "text": "text_general",  # Analyzed text
     # Other types
     "boolean": "boolean",
     "date": "pdate",
     "binary": "binary",
-
     # Spatial
-    "geo_point": "string",    # Stored as "lat,lon" string (converted during indexing)
+    "geo_point": "string",  # Stored as "lat,lon" string (converted during indexing)
 }
 
 
@@ -119,10 +116,7 @@ def translate_opensearch_mapping(properties: Dict[str, Any]) -> tuple[Dict[str, 
         # Translate main field
         solr_type = OPENSEARCH_TO_SOLR_TYPES.get(os_type)
         if not solr_type:
-            logger.warning(
-                f"Field '{field_name}' has unsupported type '{os_type}', "
-                f"falling back to 'string'"
-            )
+            logger.warning(f"Field '{field_name}' has unsupported type '{os_type}', falling back to 'string'")
             solr_type = "string"
 
         # Build Solr field config
@@ -142,10 +136,7 @@ def translate_opensearch_mapping(properties: Dict[str, Any]) -> tuple[Dict[str, 
             # Solr: Uses ISO8601 by default, custom formats need DatePointField config
             os_format = field_config.get("format")
             if os_format and os_format != "strict_date_optional_time||epoch_millis":
-                logger.warning(
-                    f"Field '{field_name}' has custom date format '{os_format}'. "
-                    f"Solr will use ISO8601 format. Manual schema adjustment may be needed."
-                )
+                logger.warning(f"Field '{field_name}' has custom date format '{os_format}'. Solr will use ISO8601 format. Manual schema adjustment may be needed.")
 
         solr_fields[field_name] = solr_field
 
@@ -180,17 +171,12 @@ def translate_opensearch_mapping(properties: Dict[str, Any]) -> tuple[Dict[str, 
             # Add copyField directive from main field to sub-field
             copy_fields.append((field_name, solr_sub_field_name))
 
-            logger.info(
-                f"Multi-field detected: {field_name}.{sub_field_name} → "
-                f"{solr_sub_field_name} (type: {sub_solr_type})"
-            )
+            logger.info(f"Multi-field detected: {field_name}.{sub_field_name} → {solr_sub_field_name} (type: {sub_solr_type})")
 
     return solr_fields, copy_fields
 
 
-def generate_schema_xml(field_defs: Dict[str, Dict[str, Any]],
-                        copy_fields: Optional[list[tuple[str, str]]] = None,
-                        unique_key: str = "id") -> str:
+def generate_schema_xml(field_defs: Dict[str, Dict[str, Any]], copy_fields: Optional[list[tuple[str, str]]] = None, unique_key: str = "id") -> str:
     """
     Generate a Solr schema.xml from field definitions.
 
@@ -209,13 +195,13 @@ def generate_schema_xml(field_defs: Dict[str, Dict[str, Any]],
     fields_xml = []
 
     # Add required fields for SolrCloud
-    fields_xml.append('  <!-- Required fields for SolrCloud -->')
+    fields_xml.append("  <!-- Required fields for SolrCloud -->")
     fields_xml.append(f'  <field name="{unique_key}" type="string" indexed="true" stored="true" required="true" />')
     fields_xml.append('  <field name="_version_" type="plong" indexed="true" stored="false" docValues="true" />')
     fields_xml.append('  <field name="_root_" type="string" indexed="true" stored="false" docValues="false" />')
     fields_xml.append('  <field name="_text_" type="text_general" indexed="true" stored="false" multiValued="true" />')
-    fields_xml.append('')
-    fields_xml.append('  <!-- Workload fields (auto-generated from OpenSearch mappings) -->')
+    fields_xml.append("")
+    fields_xml.append("  <!-- Workload fields (auto-generated from OpenSearch mappings) -->")
 
     # Add workload fields
     for field_name, field_config in field_defs.items():
@@ -238,13 +224,13 @@ def generate_schema_xml(field_defs: Dict[str, Dict[str, Any]],
         if doc_values is not None:
             attrs.append(f'docValues="{str(doc_values).lower()}"')
 
-        fields_xml.append(f'  <field {" ".join(attrs)} />')
+        fields_xml.append(f"  <field {' '.join(attrs)} />")
 
     # Build copyField directives XML
     copy_fields_xml = []
     if copy_fields:
-        copy_fields_xml.append('')
-        copy_fields_xml.append('  <!-- Multi-field copyField directives (OpenSearch → Solr translation) -->')
+        copy_fields_xml.append("")
+        copy_fields_xml.append("  <!-- Multi-field copyField directives (OpenSearch → Solr translation) -->")
         for source, dest in copy_fields:
             copy_fields_xml.append(f'  <copyField source="{source}" dest="{dest}" />')
 
@@ -314,8 +300,7 @@ def generate_schema_xml(field_defs: Dict[str, Dict[str, Any]],
     return schema_xml
 
 
-def create_configset_from_schema(schema_xml: str,
-                                 configset_name: Optional[str] = None) -> str:
+def create_configset_from_schema(schema_xml: str, configset_name: Optional[str] = None) -> str:
     """
     Create a temporary Solr configset directory with the generated schema.
 

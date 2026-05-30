@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -48,8 +48,7 @@ class LocalProcessLauncher(Launcher):
         self.logger = logging.getLogger(__name__)
         self.cluster_config = cluster_config
         self.metrics_store = metrics_store
-        self.waiter = PeriodicWaiter(LocalProcessLauncher.PROCESS_WAIT_INTERVAL_SECONDS,
-                                     LocalProcessLauncher.PROCESS_WAIT_TIMEOUT_SECONDS, clock=clock)
+        self.waiter = PeriodicWaiter(LocalProcessLauncher.PROCESS_WAIT_INTERVAL_SECONDS, LocalProcessLauncher.PROCESS_WAIT_TIMEOUT_SECONDS, clock=clock)
 
     def start(self, host, node_configurations):
         node_count_on_host = len(node_configurations)
@@ -60,8 +59,7 @@ class LocalProcessLauncher(Launcher):
         node_name = node_configuration.node_name
         binary_path = node_configuration.binary_path
 
-        java_major_version, java_home = java_resolver.java_home(node_configuration.cluster_config_runtime_jdks,
-                                                                self.cluster_config.variables["system"]["runtime"]["jdk"])
+        java_major_version, java_home = java_resolver.java_home(node_configuration.cluster_config_runtime_jdks, self.cluster_config.variables["system"]["runtime"]["jdk"])
         self.logger.info("Java major version: %s", java_major_version)
         self.logger.info("Java home: %s", java_home)
         self.logger.info("Starting node [%s].", node_name)
@@ -99,8 +97,7 @@ class LocalProcessLauncher(Launcher):
         return telemetry.Telemetry(enabled_devices, devices=node_telemetry)
 
     def _prepare_env(self, node_name, java_home, telemetry):
-        env = {k: v for k, v in os.environ.items() if k in
-               opts.csv_to_list(self.cluster_config.variables["system"]["env"]["passenv"])}
+        env = {k: v for k, v in os.environ.items() if k in opts.csv_to_list(self.cluster_config.variables["system"]["env"]["passenv"])}
         if java_home:
             self._set_env(env, "PATH", os.path.join(java_home, "bin"), separator=os.pathsep, prepend=True)
             env["JAVA_HOME"] = java_home
@@ -115,7 +112,7 @@ class LocalProcessLauncher(Launcher):
         self.logger.debug("env for [%s]: %s", node_name, str(env))
         return env
 
-    def _set_env(self, env, key, value, separator=' ', prepend=False):
+    def _set_env(self, env, key, value, separator=" ", prepend=False):
         if value is not None:
             if key not in env:
                 env[key] = value

@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -64,8 +64,7 @@ class RegisterRunnerTests(TestCase):
         returned_runner = runner.runner_for("unit_test")
         self.assertIsInstance(returned_runner, runner.NoCompletion)
         self.assertEqual("user-defined runner for [runner_function]", repr(returned_runner))
-        self.assertEqual(("default_client", "param"),
-                         await returned_runner({"default": "default_client", "other": "other_client"}, "param"))
+        self.assertEqual(("default_client", "param"), await returned_runner({"default": "default_client", "other": "other_client"}, "param"))
 
     @run_async
     async def test_single_cluster_runner_class_with_context_manager_should_be_wrapped_with_context_manager_enabled(self):
@@ -80,12 +79,10 @@ class RegisterRunnerTests(TestCase):
         runner.register_runner(operation_type="unit_test", runner=test_runner, async_runner=True)
         returned_runner = runner.runner_for("unit_test")
         self.assertIsInstance(returned_runner, runner.NoCompletion)
-        self.assertEqual("user-defined context-manager enabled runner for [UnitTestSingleClusterContextManagerRunner]",
-                         repr(returned_runner))
+        self.assertEqual("user-defined context-manager enabled runner for [UnitTestSingleClusterContextManagerRunner]", repr(returned_runner))
         # test that context_manager functionality gets preserved after wrapping
         async with returned_runner:
-            self.assertEqual(("default_client", "param"),
-                             await returned_runner({"default": "default_client", "other": "other_client"}, "param"))
+            self.assertEqual(("default_client", "param"), await returned_runner({"default": "default_client", "other": "other_client"}, "param"))
         # check that the context manager interface of our inner runner has been respected.
         self.assertTrue(test_runner.fp.closed)
 
@@ -104,8 +101,7 @@ class RegisterRunnerTests(TestCase):
         runner.register_runner(operation_type="unit_test", runner=test_runner, async_runner=True)
         returned_runner = runner.runner_for("unit_test")
         self.assertIsInstance(returned_runner, runner.NoCompletion)
-        self.assertEqual("user-defined context-manager enabled runner for [UnitTestMultiClusterContextManagerRunner]",
-                         repr(returned_runner))
+        self.assertEqual("user-defined context-manager enabled runner for [UnitTestMultiClusterContextManagerRunner]", repr(returned_runner))
 
         # test that context_manager functionality gets preserved after wrapping
         all_clients = {"default": "default_client", "other": "other_client"}
@@ -128,8 +124,7 @@ class RegisterRunnerTests(TestCase):
         returned_runner = runner.runner_for("unit_test")
         self.assertIsInstance(returned_runner, runner.NoCompletion)
         self.assertEqual("user-defined runner for [UnitTestSingleClusterRunner]", repr(returned_runner))
-        self.assertEqual(("default_client", "param"),
-                         await returned_runner({"default": "default_client", "other": "other_client"}, "param"))
+        self.assertEqual(("default_client", "param"), await returned_runner({"default": "default_client", "other": "other_client"}, "param"))
 
     @run_async
     async def test_multi_cluster_runner_class_should_be_wrapped(self):
@@ -161,68 +156,37 @@ class AssertingRunnerTests(TestCase):
     @run_async
     async def test_asserts_equal_succeeds(self):
         opensearch = None
-        response = {
-            "hits": {
-                "hits": {
-                    "value": 5,
-                    "relation": "eq"
-                }
-            }
-        }
+        response = {"hits": {"hits": {"value": 5, "relation": "eq"}}}
         delegate = mock.MagicMock()
         delegate.return_value = as_future(response)
         r = runner.AssertingRunner(delegate)
         async with r:
-            final_response = await r(opensearch, {
-                "name": "test-task",
-                "assertions": [
-                    {
-                        "property": "hits.hits.value",
-                        "condition": "==",
-                        "value": 5
-                    },
-                    {
-                        "property": "hits.hits.relation",
-                        "condition": "==",
-                        "value": "eq"
-                    }
-                ]
-            })
+            final_response = await r(
+                opensearch,
+                {
+                    "name": "test-task",
+                    "assertions": [{"property": "hits.hits.value", "condition": "==", "value": 5}, {"property": "hits.hits.relation", "condition": "==", "value": "eq"}],
+                },
+            )
 
         self.assertEqual(response, final_response)
 
     @run_async
     async def test_asserts_equal_fails(self):
-        opensearch =  None
-        response = {
-            "hits": {
-                "hits": {
-                    "value": 10000,
-                    "relation": "gte"
-                }
-            }
-        }
+        opensearch = None
+        response = {"hits": {"hits": {"value": 10000, "relation": "gte"}}}
         delegate = mock.MagicMock()
         delegate.return_value = as_future(response)
         r = runner.AssertingRunner(delegate)
-        with self.assertRaisesRegex(exceptions.BenchmarkTaskAssertionError,
-                                    r"Expected \[hits.hits.relation\] in \[test-task\] to be == \[eq\] but was \[gte\]."):
+        with self.assertRaisesRegex(exceptions.BenchmarkTaskAssertionError, r"Expected \[hits.hits.relation\] in \[test-task\] to be == \[eq\] but was \[gte\]."):
             async with r:
-                await r(opensearch, {
-                    "name": "test-task",
-                    "assertions": [
-                        {
-                            "property": "hits.hits.value",
-                            "condition": "==",
-                            "value": 10000
-                        },
-                        {
-                            "property": "hits.hits.relation",
-                            "condition": "==",
-                            "value": "eq"
-                        }
-                    ]
-                })
+                await r(
+                    opensearch,
+                    {
+                        "name": "test-task",
+                        "assertions": [{"property": "hits.hits.value", "condition": "==", "value": 10000}, {"property": "hits.hits.relation", "condition": "==", "value": "eq"}],
+                    },
+                )
 
     @run_async
     async def test_skips_asserts_for_non_dicts(self):
@@ -232,16 +196,7 @@ class AssertingRunnerTests(TestCase):
         delegate.return_value = as_future(response)
         r = runner.AssertingRunner(delegate)
         async with r:
-            final_response = await r(opensearch, {
-                "name": "test-task",
-                "assertions": [
-                    {
-                        "property": "hits.hits.value",
-                        "condition": "==",
-                        "value": 5
-                    }
-                ]
-            })
+            final_response = await r(opensearch, {"name": "test-task", "assertions": [{"property": "hits.hits.value", "condition": "==", "value": 5}]})
         # still passes response as is
         self.assertEqual(response, final_response)
 
@@ -260,8 +215,7 @@ class AssertingRunnerTests(TestCase):
 
         for predicate, vals in predicate_success.items():
             expected, actual = vals
-            self.assertTrue(r.predicates[predicate](expected, actual),
-                            f"Expected [{expected} {predicate} {actual}] to succeed.")
+            self.assertTrue(r.predicates[predicate](expected, actual), f"Expected [{expected} {predicate} {actual}] to succeed.")
 
         predicate_fail = {
             # predicate: (expected, actual)
@@ -274,8 +228,7 @@ class AssertingRunnerTests(TestCase):
 
         for predicate, vals in predicate_fail.items():
             expected, actual = vals
-            self.assertFalse(r.predicates[predicate](expected, actual),
-                             f"Expected [{expected} {predicate} {actual}] to fail.")
+            self.assertFalse(r.predicates[predicate](expected, actual), f"Expected [{expected} {predicate} {actual}] to fail.")
 
 
 class RawRequestRunnerTests(TestCase):
@@ -332,16 +285,16 @@ class RawRequestRunnerTests(TestCase):
 
 class SleepTests(TestCase):
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     # To avoid real sleeps in unit tests
     @mock.patch("asyncio.sleep", return_value=as_future())
     @run_async
     async def test_missing_parameter(self, sleep, on_client_request_start, on_client_request_end, opensearch):
         r = runner.Sleep()
-        with self.assertRaisesRegex(exceptions.DataError,
-                                    "Parameter source for operation 'sleep' did not provide the mandatory parameter "
-                                    "'duration'. Add it to your parameter source and try again."):
+        with self.assertRaisesRegex(
+            exceptions.DataError, "Parameter source for operation 'sleep' did not provide the mandatory parameter 'duration'. Add it to your parameter source and try again."
+        ):
             await r(opensearch, params={})
 
         self.assertEqual(0, opensearch.call_count)
@@ -352,8 +305,8 @@ class SleepTests(TestCase):
         self.assertEqual(0, sleep.call_count)
 
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     # To avoid real sleeps in unit tests
     @mock.patch("asyncio.sleep", return_value=as_future())
     @run_async
@@ -367,16 +320,6 @@ class SleepTests(TestCase):
         self.assertEqual(1, on_client_request_start.call_count)
         self.assertEqual(1, on_client_request_end.call_count)
         sleep.assert_called_once_with(4.3)
-
-
-
-
-
-
-
-
-
-
 
 
 class CompositeContextTests(TestCase):
@@ -398,8 +341,7 @@ class CompositeContextTests(TestCase):
         async with runner.CompositeContext():
             with self.assertRaises(KeyError) as ctx:
                 runner.CompositeContext.get("don't clear this key")
-            self.assertEqual("Unknown property [don't clear this key]. Currently recognized properties are [].",
-                             ctx.exception.args[0])
+            self.assertEqual("Unknown property [don't clear this key]. Currently recognized properties are [].", ctx.exception.args[0])
 
     @run_async
     async def test_fails_to_read_unknown_key(self):
@@ -407,8 +349,7 @@ class CompositeContextTests(TestCase):
             with self.assertRaises(KeyError) as ctx:
                 runner.CompositeContext.put("test", 1)
                 runner.CompositeContext.get("unknown")
-            self.assertEqual("Unknown property [unknown]. Currently recognized properties are [test].",
-                             ctx.exception.args[0])
+            self.assertEqual("Unknown property [unknown]. Currently recognized properties are [test].", ctx.exception.args[0])
 
     @run_async
     async def test_fails_to_remove_unknown_key(self):
@@ -416,8 +357,7 @@ class CompositeContextTests(TestCase):
             with self.assertRaises(KeyError) as ctx:
                 runner.CompositeContext.put("test", 1)
                 runner.CompositeContext.remove("unknown")
-            self.assertEqual("Unknown property [unknown]. Currently recognized properties are [test].",
-                             ctx.exception.args[0])
+            self.assertEqual("Unknown property [unknown]. Currently recognized properties are [test].", ctx.exception.args[0])
 
 
 class CompositeTests(TestCase):
@@ -461,10 +401,10 @@ class CompositeTests(TestCase):
         runner.remove_runner("counter")
         runner.remove_runner("call-recorder")
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
-    @mock.patch('solrorbit.client.RequestContextHolder.new_request_context')
+    @mock.patch("solrorbit.client.RequestContextHolder.new_request_context")
     @run_async
     async def test_runs_tasks_in_specified_order(self, opensearch, on_client_request_start, on_client_request_end, new_request_context):
         opensearch.transport.perform_request.return_value = as_future()
@@ -515,7 +455,6 @@ class CompositeTests(TestCase):
                     "name": "call-after-stream-cd",
                     "operation-type": "call-recorder",
                 },
-
             ]
         }
 
@@ -523,15 +462,20 @@ class CompositeTests(TestCase):
         r.supported_op_types = ["call-recorder"]
         await r(opensearch, params)
 
-        self.assertEqual([
-            "initial-call",
-            # concurrent
-            "stream-a", "stream-b",
-            "call-after-stream-ab",
-            # concurrent
-            "stream-c", "stream-d",
-            "call-after-stream-cd"
-        ], self.call_recorder_runner.calls)
+        self.assertEqual(
+            [
+                "initial-call",
+                # concurrent
+                "stream-a",
+                "stream-b",
+                "call-after-stream-ab",
+                # concurrent
+                "stream-c",
+                "stream-d",
+                "call-after-stream-cd",
+            ],
+            self.call_recorder_runner.calls,
+        )
 
     @pytest.mark.skip(reason="latency is system-dependent")
     @run_async
@@ -542,29 +486,9 @@ class CompositeTests(TestCase):
 
         params = {
             "requests": [
-                {
-                    "name": "initial-call",
-                    "operation-type": "sleep",
-                    "duration": 0.1
-                },
-                {
-                    "stream": [
-                        {
-                            "name": "stream-a",
-                            "operation-type": "sleep",
-                            "duration": 0.2
-                        }
-                    ]
-                },
-                {
-                    "stream": [
-                        {
-                            "name": "stream-b",
-                            "operation-type": "sleep",
-                            "duration": 0.1
-                        }
-                    ]
-                }
+                {"name": "initial-call", "operation-type": "sleep", "duration": 0.1},
+                {"stream": [{"name": "stream-a", "operation-type": "sleep", "duration": 0.2}]},
+                {"stream": [{"name": "stream-b", "operation-type": "sleep", "duration": 0.1}]},
             ]
         }
 
@@ -593,37 +517,14 @@ class CompositeTests(TestCase):
             self.assertIn("request_end", timing)
             self.assertGreater(timing["request_end"], timing["request_start"])
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_limits_connections(self, opensearch, on_client_request_start, on_client_request_end):
         params = {
             "max-connections": 2,
-            "requests": [
-                {
-                    "stream": [
-                        {
-                            "operation-type": "counter"
-                        }
-                    ]
-                },
-                {
-                    "stream": [
-                        {
-                            "operation-type": "counter"
-                        }
-
-                    ]
-                },
-                {
-                    "stream": [
-                        {
-                            "operation-type": "counter"
-                        }
-                    ]
-                }
-            ]
+            "requests": [{"stream": [{"operation-type": "counter"}]}, {"stream": [{"operation-type": "counter"}]}, {"stream": [{"operation-type": "counter"}]}],
         }
 
         r = runner.Composite()
@@ -633,32 +534,13 @@ class CompositeTests(TestCase):
         # composite runner should limit to two concurrent connections
         self.assertEqual(2, self.counter_runner.max_value)
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_rejects_invalid_stream(self, opensearch, on_client_request_start, on_client_request_end):
         # params contains a "streams" property (plural) but it should be "stream" (singular)
-        params = {
-            "max-connections": 2,
-            "requests": [
-                {
-                    "stream": [
-                        {
-                            "operation-type": "counter"
-                        }
-                    ]
-                },
-                {
-                    "streams": [
-                        {
-                            "operation-type": "counter"
-                        }
-
-                    ]
-                }
-            ]
-        }
+        params = {"max-connections": 2, "requests": [{"stream": [{"operation-type": "counter"}]}, {"streams": [{"operation-type": "counter"}]}]}
 
         r = runner.Composite()
         with self.assertRaises(exceptions.BenchmarkAssertionError) as ctx:
@@ -666,22 +548,12 @@ class CompositeTests(TestCase):
 
         self.assertEqual("Requests structure must contain [stream] or [operation-type].", ctx.exception.args[0])
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_rejects_unsupported_operations(self, opensearch, on_client_request_start, on_client_request_end):
-        params = {
-            "requests": [
-                {
-                    "stream": [
-                        {
-                            "operation-type": "bulk"
-                        }
-                    ]
-                }
-            ]
-        }
+        params = {"requests": [{"stream": [{"operation-type": "bulk"}]}]}
 
         r = runner.Composite()
         with self.assertRaises(exceptions.BenchmarkAssertionError) as ctx:
@@ -712,23 +584,16 @@ class RequestTimingTests(TestCase):
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return False
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_merges_timing_info(self, opensearch, on_client_request_start, on_client_request_end):
         multi_cluster_client = {"default": opensearch}
         opensearch.new_request_context.return_value = RequestTimingTests.StaticRequestTiming(task_start=2)
 
-        delegate = mock.Mock(return_value=as_future({
-            "weight": 5,
-            "unit": "ops",
-            "success": True
-        }))
-        params = {
-            "name": "unit-test-operation",
-            "operation-type": "test-op"
-        }
+        delegate = mock.Mock(return_value=as_future({"weight": 5, "unit": "ops", "success": True}))
+        params = {"name": "unit-test-operation", "operation-type": "test-op"}
         timer = runner.RequestTiming(delegate)
 
         response = await timer(multi_cluster_client, params)
@@ -747,8 +612,8 @@ class RequestTimingTests(TestCase):
 
         delegate.assert_called_once_with(multi_cluster_client, params)
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     @mock.patch("tests.worker_coordinator.runner_test._FakeOSClient")
     @run_async
     async def test_creates_new_timing_info(self, opensearch, on_client_request_start, on_client_request_end):
@@ -757,10 +622,7 @@ class RequestTimingTests(TestCase):
 
         # a simple runner without a return value
         delegate = mock.Mock(return_value=as_future())
-        params = {
-            "name": "unit-test-operation",
-            "operation-type": "test-op"
-        }
+        params = {"name": "unit-test-operation", "operation-type": "test-op"}
         timer = runner.RequestTiming(delegate)
 
         response = await timer(multi_cluster_client, params)
@@ -830,12 +692,7 @@ class RetryTests(TestCase):
     async def test_is_does_not_retry_on_success(self):
         delegate = mock.Mock(return_value=as_future())
         opensearch = None
-        params = {
-            "retries": 3,
-            "retry-wait-period": 0.1,
-            "retry-on-timeout": True,
-            "retry-on-error": True
-        }
+        params = {"retries": 3, "retry-wait-period": 0.1, "retry-on-timeout": True, "retry-on-error": True}
         retrier = runner.Retry(delegate)
 
         await retrier(opensearch, params)
@@ -844,56 +701,43 @@ class RetryTests(TestCase):
 
     @run_async
     async def test_retries_on_timeout_if_wanted_and_raises_if_no_recovery(self):
-        delegate = mock.Mock(side_effect=[
-            as_future(exception=exceptions.BenchmarkConnectionError("no route to host")),
-            as_future(exception=exceptions.BenchmarkConnectionError("no route to host")),
-            as_future(exception=exceptions.BenchmarkConnectionError("no route to host")),
-            as_future(exception=exceptions.BenchmarkConnectionError("no route to host"))
-        ])
+        delegate = mock.Mock(
+            side_effect=[
+                as_future(exception=exceptions.BenchmarkConnectionError("no route to host")),
+                as_future(exception=exceptions.BenchmarkConnectionError("no route to host")),
+                as_future(exception=exceptions.BenchmarkConnectionError("no route to host")),
+                as_future(exception=exceptions.BenchmarkConnectionError("no route to host")),
+            ]
+        )
         opensearch = None
-        params = {
-            "retries": 3,
-            "retry-wait-period": 0.01,
-            "retry-on-timeout": True,
-            "retry-on-error": True
-        }
+        params = {"retries": 3, "retry-wait-period": 0.01, "retry-on-timeout": True, "retry-on-error": True}
         retrier = runner.Retry(delegate)
 
         with self.assertRaises(exceptions.BenchmarkConnectionError):
             await retrier(opensearch, params)
 
-        delegate.assert_has_calls([
-            mock.call(opensearch, params),
-            mock.call(opensearch, params),
-            mock.call(opensearch, params)
-        ])
+        delegate.assert_has_calls([mock.call(opensearch, params), mock.call(opensearch, params), mock.call(opensearch, params)])
 
     @run_async
     async def test_retries_on_timeout_if_wanted_and_returns_first_call(self):
         failed_return_value = {"weight": 1, "unit": "ops", "success": False}
 
-        delegate = mock.Mock(side_effect=[
-            as_future(exception=exceptions.BenchmarkConnectionError("no route to host")),
-            as_future(failed_return_value)
-        ])
+        delegate = mock.Mock(side_effect=[as_future(exception=exceptions.BenchmarkConnectionError("no route to host")), as_future(failed_return_value)])
         opensearch = None
-        params = {
-            "retries": 3,
-            "retry-wait-period": 0.01,
-            "retry-on-timeout": True,
-            "retry-on-error": False
-        }
+        params = {"retries": 3, "retry-wait-period": 0.01, "retry-on-timeout": True, "retry-on-error": False}
         retrier = runner.Retry(delegate)
 
         result = await retrier(opensearch, params)
         self.assertEqual(failed_return_value, result)
 
-        delegate.assert_has_calls([
-            # has returned a connection error
-            mock.call(opensearch, params),
-            # has returned normally
-            mock.call(opensearch, params)
-        ])
+        delegate.assert_has_calls(
+            [
+                # has returned a connection error
+                mock.call(opensearch, params),
+                # has returned normally
+                mock.call(opensearch, params),
+            ]
+        )
 
     @run_async
     async def test_retries_mixed_timeout_and_application_errors(self):
@@ -901,52 +745,51 @@ class RetryTests(TestCase):
         failed_return_value = {"weight": 1, "unit": "ops", "success": False}
         success_return_value = {"weight": 1, "unit": "ops", "success": False}
 
-        delegate = mock.Mock(side_effect=[
-            as_future(exception=connection_error),
-            as_future(failed_return_value),
-            as_future(exception=connection_error),
-            as_future(exception=connection_error),
-            as_future(failed_return_value),
-            as_future(success_return_value)
-        ])
+        delegate = mock.Mock(
+            side_effect=[
+                as_future(exception=connection_error),
+                as_future(failed_return_value),
+                as_future(exception=connection_error),
+                as_future(exception=connection_error),
+                as_future(failed_return_value),
+                as_future(success_return_value),
+            ]
+        )
         opensearch = None
         params = {
             # we try exactly as often as there are errors to also test the semantics of "retry".
             "retries": 5,
             "retry-wait-period": 0.01,
             "retry-on-timeout": True,
-            "retry-on-error": True
+            "retry-on-error": True,
         }
         retrier = runner.Retry(delegate)
 
         result = await retrier(opensearch, params)
         self.assertEqual(success_return_value, result)
 
-        delegate.assert_has_calls([
-            # connection error
-            mock.call(opensearch, params),
-            # application error
-            mock.call(opensearch, params),
-            # connection error
-            mock.call(opensearch, params),
-            # connection error
-            mock.call(opensearch, params),
-            # application error
-            mock.call(opensearch, params),
-            # success
-            mock.call(opensearch, params)
-        ])
+        delegate.assert_has_calls(
+            [
+                # connection error
+                mock.call(opensearch, params),
+                # application error
+                mock.call(opensearch, params),
+                # connection error
+                mock.call(opensearch, params),
+                # connection error
+                mock.call(opensearch, params),
+                # application error
+                mock.call(opensearch, params),
+                # success
+                mock.call(opensearch, params),
+            ]
+        )
 
     @run_async
     async def test_does_not_retry_on_timeout_if_not_wanted(self):
         delegate = mock.Mock(side_effect=as_future(exception=exceptions.BenchmarkConnectionTimeout("timed out")))
         opensearch = None
-        params = {
-            "retries": 3,
-            "retry-wait-period": 0.01,
-            "retry-on-timeout": False,
-            "retry-on-error": True
-        }
+        params = {"retries": 3, "retry-wait-period": 0.01, "retry-on-timeout": False, "retry-on-error": True}
         retrier = runner.Retry(delegate)
 
         with self.assertRaises(exceptions.BenchmarkConnectionTimeout):
@@ -959,28 +802,22 @@ class RetryTests(TestCase):
         failed_return_value = {"weight": 1, "unit": "ops", "success": False}
         success_return_value = {"weight": 1, "unit": "ops", "success": True}
 
-        delegate = mock.Mock(side_effect=[
-            as_future(failed_return_value),
-            as_future(success_return_value)
-        ])
+        delegate = mock.Mock(side_effect=[as_future(failed_return_value), as_future(success_return_value)])
         opensearch = None
-        params = {
-            "retries": 3,
-            "retry-wait-period": 0.01,
-            "retry-on-timeout": False,
-            "retry-on-error": True
-        }
+        params = {"retries": 3, "retry-wait-period": 0.01, "retry-on-timeout": False, "retry-on-error": True}
         retrier = runner.Retry(delegate)
 
         result = await retrier(opensearch, params)
 
         self.assertEqual(success_return_value, result)
 
-        delegate.assert_has_calls([
-            mock.call(opensearch, params),
-            # one retry
-            mock.call(opensearch, params)
-        ])
+        delegate.assert_has_calls(
+            [
+                mock.call(opensearch, params),
+                # one retry
+                mock.call(opensearch, params),
+            ]
+        )
 
     @run_async
     async def test_does_not_retry_on_application_error_if_not_wanted(self):
@@ -988,12 +825,7 @@ class RetryTests(TestCase):
 
         delegate = mock.Mock(return_value=as_future(failed_return_value))
         opensearch = None
-        params = {
-            "retries": 3,
-            "retry-wait-period": 0.01,
-            "retry-on-timeout": True,
-            "retry-on-error": False
-        }
+        params = {"retries": 3, "retry-wait-period": 0.01, "retry-on-timeout": True, "retry-on-error": False}
         retrier = runner.Retry(delegate)
 
         result = await retrier(opensearch, params)
@@ -1006,12 +838,7 @@ class RetryTests(TestCase):
     async def test_assumes_success_if_runner_returns_non_dict(self):
         delegate = mock.Mock(return_value=as_future(result=(1, "ops")))
         opensearch = None
-        params = {
-            "retries": 3,
-            "retry-wait-period": 0.01,
-            "retry-on-timeout": True,
-            "retry-on-error": True
-        }
+        params = {"retries": 3, "retry-wait-period": 0.01, "retry-on-timeout": True, "retry-on-error": True}
         retrier = runner.Retry(delegate)
 
         result = await retrier(opensearch, params)
@@ -1033,10 +860,7 @@ class RetryTests(TestCase):
 
         delegate = mock.Mock(side_effect=responses)
         opensearch = None
-        params = {
-            "retry-until-success": True,
-            "retry-wait-period": 0.01
-        }
+        params = {"retry-until-success": True, "retry-wait-period": 0.01}
         retrier = runner.Retry(delegate)
 
         result = await retrier(opensearch, params)

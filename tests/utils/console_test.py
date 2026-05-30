@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -77,9 +77,7 @@ class ConsoleFunctionTests(TestCase):
         console.BENCHMARK_RUNNING_IN_DOCKER = not random_boolean
 
         console.println(msg="Unittest message")
-        patched_print.assert_called_once_with(
-            "Unittest message", end="\n", flush=False, file=sys.stdout
-        )
+        patched_print.assert_called_once_with("Unittest message", end="\n", flush=False, file=sys.stdout)
 
     @mock.patch("sys.stdout.isatty")
     @mock.patch("builtins.print")
@@ -88,9 +86,7 @@ class ConsoleFunctionTests(TestCase):
         console.init(quiet=False, assume_tty=not random_boolean)
         patched_isatty.return_value = random_boolean
         console.println(msg="Unittest message")
-        patched_print.assert_called_once_with(
-            "Unittest message", end="\n", flush=False, file=sys.stdout
-        )
+        patched_print.assert_called_once_with("Unittest message", end="\n", flush=False, file=sys.stdout)
 
     @mock.patch("sys.stdout.isatty")
     @mock.patch("builtins.print")
@@ -109,9 +105,7 @@ class ConsoleFunctionTests(TestCase):
         patched_isatty.return_value = random.choice([True, False])
 
         console.println(msg="Unittest message", force=True)
-        patched_print.assert_called_once_with(
-            "Unittest message", end="\n", flush=False, file=sys.stdout
-        )
+        patched_print.assert_called_once_with("Unittest message", end="\n", flush=False, file=sys.stdout)
 
 
 # pytest style class names need to start with Test and don't need to subclass
@@ -180,10 +174,7 @@ class TestCmdLineProgressResultsPublisher:
         mock_printer = mock.Mock()
         progress_publisher = console.CmdLineProgressResultsPublisher(width=width, printer=mock_printer)
         progress_publisher.print(message=message, progress=".")
-        mock_printer.assert_has_calls([
-            mock.call(" " * width, end=""),
-            mock.call("\x1b[{}D{}{}.".format(width, message, " "*(width-len(message)-1)), end="")
-        ])
+        mock_printer.assert_has_calls([mock.call(" " * width, end=""), mock.call("\x1b[{}D{}{}.".format(width, message, " " * (width - len(message) - 1)), end="")])
         patched_flush.assert_called_once_with()
 
     @mock.patch("sys.stdout.flush")
@@ -201,10 +192,7 @@ class TestCmdLineProgressResultsPublisher:
         mock_printer = mock.Mock()
         progress_publisher = console.CmdLineProgressResultsPublisher(width=width, printer=mock_printer)
         progress_publisher.print(message=message, progress=".")
-        mock_printer.assert_has_calls([
-            mock.call(" " * width, end=""),
-            mock.call("\x1b[{}D{}{}.".format(width, message, " "*(width-len(message)-1)), end="")
-        ])
+        mock_printer.assert_has_calls([mock.call(" " * width, end=""), mock.call("\x1b[{}D{}{}.".format(width, message, " " * (width - len(message) - 1)), end="")])
         patched_flush.assert_called_once_with()
 
     @mock.patch("sys.stdout.flush")

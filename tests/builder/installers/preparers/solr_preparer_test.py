@@ -12,9 +12,17 @@ from solrorbit.builder.utils.binary_keys import BinaryKeys
 class NodePreparerTests(TestCase):
     def setUp(self):
         self.node_id = "abdefg"
-        self.node = Node(binary_path="/fake_binary_path", data_paths=["/fake1", "/fake2"],
-                         name=self.node_id, pid=None, telemetry=None, port=8983, root_dir=None,
-                         log_path="/fake/logpath", heap_dump_path="/fake/heap")
+        self.node = Node(
+            binary_path="/fake_binary_path",
+            data_paths=["/fake1", "/fake2"],
+            name=self.node_id,
+            pid=None,
+            telemetry=None,
+            port=8983,
+            root_dir=None,
+            log_path="/fake/logpath",
+            heap_dump_path="/fake/heap",
+        )
         self.host = Host(name="fake", address="10.17.22.23", metadata={}, node=None)
         self.binaries = {BinaryKeys.SOLR: "/data/builds/distributions"}
         self.all_node_ips = ["10.17.22.22", "10.17.22.23"]
@@ -26,16 +34,7 @@ class NodePreparerTests(TestCase):
         self.hook_handler_class = Mock()
 
         self.cluster_config = ClusterConfigInstance(
-            names="defaults",
-            root_path="fake",
-            config_paths=["/tmp"],
-            variables={
-                "test_run_root": self.test_run_root,
-                "cluster_name": self.cluster_name,
-                "node": {
-                    "port": "8983"
-                }
-            }
+            names="defaults", root_path="fake", config_paths=["/tmp"], variables={"test_run_root": self.test_run_root, "cluster_name": self.cluster_name, "node": {"port": "8983"}}
         )
         self.preparer = SolrPreparer(self.cluster_config, self.executor, self.hook_handler_class)
         self.preparer.path_manager = Mock()
@@ -56,19 +55,22 @@ class NodePreparerTests(TestCase):
     def test_config_vars(self):
         config_vars = self.preparer.get_config_vars(self.host, self.node, self.all_node_ips)
 
-        self.assertEqual({
-            "cluster_name": self.cluster_name,
-            "node_name": self.node_id,
-            "data_paths": "/fake1",
-            "log_path": "/fake/logpath",
-            "heap_dump_path": "/fake/heap",
-            "node_ip": "10.17.22.23",
-            "network_host": "10.17.22.23",
-            "http_port": "8983",
-            "zookeeper_port": "9983",
-            "all_node_ips": "[\"10.17.22.22\",\"10.17.22.23\"]",
-            "minimum_master_nodes": 2,
-            "install_root_path": "/fake_binary_path",
-            "node": {"port": "8983"},
-            "test_run_root": self.test_run_root
-        }, config_vars)
+        self.assertEqual(
+            {
+                "cluster_name": self.cluster_name,
+                "node_name": self.node_id,
+                "data_paths": "/fake1",
+                "log_path": "/fake/logpath",
+                "heap_dump_path": "/fake/heap",
+                "node_ip": "10.17.22.23",
+                "network_host": "10.17.22.23",
+                "http_port": "8983",
+                "zookeeper_port": "9983",
+                "all_node_ips": '["10.17.22.22","10.17.22.23"]',
+                "minimum_master_nodes": 2,
+                "install_root_path": "/fake_binary_path",
+                "node": {"port": "8983"},
+                "test_run_root": self.test_run_root,
+            },
+            config_vars,
+        )

@@ -24,14 +24,7 @@ class BareInstallerTests(TestCase):
             names="defaults",
             root_path="fake",
             config_paths=["/tmp"],
-            variables={
-                "test_run_root": self.test_run_root,
-                "cluster_name": self.cluster_name,
-                "node": {
-                    "port": "8983"
-                },
-                "preserve_install": False
-            }
+            variables={"test_run_root": self.test_run_root, "cluster_name": self.cluster_name, "node": {"port": "8983"}, "preserve_install": False},
         )
         self.installer = BareInstaller(self.cluster_config, self.executor, self.preparer)
         self.installer.config_applier = Mock()
@@ -49,30 +42,18 @@ class BareInstallerTests(TestCase):
         node = self.installer.install(self.host, self.binaries, self.all_node_ips)
         self.assertEqual(node, "fake node")
 
-        self.preparer.prepare.assert_has_calls([
-            mock.call(self.host, self.binaries)
-        ])
-        self.preparer.get_config_vars.assert_has_calls([
-            mock.call(self.host, "fake node", self.all_node_ips)
-        ])
-        self.installer.config_applier.apply_configs.assert_has_calls([
-            mock.call(self.host, "fake node", ["/tmp"], {"fake": "config"})
-        ])
-        self.installer.java_home_resolver.resolve_java_home.assert_has_calls([
-            mock.call(self.host, self.cluster_config)
-        ])
-        self.preparer.invoke_install_hook.assert_has_calls([
-            mock.call(self.host, BootstrapPhase.post_install, {"fake": "config"}, {"JAVA_HOME": "/path/to/java/home"})
-        ])
+        self.preparer.prepare.assert_has_calls([mock.call(self.host, self.binaries)])
+        self.preparer.get_config_vars.assert_has_calls([mock.call(self.host, "fake node", self.all_node_ips)])
+        self.installer.config_applier.apply_configs.assert_has_calls([mock.call(self.host, "fake node", ["/tmp"], {"fake": "config"})])
+        self.installer.java_home_resolver.resolve_java_home.assert_has_calls([mock.call(self.host, self.cluster_config)])
+        self.preparer.invoke_install_hook.assert_has_calls([mock.call(self.host, BootstrapPhase.post_install, {"fake": "config"}, {"JAVA_HOME": "/path/to/java/home"})])
 
     def test_install_no_java_home(self):
         self.installer.java_home_resolver.resolve_java_home.return_value = (None, None)
 
         self.installer.install(self.host, self.binaries, self.all_node_ips)
 
-        self.preparer.invoke_install_hook.assert_has_calls([
-            mock.call(self.host, BootstrapPhase.post_install, {"fake": "config"}, {})
-        ])
+        self.preparer.invoke_install_hook.assert_has_calls([mock.call(self.host, BootstrapPhase.post_install, {"fake": "config"}, {})])
 
     def test_multiple_nodes_installed(self):
         self.installer.preparers = [self.preparer, self.preparer2]

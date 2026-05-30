@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -41,6 +41,7 @@ def csv_to_list(csv):
         return []
     else:
         return [e.strip() for e in csv.split(",")]
+
 
 def to_bool(v):
     if v is None:
@@ -88,7 +89,7 @@ def kv_to_map(kvs):
 
 
 def to_dict(arg, default_parser=kv_to_map):
-    if io.has_extension(arg, ".json") and ',' not in arg and ':' not in arg:
+    if io.has_extension(arg, ".json") and "," not in arg and ":" not in arg:
         with open(io.normalize_path(arg), mode="rt", encoding="utf-8") as f:
             return json.load(f)
     elif arg.startswith("{"):
@@ -102,7 +103,7 @@ def bulleted_list_of(src_list):
 
 
 def double_quoted_list_of(src_list):
-    return ["\"{}\"".format(param) for param in src_list]
+    return ['"{}"'.format(param) for param in src_list]
 
 
 def make_list_of_close_matches(word_list, all_possibilities):
@@ -122,11 +123,13 @@ def make_list_of_close_matches(word_list, all_possibilities):
 
     return close_matches
 
+
 class StoreKeyPairAsDict(argparse.Action):
     """
     Custom Argparse action that allows users to pass in a key:value pairs after specifying a parameter.
     Used as action for --number-of-docs parameter for create-workload subcommand.
     """
+
     def __call__(self, parser, namespace, values, option_string=None):
         custom_dict = {}
 
@@ -138,12 +141,10 @@ class StoreKeyPairAsDict(argparse.Action):
 
         for kv in kv_pairs:
             try:
-                k,v = kv.split(":")
+                k, v = kv.split(":")
                 custom_dict[k] = v
             except ValueError:
-                raise exceptions.InvalidSyntax(
-                    "StoreKeyPairAsDict: Could not convert string to dict due to invalid syntax."
-                    )
+                raise exceptions.InvalidSyntax("StoreKeyPairAsDict: Could not convert string to dict due to invalid syntax.")
         setattr(namespace, self.dest, custom_dict)
 
         return custom_dict
@@ -266,8 +267,7 @@ class ClientOptions(ConnectOptions):
 
         if self.argvalue == ClientOptions.DEFAULT_CLIENT_OPTIONS and self.target_hosts is not None:
             # --client-options unset but multi-clusters used in --target-hosts? apply options defaults for all cluster names.
-            self.parsed_options = {cluster_name: kv_to_map([ClientOptions.DEFAULT_CLIENT_OPTIONS])
-                                   for cluster_name in self.target_hosts.all_hosts.keys()}
+            self.parsed_options = {cluster_name: kv_to_map([ClientOptions.DEFAULT_CLIENT_OPTIONS]) for cluster_name in self.target_hosts.all_hosts.keys()}
         else:
             self.parsed_options = to_dict(self.argvalue, default_parser=normalize_to_dict)
 

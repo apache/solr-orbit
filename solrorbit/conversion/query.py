@@ -128,6 +128,7 @@ def extract_sort_parameter(body: dict) -> str:
 # Internal helper functions
 # ---------------------------------------------------------------------------
 
+
 def _translate_query_node(node: dict, fq_list: list = None) -> str:
     """Recursively translate a single OpenSearch query node to Solr syntax.
 
@@ -172,10 +173,7 @@ def _translate_query_node(node: dict, fq_list: list = None) -> str:
                     return f'{field}:"{_escape_solr_phrase(v)}"'
                 return f"{field}:{_escape_solr_value(v)}"
         # If sub is not a dict or has no valid fields, fall back
-        logger.warning(
-            "match/match_phrase query has invalid structure: %s. Using *:*",
-            sub
-        )
+        logger.warning("match/match_phrase query has invalid structure: %s. Using *:*", sub)
         return "*:*"
 
     if "range" in node:
@@ -263,10 +261,7 @@ def _translate_terms_clause(field: str, values: list) -> str:
     - Large lists (>100 terms): ``field:(v1 v2 ...)``  for q context, still works
       but when used as an fq, callers should prefer ``{!terms f=field}v1,v2,...``
     """
-    escaped = " ".join(
-        f'"{_escape_solr_phrase(v)}"' if " " in str(v) else _escape_solr_value(v)
-        for v in values
-    )
+    escaped = " ".join(f'"{_escape_solr_phrase(v)}"' if " " in str(v) else _escape_solr_value(v) for v in values)
     return f"{field}:({escaped})"
 
 
@@ -305,10 +300,10 @@ def _escape_solr_value(value) -> str:
     result = []
     for char in str(value):
         if char in special:
-            result.append('\\' + char)
+            result.append("\\" + char)
         else:
             result.append(char)
-    return ''.join(result)
+    return "".join(result)
 
 
 def _escape_solr_phrase(value) -> str:
@@ -318,7 +313,7 @@ def _escape_solr_phrase(value) -> str:
     For phrases, we only need to escape quotes (and backslashes).
     Other special characters are OK within quotes.
     """
-    return str(value).replace('\\', '\\\\').replace('"', '\\"')
+    return str(value).replace("\\", "\\\\").replace('"', '\\"')
 
 
 def translate_to_solr_json_dsl(body: dict) -> dict:
@@ -437,11 +432,7 @@ def _convert_single_agg(agg_name: str, agg_def: dict):
         if not field:
             logger.warning("date_histogram agg '%s' has no field — skipping", agg_name)
             return None
-        interval = (
-            dh_conf.get("calendar_interval")
-            or dh_conf.get("fixed_interval")
-            or dh_conf.get("interval", "month")
-        )
+        interval = dh_conf.get("calendar_interval") or dh_conf.get("fixed_interval") or dh_conf.get("interval", "month")
         gap = _calendar_interval_to_solr_gap(interval)
         facet_def = {
             "type": "range",
@@ -492,7 +483,8 @@ def _convert_single_agg(agg_name: str, agg_def: dict):
     agg_type = next(iter(agg_def), "unknown")
     logger.warning(
         "Unsupported aggregation type '%s' (name='%s') — skipping in Solr conversion.",
-        agg_type, agg_name,
+        agg_type,
+        agg_name,
     )
     return None
 

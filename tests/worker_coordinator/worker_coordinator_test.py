@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -71,7 +71,7 @@ class WorkerCoordinatorTestParamSource:
     def task_progress(self):
         if self.infinite:
             return None
-        return (self._current / self._total, '%')
+        return (self._current / self._total, "%")
 
     def params(self):
         if not self.infinite and self._current > self._total:
@@ -86,9 +86,9 @@ class WorkerCoordinatorTests(TestCase):
             self.all_hosts = all_hosts
             self.all_client_options = all_client_options
             self.uses_static_responses = False
-            self.default = all_client_options.get('default', {}) if all_client_options else {}
+            self.default = all_client_options.get("default", {}) if all_client_options else {}
 
-    def __init__(self, methodName='runTest'):
+    def __init__(self, methodName="runTest"):
         super().__init__(methodName)
         self.cfg = None
         self.workload = None
@@ -120,30 +120,24 @@ class WorkerCoordinatorTests(TestCase):
         self.cfg.add(config.Scope.application, "telemetry", "params", {"ccr-stats-indices": {"default": ["leader_index"]}})
         self.cfg.add(config.Scope.application, "builder", "cluster_config.names", ["default"])
         self.cfg.add(config.Scope.application, "builder", "skip.rest.api.check", True)
-        self.cfg.add(config.Scope.application, "client", "hosts",
-                     WorkerCoordinatorTests.Holder(all_hosts={"default": ["localhost:9200"]}))
+        self.cfg.add(config.Scope.application, "client", "hosts", WorkerCoordinatorTests.Holder(all_hosts={"default": ["localhost:9200"]}))
         self.cfg.add(config.Scope.application, "client", "options", WorkerCoordinatorTests.Holder(all_client_options={"default": {}}))
         self.cfg.add(config.Scope.application, "worker_coordinator", "worker_ips", ["localhost"])
         self.cfg.add(config.Scope.application, "reporting", "datastore.type", "in-memory")
         self.cfg.add(config.Scope.applicationOverride, "workload", "redline.max_cpu_usage", None)
 
-        default_test_procedure = workload.TestProcedure("default", default=True, schedule=[
-            workload.Task(name="index", operation=workload.Operation("index", operation_type=workload.OperationType.Bulk), clients=4)
-        ])
+        default_test_procedure = workload.TestProcedure(
+            "default", default=True, schedule=[workload.Task(name="index", operation=workload.Operation("index", operation_type=workload.OperationType.Bulk), clients=4)]
+        )
         another_test_procedure = workload.TestProcedure("other", default=False)
-        self.workload = workload.Workload(
-            name="unittest",
-            description="unittest workload",
-            test_procedures=[another_test_procedure, default_test_procedure])
+        self.workload = workload.Workload(name="unittest", description="unittest workload", test_procedures=[another_test_procedure, default_test_procedure])
 
     def tearDown(self):
         WorkerCoordinatorTests.StaticClientFactory.close()
 
     def create_test_worker_coordinator_target(self):
         client = "client_marker"
-        attrs = {
-            "create_client.return_value": client
-        }
+        attrs = {"create_client.return_value": client}
         return mock.Mock(**attrs)
 
     @mock.patch("solrorbit.utils.net.resolve")
@@ -159,12 +153,14 @@ class WorkerCoordinatorTests(TestCase):
         target.prepare_workload.assert_called_once_with(["10.5.5.1", "10.5.5.2"], self.cfg, self.workload)
         d.start_benchmark()
 
-        target.create_client.assert_has_calls(calls=[
-            mock.call("10.5.5.1"),
-            mock.call("10.5.5.1"),
-            mock.call("10.5.5.2"),
-            mock.call("10.5.5.2"),
-        ])
+        target.create_client.assert_has_calls(
+            calls=[
+                mock.call("10.5.5.1"),
+                mock.call("10.5.5.1"),
+                mock.call("10.5.5.2"),
+                mock.call("10.5.5.2"),
+            ]
+        )
 
         # Did we start all load generators? There is no specific mock assert for this...
         self.assertEqual(4, target.start_worker.call_count)
@@ -179,12 +175,14 @@ class WorkerCoordinatorTests(TestCase):
 
         d.start_benchmark()
 
-        target.create_client.assert_has_calls(calls=[
-            mock.call("localhost"),
-            mock.call("localhost"),
-            mock.call("localhost"),
-            mock.call("localhost"),
-        ])
+        target.create_client.assert_has_calls(
+            calls=[
+                mock.call("localhost"),
+                mock.call("localhost"),
+                mock.call("localhost"),
+                mock.call("localhost"),
+            ]
+        )
 
         # Did we start all load generators? There is no specific mock assert for this...
         self.assertEqual(4, target.start_worker.call_count)
@@ -198,9 +196,7 @@ class WorkerCoordinatorTests(TestCase):
 
         self.assertEqual(0, len(d.workers_completed_current_step))
 
-        d.joinpoint_reached(worker_id=0,
-                            worker_local_timestamp=10,
-                            task_allocations=[worker_coordinator.ClientAllocation(client_id=0, task=worker_coordinator.JoinPoint(id=0))])
+        d.joinpoint_reached(worker_id=0, worker_local_timestamp=10, task_allocations=[worker_coordinator.ClientAllocation(client_id=0, task=worker_coordinator.JoinPoint(id=0))])
 
         self.assertEqual(1, len(d.workers_completed_current_step))
 
@@ -216,12 +212,11 @@ class WorkerCoordinatorTests(TestCase):
 
         self.assertEqual(0, len(d.workers_completed_current_step))
 
-        d.joinpoint_reached(worker_id=0,
-                            worker_local_timestamp=10,
-                            task_allocations=[
-                                worker_coordinator.ClientAllocation(client_id=0,
-                                                        task=worker_coordinator.JoinPoint(id=0,
-                                                                              clients_executing_completing_task=[0]))])
+        d.joinpoint_reached(
+            worker_id=0,
+            worker_local_timestamp=10,
+            task_allocations=[worker_coordinator.ClientAllocation(client_id=0, task=worker_coordinator.JoinPoint(id=0, clients_executing_completing_task=[0]))],
+        )
 
         self.assertEqual(-1, d.current_step)
         self.assertEqual(1, len(d.workers_completed_current_step))
@@ -229,31 +224,28 @@ class WorkerCoordinatorTests(TestCase):
         self.assertEqual(4, target.complete_current_task.call_count)
 
         # awaiting responses of other clients
-        d.joinpoint_reached(worker_id=1,
-                            worker_local_timestamp=11,
-                            task_allocations=[
-                                worker_coordinator.ClientAllocation(client_id=1,
-                                                        task=worker_coordinator.JoinPoint(id=0,
-                                                                              clients_executing_completing_task=[0]))])
+        d.joinpoint_reached(
+            worker_id=1,
+            worker_local_timestamp=11,
+            task_allocations=[worker_coordinator.ClientAllocation(client_id=1, task=worker_coordinator.JoinPoint(id=0, clients_executing_completing_task=[0]))],
+        )
 
         self.assertEqual(-1, d.current_step)
         self.assertEqual(2, len(d.workers_completed_current_step))
 
-        d.joinpoint_reached(worker_id=2,
-                            worker_local_timestamp=12,
-                            task_allocations=[
-                                worker_coordinator.ClientAllocation(client_id=2,
-                                                        task=worker_coordinator.JoinPoint(id=0,
-                                                                              clients_executing_completing_task=[0]))])
+        d.joinpoint_reached(
+            worker_id=2,
+            worker_local_timestamp=12,
+            task_allocations=[worker_coordinator.ClientAllocation(client_id=2, task=worker_coordinator.JoinPoint(id=0, clients_executing_completing_task=[0]))],
+        )
         self.assertEqual(-1, d.current_step)
         self.assertEqual(3, len(d.workers_completed_current_step))
 
-        d.joinpoint_reached(worker_id=3,
-                            worker_local_timestamp=13,
-                            task_allocations=[
-                                worker_coordinator.ClientAllocation(client_id=3,
-                                                        task=worker_coordinator.JoinPoint(id=0,
-                                                                              clients_executing_completing_task=[0]))])
+        d.joinpoint_reached(
+            worker_id=3,
+            worker_local_timestamp=13,
+            task_allocations=[worker_coordinator.ClientAllocation(client_id=3, task=worker_coordinator.JoinPoint(id=0, clients_executing_completing_task=[0]))],
+        )
 
         # by now the previous step should be considered completed and we are at the next one
         self.assertEqual(0, d.current_step)
@@ -271,8 +263,7 @@ class WorkerCoordinatorTests(TestCase):
         task = self.workload.find_test_procedure_or_default("default").schedule[0]
         original_clients = task.clients
 
-        d = worker_coordinator.WorkerCoordinator(self.create_test_worker_coordinator_target(), self.cfg,
-                                            client_factory_class=WorkerCoordinatorTests.StaticClientFactory)
+        d = worker_coordinator.WorkerCoordinator(self.create_test_worker_coordinator_target(), self.cfg, client_factory_class=WorkerCoordinatorTests.StaticClientFactory)
 
         d.prepare_benchmark(t=self.workload)
         d.start_benchmark()
@@ -289,16 +280,18 @@ def op(name, operation_type):
 
 class SamplePostprocessorTests(TestCase):
     def throughput(self, absolute_time, relative_time, value):
-        return mock.call(name="throughput",
-                         value=value,
-                         unit="docs/s",
-                         task="index",
-                         operation="index-op",
-                         operation_type="bulk",
-                         sample_type=metrics.SampleType.Normal,
-                         absolute_time=absolute_time,
-                         relative_time=relative_time,
-                         meta_data={})
+        return mock.call(
+            name="throughput",
+            value=value,
+            unit="docs/s",
+            task="index",
+            operation="index-op",
+            operation_type="bulk",
+            sample_type=metrics.SampleType.Normal,
+            absolute_time=absolute_time,
+            relative_time=relative_time,
+            meta_data={},
+        )
 
     def service_time(self, absolute_time, relative_time, value):
         return self.request_metric(absolute_time, relative_time, "service_time", value)
@@ -313,41 +306,40 @@ class SamplePostprocessorTests(TestCase):
         return self.request_metric(absolute_time, relative_time, "latency", value)
 
     def request_metric(self, absolute_time, relative_time, name, value):
-        return mock.call(name=name,
-                         value=value,
-                         unit="ms",
-                         task="index",
-                         operation="index-op",
-                         operation_type="bulk",
-                         sample_type=metrics.SampleType.Normal,
-                         absolute_time=absolute_time,
-                         relative_time=relative_time,
-                         meta_data={})
+        return mock.call(
+            name=name,
+            value=value,
+            unit="ms",
+            task="index",
+            operation="index-op",
+            operation_type="bulk",
+            sample_type=metrics.SampleType.Normal,
+            absolute_time=absolute_time,
+            relative_time=relative_time,
+            meta_data={},
+        )
 
     @mock.patch("solrorbit.metrics.MetricsStore")
     def test_all_samples(self, metrics_store):
-        post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store,
-                                                  downsample_factor=1,
-                                                  workload_meta_data={},
-                                                  test_procedure_meta_data={})
+        post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store, downsample_factor=1, workload_meta_data={}, test_procedure_meta_data={})
 
         task = workload.Task("index", workload.Operation("index-op", "bulk", param_source="worker-coordinator-test-param-source"))
         samples = [
-            worker_coordinator.DefaultSample(
-                0, 38598, 24, 0, task, metrics.SampleType.Normal,
-                None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 1, 1 / 2),
-            worker_coordinator.DefaultSample(
-                0, 38599, 25, 0, task, metrics.SampleType.Normal,
-                None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 2, 2 / 2),
+            worker_coordinator.DefaultSample(0, 38598, 24, 0, task, metrics.SampleType.Normal, None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 1, 1 / 2),
+            worker_coordinator.DefaultSample(0, 38599, 25, 0, task, metrics.SampleType.Normal, None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 2, 2 / 2),
         ]
 
         post_process(samples)
 
         calls = [
-            self.latency(38598, 24, 10.0), self.service_time(38598, 24, 7.0),
-            self.client_processing_time(38598, 24, 0.7), self.processing_time(38598, 24, 9.0),
-            self.latency(38599, 25, 10.0), self.service_time(38599, 25, 7.0),
-            self.client_processing_time(38599, 25, 0.7), self.processing_time(38599, 25, 9.0),
+            self.latency(38598, 24, 10.0),
+            self.service_time(38598, 24, 7.0),
+            self.client_processing_time(38598, 24, 0.7),
+            self.processing_time(38598, 24, 9.0),
+            self.latency(38599, 25, 10.0),
+            self.service_time(38599, 25, 7.0),
+            self.client_processing_time(38599, 25, 0.7),
+            self.processing_time(38599, 25, 9.0),
             self.throughput(38598, 24, 5000),
             self.throughput(38599, 25, 5000),
         ]
@@ -355,28 +347,23 @@ class SamplePostprocessorTests(TestCase):
 
     @mock.patch("solrorbit.metrics.MetricsStore")
     def test_downsamples(self, metrics_store):
-        post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store,
-                                                  downsample_factor=2,
-                                                  workload_meta_data={},
-                                                  test_procedure_meta_data={})
+        post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store, downsample_factor=2, workload_meta_data={}, test_procedure_meta_data={})
 
         task = workload.Task("index", workload.Operation("index-op", "bulk", param_source="worker-coordinator-test-param-source"))
 
         samples = [
-            worker_coordinator.DefaultSample(
-                0, 38598, 24, 0, task, metrics.SampleType.Normal,
-                None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 1, 1 / 2),
-            worker_coordinator.DefaultSample(
-                0, 38599, 25, 0, task, metrics.SampleType.Normal,
-                None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 2, 2 / 2),
+            worker_coordinator.DefaultSample(0, 38598, 24, 0, task, metrics.SampleType.Normal, None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 1, 1 / 2),
+            worker_coordinator.DefaultSample(0, 38599, 25, 0, task, metrics.SampleType.Normal, None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 2, 2 / 2),
         ]
 
         post_process(samples)
 
         calls = [
             # only the first out of two request samples is included, throughput metrics are still complete
-            self.latency(38598, 24, 10.0), self.service_time(38598, 24, 7.0),
-            self.client_processing_time(38598, 24, 0.7), self.processing_time(38598, 24, 9.0),
+            self.latency(38598, 24, 10.0),
+            self.service_time(38598, 24, 7.0),
+            self.client_processing_time(38598, 24, 0.7),
+            self.processing_time(38598, 24, 9.0),
             self.throughput(38598, 24, 5000),
             self.throughput(38599, 25, 5000),
         ]
@@ -384,39 +371,41 @@ class SamplePostprocessorTests(TestCase):
 
     @mock.patch("solrorbit.metrics.MetricsStore")
     def test_dependent_samples(self, metrics_store):
-        post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store,
-                                                  downsample_factor=1,
-                                                  workload_meta_data={},
-                                                  test_procedure_meta_data={})
+        post_process = worker_coordinator.DefaultSamplePostprocessor(metrics_store, downsample_factor=1, workload_meta_data={}, test_procedure_meta_data={})
 
         task = workload.Task("index", workload.Operation("index-op", "bulk", param_source="worker-coordinator-test-param-source"))
         samples = [
             worker_coordinator.DefaultSample(
-                0, 38598, 24, 0, task, metrics.SampleType.Normal,
-                None, 0.01, 0.007, 0.0007, 0.009, None, 5000, "docs", 1, 1 / 2,
-                          dependent_timing=[
-                              {
-                                  "absolute_time": 38601,
-                                  "request_start": 25,
-                                  "service_time": 0.05,
-                                  "operation": "index-op",
-                                  "operation-type": "bulk"
-                              },
-                              {
-                                  "absolute_time": 38602,
-                                  "request_start": 26,
-                                  "service_time": 0.08,
-                                  "operation": "index-op",
-                                  "operation-type": "bulk"
-                              }
-                          ]),
+                0,
+                38598,
+                24,
+                0,
+                task,
+                metrics.SampleType.Normal,
+                None,
+                0.01,
+                0.007,
+                0.0007,
+                0.009,
+                None,
+                5000,
+                "docs",
+                1,
+                1 / 2,
+                dependent_timing=[
+                    {"absolute_time": 38601, "request_start": 25, "service_time": 0.05, "operation": "index-op", "operation-type": "bulk"},
+                    {"absolute_time": 38602, "request_start": 26, "service_time": 0.08, "operation": "index-op", "operation-type": "bulk"},
+                ],
+            ),
         ]
 
         post_process(samples)
 
         calls = [
-            self.latency(38598, 24, 10.0), self.service_time(38598, 24, 7.0),
-            self.client_processing_time(38598, 24, 0.7), self.processing_time(38598, 24, 9.0),
+            self.latency(38598, 24, 10.0),
+            self.service_time(38598, 24, 7.0),
+            self.client_processing_time(38598, 24, 0.7),
+            self.processing_time(38598, 24, 9.0),
             # dependent timings
             self.service_time(38601, 25, 50.0),
             self.service_time(38602, 26, 80.0),
@@ -427,182 +416,53 @@ class SamplePostprocessorTests(TestCase):
 
 class WorkerAssignmentTests(TestCase):
     def test_single_host_assignment_clients_matches_cores(self):
-        host_configs = [{
-            "host": "localhost",
-            "cores": 4
-        }]
+        host_configs = [{"host": "localhost", "cores": 4}]
 
         assignments = worker_coordinator.calculate_worker_assignments(host_configs, client_count=4)
 
-        self.assertEqual([
-            {
-                "host": "localhost",
-                "workers": [
-                    [0],
-                    [1],
-                    [2],
-                    [3]
-                ]
-            }
-        ], assignments)
+        self.assertEqual([{"host": "localhost", "workers": [[0], [1], [2], [3]]}], assignments)
 
     def test_single_host_assignment_more_clients_than_cores(self):
-        host_configs = [{
-            "host": "localhost",
-            "cores": 4
-        }]
+        host_configs = [{"host": "localhost", "cores": 4}]
 
         assignments = worker_coordinator.calculate_worker_assignments(host_configs, client_count=6)
 
-        self.assertEqual([
-            {
-                "host": "localhost",
-                "workers": [
-                    [0, 1],
-                    [2, 3],
-                    [4],
-                    [5]
-                ]
-            }
-        ], assignments)
+        self.assertEqual([{"host": "localhost", "workers": [[0, 1], [2, 3], [4], [5]]}], assignments)
 
     def test_single_host_assignment_less_clients_than_cores(self):
-        host_configs = [{
-            "host": "localhost",
-            "cores": 4
-        }]
+        host_configs = [{"host": "localhost", "cores": 4}]
 
         assignments = worker_coordinator.calculate_worker_assignments(host_configs, client_count=2)
 
-        self.assertEqual([
-            {
-                "host": "localhost",
-                "workers": [
-                    [0],
-                    [1],
-                    [],
-                    []
-                ]
-            }
-        ], assignments)
+        self.assertEqual([{"host": "localhost", "workers": [[0], [1], [], []]}], assignments)
 
     def test_multiple_host_assignment_more_clients_than_cores(self):
-        host_configs = [
-            {
-                "host": "host-a",
-                "cores": 4
-            },
-            {
-                "host": "host-b",
-                "cores": 4
-            }
-        ]
+        host_configs = [{"host": "host-a", "cores": 4}, {"host": "host-b", "cores": 4}]
 
         assignments = worker_coordinator.calculate_worker_assignments(host_configs, client_count=16)
 
-        self.assertEqual([
-            {
-                "host": "host-a",
-                "workers": [
-                    [0, 1],
-                    [2, 3],
-                    [4, 5],
-                    [6, 7]
-                ]
-            },
-            {
-                "host": "host-b",
-                "workers": [
-                    [8, 9],
-                    [10, 11],
-                    [12, 13],
-                    [14, 15]
-                ]
-            }
-        ], assignments)
+        self.assertEqual([{"host": "host-a", "workers": [[0, 1], [2, 3], [4, 5], [6, 7]]}, {"host": "host-b", "workers": [[8, 9], [10, 11], [12, 13], [14, 15]]}], assignments)
 
     def test_multiple_host_assignment_less_clients_than_cores(self):
-        host_configs = [
-            {
-                "host": "host-a",
-                "cores": 4
-            },
-            {
-                "host": "host-b",
-                "cores": 4
-            }
-        ]
+        host_configs = [{"host": "host-a", "cores": 4}, {"host": "host-b", "cores": 4}]
 
         assignments = worker_coordinator.calculate_worker_assignments(host_configs, client_count=4)
 
-        self.assertEqual([
-            {
-                "host": "host-a",
-                "workers": [
-                    [0],
-                    [1],
-                    [],
-                    []
-                ]
-            },
-            {
-                "host": "host-b",
-                "workers": [
-                    [2],
-                    [3],
-                    [],
-                    []
-                ]
-            }
-        ], assignments)
+        self.assertEqual([{"host": "host-a", "workers": [[0], [1], [], []]}, {"host": "host-b", "workers": [[2], [3], [], []]}], assignments)
 
     def test_uneven_assignment_across_hosts(self):
-        host_configs = [
-            {
-                "host": "host-a",
-                "cores": 4
-            },
-            {
-                "host": "host-b",
-                "cores": 4
-            },
-            {
-                "host": "host-c",
-                "cores": 4
-            }
-        ]
+        host_configs = [{"host": "host-a", "cores": 4}, {"host": "host-b", "cores": 4}, {"host": "host-c", "cores": 4}]
 
         assignments = worker_coordinator.calculate_worker_assignments(host_configs, client_count=17)
 
-        self.assertEqual([
-            {
-                "host": "host-a",
-                "workers": [
-                    [0, 1],
-                    [2, 3],
-                    [4],
-                    [5]
-                ]
-            },
-            {
-                "host": "host-b",
-                "workers": [
-                    [6, 7],
-                    [8, 9],
-                    [10],
-                    [11]
-                ]
-            },
-            {
-                "host": "host-c",
-                "workers": [
-                    [12, 13],
-                    [14],
-                    [15],
-                    [16]
-                ]
-            }
-        ], assignments)
+        self.assertEqual(
+            [
+                {"host": "host-a", "workers": [[0, 1], [2, 3], [4], [5]]},
+                {"host": "host-b", "workers": [[6, 7], [8, 9], [10], [11]]},
+                {"host": "host-c", "workers": [[12, 13], [14], [15], [16]]},
+            ],
+            assignments,
+        )
 
 
 class AllocatorTests(TestCase):
@@ -610,9 +470,9 @@ class AllocatorTests(TestCase):
         params.register_param_source_for_name("worker-coordinator-test-param-source", WorkerCoordinatorTestParamSource)
 
     def ta(self, task, client_index_in_task, global_client_index=None, total_clients=None):
-        return worker_coordinator.TaskAllocation(task, client_index_in_task,
-                                                 client_index_in_task if global_client_index is None else global_client_index,
-                                                 task.clients if total_clients is None else total_clients)
+        return worker_coordinator.TaskAllocation(
+            task, client_index_in_task, client_index_in_task if global_client_index is None else global_client_index, task.clients if total_clients is None else total_clients
+        )
 
     def test_allocates_one_task(self):
         task = workload.Task("index", op("index", workload.OperationType.Bulk))
@@ -670,11 +530,7 @@ class AllocatorTests(TestCase):
         stats = workload.Task("stats", op("stats", workload.OperationType.Sleep))
         search = workload.Task("search", op("search", workload.OperationType.Search))
 
-        allocator = worker_coordinator.Allocator([index,
-                                      workload.Parallel([index, stats, stats]),
-                                      index,
-                                      index,
-                                      workload.Parallel([search, search, search])])
+        allocator = worker_coordinator.Allocator([index, workload.Parallel([index, stats, stats]), index, index, workload.Parallel([search, search, search])])
 
         self.assertEqual(3, allocator.clients)
 
@@ -706,24 +562,28 @@ class AllocatorTests(TestCase):
         # join_point, index_a, index_c, index_e, join_point
         self.assertEqual(5, len(allocations[0]))
         # we really have no chance to extract the join point so we just take what is there...
-        self.assertEqual([allocations[0][0],
-                          self.ta(index_a, client_index_in_task=0,
-                                  global_client_index=0, total_clients=2),
-                          self.ta(index_c, client_index_in_task=0,
-                                  global_client_index=2, total_clients=2),
-                          self.ta(index_e, client_index_in_task=0,
-                                  global_client_index=4, total_clients=2),
-                          allocations[0][4]],
-                         allocations[0])
+        self.assertEqual(
+            [
+                allocations[0][0],
+                self.ta(index_a, client_index_in_task=0, global_client_index=0, total_clients=2),
+                self.ta(index_c, client_index_in_task=0, global_client_index=2, total_clients=2),
+                self.ta(index_e, client_index_in_task=0, global_client_index=4, total_clients=2),
+                allocations[0][4],
+            ],
+            allocations[0],
+        )
         # join_point, index_a, index_c, None, join_point
         self.assertEqual(5, len(allocator.allocations[1]))
-        self.assertEqual([allocations[1][0],
-                          self.ta(index_b, client_index_in_task=0,
-                                  global_client_index=1, total_clients=2),
-                          self.ta(index_d, client_index_in_task=0,
-                                  global_client_index=3, total_clients=2),
-                          None, allocations[1][4]],
-                         allocations[1])
+        self.assertEqual(
+            [
+                allocations[1][0],
+                self.ta(index_b, client_index_in_task=0, global_client_index=1, total_clients=2),
+                self.ta(index_d, client_index_in_task=0, global_client_index=3, total_clients=2),
+                None,
+                allocations[1][4],
+            ],
+            allocations[1],
+        )
 
         self.assertEqual([{index_a, index_b, index_c, index_d, index_e}], allocator.tasks_per_joinpoint)
         self.assertEqual(2, len(allocator.join_points))
@@ -750,32 +610,24 @@ class AllocatorTests(TestCase):
         # join_point, index_a, index_c, join_point
         self.assertEqual(4, len(allocations[0]))
         # we really have no chance to extract the join point so we just take what is there...
-        self.assertEqual([allocations[0][0],
-                          self.ta(index_a, client_index_in_task=0,
-                                  global_client_index=0, total_clients=3),
-                          self.ta(index_c, client_index_in_task=1,
-                                  global_client_index=3, total_clients=3),
-                          allocations[0][3]],
-                         allocations[0])
+        self.assertEqual(
+            [
+                allocations[0][0],
+                self.ta(index_a, client_index_in_task=0, global_client_index=0, total_clients=3),
+                self.ta(index_c, client_index_in_task=1, global_client_index=3, total_clients=3),
+                allocations[0][3],
+            ],
+            allocations[0],
+        )
 
         # task that client 1 will execute:
         # join_point, index_b, None, join_point
         self.assertEqual(4, len(allocator.allocations[1]))
-        self.assertEqual([allocations[1][0],
-                          self.ta(index_b, client_index_in_task=0,
-                                  global_client_index=1, total_clients=3),
-                          None,
-                          allocations[1][3]],
-                         allocations[1])
+        self.assertEqual([allocations[1][0], self.ta(index_b, client_index_in_task=0, global_client_index=1, total_clients=3), None, allocations[1][3]], allocations[1])
 
         # tasks that client 2 will execute:
         self.assertEqual(4, len(allocator.allocations[2]))
-        self.assertEqual([allocations[2][0],
-                          self.ta(index_c, client_index_in_task=0,
-                                  global_client_index=2, total_clients=3),
-                          None,
-                          allocations[2][3]],
-                         allocations[2])
+        self.assertEqual([allocations[2][0], self.ta(index_c, client_index_in_task=0, global_client_index=2, total_clients=3), None, allocations[2][3]], allocations[2])
 
         self.assertEqual([{index_a, index_b, index_c}], allocator.tasks_per_joinpoint)
 
@@ -795,10 +647,8 @@ class MetricsAggregationTests(TestCase):
         op = workload.Operation("index", workload.OperationType.Bulk, param_source="worker-coordinator-test-param-source")
 
         samples = [
-            worker_coordinator.DefaultSample(0, 1470838595, 21, 0, op, metrics.SampleType.Warmup,
-                                      None, -1, -1, -1, -1, None, 3000, "docs", 1, 1),
-            worker_coordinator.DefaultSample(0, 1470838595.5, 21.5, 0, op, metrics.SampleType.Normal,
-                                      None, -1, -1, -1, -1, None, 2500, "docs", 1, 1),
+            worker_coordinator.DefaultSample(0, 1470838595, 21, 0, op, metrics.SampleType.Warmup, None, -1, -1, -1, -1, None, 3000, "docs", 1, 1),
+            worker_coordinator.DefaultSample(0, 1470838595.5, 21.5, 0, op, metrics.SampleType.Normal, None, -1, -1, -1, -1, None, 2500, "docs", 1, 1),
         ]
 
         aggregated = self.calculate_global_throughput(samples)
@@ -821,12 +671,9 @@ class MetricsAggregationTests(TestCase):
             worker_coordinator.DefaultSample(0, 38598, 24, 0, op, metrics.SampleType.Normal, None, -1, -1, -1, -1, None, 5000, "docs", 4, 4 / 9),
             worker_coordinator.DefaultSample(0, 38599, 25, 0, op, metrics.SampleType.Normal, None, -1, -1, -1, -1, None, 5000, "docs", 5, 5 / 9),
             worker_coordinator.DefaultSample(0, 38600, 26, 0, op, metrics.SampleType.Normal, None, -1, -1, -1, -1, None, 5000, "docs", 6, 6 / 9),
-            worker_coordinator.DefaultSample(1, 38598.5, 24.5, 0, op, metrics.SampleType.Normal,
-                                      None, -1, -1, -1, -1, None, 5000, "docs", 4.5, 7 / 9),
-            worker_coordinator.DefaultSample(1, 38599.5, 25.5, 0, op, metrics.SampleType.Normal,
-                                      None, -1, -1, -1, -1, None, 5000, "docs", 5.5, 8 / 9),
-            worker_coordinator.DefaultSample(1, 38600.5, 26.5, 0, op, metrics.SampleType.Normal,
-                                      None, -1, -1, -1, -1, None, 5000, "docs", 6.5, 9 / 9)
+            worker_coordinator.DefaultSample(1, 38598.5, 24.5, 0, op, metrics.SampleType.Normal, None, -1, -1, -1, -1, None, 5000, "docs", 4.5, 7 / 9),
+            worker_coordinator.DefaultSample(1, 38599.5, 25.5, 0, op, metrics.SampleType.Normal, None, -1, -1, -1, -1, None, 5000, "docs", 5.5, 8 / 9),
+            worker_coordinator.DefaultSample(1, 38600.5, 26.5, 0, op, metrics.SampleType.Normal, None, -1, -1, -1, -1, None, 5000, "docs", 6.5, 9 / 9),
         ]
 
         aggregated = self.calculate_global_throughput(samples)
@@ -845,8 +692,7 @@ class MetricsAggregationTests(TestCase):
         # self.assertEqual((1470838600.5, 26.5, metrics.SampleType.Normal, 10000), throughput[6])
 
     def test_use_provided_throughput(self):
-        op = workload.Operation("index-recovery", workload.OperationType.Sleep,
-                             param_source="worker-coordinator-test-param-source")
+        op = workload.Operation("index-recovery", workload.OperationType.Sleep, param_source="worker-coordinator-test-param-source")
 
         samples = [
             worker_coordinator.DefaultSample(0, 38595, 21, 0, op, metrics.SampleType.Normal, None, -1, -1, -1, -1, 8000, 5000, "byte", 1, 1 / 3),
@@ -873,17 +719,17 @@ class SchedulerTests(TestCase):
     class RunnerWithProgress:
         def __init__(self, complete_after=3):
             self.completed = False
-            self.task_progress = (0.0, '%')
+            self.task_progress = (0.0, "%")
             self.calls = 0
             self.complete_after = complete_after
 
         async def __call__(self, *args, **kwargs):
             self.calls += 1
             if not self.completed:
-                self.task_progress = (self.calls / self.complete_after, '%')
+                self.task_progress = (self.calls / self.complete_after, "%")
                 self.completed = self.calls == self.complete_after
             else:
-                self.task_progress = (1.0, '%')
+                self.task_progress = (1.0, "%")
 
     class CustomComplexScheduler:
         def __init__(self, task):
@@ -936,45 +782,34 @@ class SchedulerTests(TestCase):
         runner.remove_runner("bulk")
 
     def test_injects_parameter_source_into_scheduler(self):
-        task = workload.Task(name="search",
-                          schedule="custom-complex-scheduler",
-                          operation=workload.Operation(
-                              name="search",
-                              operation_type=workload.OperationType.Search.to_hyphenated_string(),
-                              param_source="worker-coordinator-test-param-source"
-                          ),
-                          clients=4,
-                          params={
-                              "target-throughput": "5000 ops/s"
-                          })
+        task = workload.Task(
+            name="search",
+            schedule="custom-complex-scheduler",
+            operation=workload.Operation(name="search", operation_type=workload.OperationType.Search.to_hyphenated_string(), param_source="worker-coordinator-test-param-source"),
+            clients=4,
+            params={"target-throughput": "5000 ops/s"},
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
         self.assertIsNotNone(schedule.sched.parameter_source, "Parameter source has not been injected into scheduler")
         self.assertEqual(param_source, schedule.sched.parameter_source)
 
     @run_async
     async def test_search_task_one_client(self):
-        task = workload.Task("search", workload.Operation("search", workload.OperationType.Search.to_hyphenated_string(),
-                                                    param_source="worker-coordinator-test-param-source"),
-                          warmup_iterations=3, iterations=5, clients=1, params={"target-throughput": 10, "clients": 1})
-        param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
+        task = workload.Task(
+            "search",
+            workload.Operation("search", workload.OperationType.Search.to_hyphenated_string(), param_source="worker-coordinator-test-param-source"),
+            warmup_iterations=3,
+            iterations=5,
+            clients=1,
+            params={"target-throughput": 10, "clients": 1},
         )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        param_source = workload.operation_parameters(self.test_workload, task)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
         expected_schedule = [
             (0, metrics.SampleType.Warmup, 1 / 8, {}),
@@ -990,18 +825,17 @@ class SchedulerTests(TestCase):
 
     @run_async
     async def test_search_task_two_clients(self):
-        task = workload.Task("search", workload.Operation("search", workload.OperationType.Search.to_hyphenated_string(),
-                                                    param_source="worker-coordinator-test-param-source"),
-                          warmup_iterations=1, iterations=5, clients=2, params={"target-throughput": 10, "clients": 2})
-        param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
+        task = workload.Task(
+            "search",
+            workload.Operation("search", workload.OperationType.Search.to_hyphenated_string(), param_source="worker-coordinator-test-param-source"),
+            warmup_iterations=1,
+            iterations=5,
+            clients=2,
+            params={"target-throughput": 10, "clients": 2},
         )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        param_source = workload.operation_parameters(self.test_workload, task)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
         expected_schedule = [
             (0, metrics.SampleType.Warmup, 1 / 6, {}),
@@ -1016,205 +850,203 @@ class SchedulerTests(TestCase):
     @run_async
     async def test_schedule_param_source_determines_iterations_no_warmup(self):
         # we neither define any time-period nor any iteration count on the task.
-        task = workload.Task("bulk-index", workload.Operation("bulk-index", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                        params={"body": ["a"], "size": 3},
-                                                        param_source="worker-coordinator-test-param-source"),
-                          clients=4, params={"target-throughput": 4})
+        task = workload.Task(
+            "bulk-index",
+            workload.Operation(
+                "bulk-index", workload.OperationType.Bulk.to_hyphenated_string(), params={"body": ["a"], "size": 3}, param_source="worker-coordinator-test-param-source"
+            ),
+            clients=4,
+            params={"target-throughput": 4},
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
-        await self.assert_schedule([
-            (0.0, metrics.SampleType.Normal, 1 / 3, {"body": ["a"], "size": 3}),
-            (1.0, metrics.SampleType.Normal, 2 / 3, {"body": ["a"], "size": 3}),
-            (2.0, metrics.SampleType.Normal, 3 / 3, {"body": ["a"], "size": 3}),
-        ], schedule)
+        await self.assert_schedule(
+            [
+                (0.0, metrics.SampleType.Normal, 1 / 3, {"body": ["a"], "size": 3}),
+                (1.0, metrics.SampleType.Normal, 2 / 3, {"body": ["a"], "size": 3}),
+                (2.0, metrics.SampleType.Normal, 3 / 3, {"body": ["a"], "size": 3}),
+            ],
+            schedule,
+        )
 
     @run_async
     async def test_schedule_param_source_determines_iterations_including_warmup(self):
-        task = workload.Task("bulk-index", workload.Operation("bulk-index", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                        params={"body": ["a"], "size": 5},
-                                                        param_source="worker-coordinator-test-param-source"),
-                          warmup_iterations=2, clients=4, params={"target-throughput": 4})
+        task = workload.Task(
+            "bulk-index",
+            workload.Operation(
+                "bulk-index", workload.OperationType.Bulk.to_hyphenated_string(), params={"body": ["a"], "size": 5}, param_source="worker-coordinator-test-param-source"
+            ),
+            warmup_iterations=2,
+            clients=4,
+            params={"target-throughput": 4},
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
-        await self.assert_schedule([
-            (0.0, metrics.SampleType.Warmup, 1 / 5, {"body": ["a"], "size": 5}),
-            (1.0, metrics.SampleType.Warmup, 2 / 5, {"body": ["a"], "size": 5}),
-            (2.0, metrics.SampleType.Normal, 3 / 5, {"body": ["a"], "size": 5}),
-            (3.0, metrics.SampleType.Normal, 4 / 5, {"body": ["a"], "size": 5}),
-            (4.0, metrics.SampleType.Normal, 5 / 5, {"body": ["a"], "size": 5}),
-        ], schedule)
+        await self.assert_schedule(
+            [
+                (0.0, metrics.SampleType.Warmup, 1 / 5, {"body": ["a"], "size": 5}),
+                (1.0, metrics.SampleType.Warmup, 2 / 5, {"body": ["a"], "size": 5}),
+                (2.0, metrics.SampleType.Normal, 3 / 5, {"body": ["a"], "size": 5}),
+                (3.0, metrics.SampleType.Normal, 4 / 5, {"body": ["a"], "size": 5}),
+                (4.0, metrics.SampleType.Normal, 5 / 5, {"body": ["a"], "size": 5}),
+            ],
+            schedule,
+        )
 
     @run_async
     async def test_schedule_defaults_to_iteration_based(self):
         # no time-period and no iterations specified on the task. Also, the parameter source does not define a size.
-        task = workload.Task("bulk-index", workload.Operation("bulk-index", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                        params={"body": ["a"]},
-                                                        param_source="worker-coordinator-test-param-source"),
-                          clients=1, params={"target-throughput": 4, "clients": 4})
+        task = workload.Task(
+            "bulk-index",
+            workload.Operation("bulk-index", workload.OperationType.Bulk.to_hyphenated_string(), params={"body": ["a"]}, param_source="worker-coordinator-test-param-source"),
+            clients=1,
+            params={"target-throughput": 4, "clients": 4},
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
-        await self.assert_schedule([
-            (0.0, metrics.SampleType.Normal, 1 / 1, {"body": ["a"]}),
-        ], schedule)
+        await self.assert_schedule(
+            [
+                (0.0, metrics.SampleType.Normal, 1 / 1, {"body": ["a"]}),
+            ],
+            schedule,
+        )
 
     @run_async
     async def test_schedule_for_warmup_time_based(self):
-        task = workload.Task("time-based", workload.Operation("time-based", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                        params={"body": ["a"], "size": 11},
-                                                        param_source="worker-coordinator-test-param-source"),
-                          warmup_time_period=0, clients=4, params={"target-throughput": 4, "clients": 4})
+        task = workload.Task(
+            "time-based",
+            workload.Operation(
+                "time-based", workload.OperationType.Bulk.to_hyphenated_string(), params={"body": ["a"], "size": 11}, param_source="worker-coordinator-test-param-source"
+            ),
+            warmup_time_period=0,
+            clients=4,
+            params={"target-throughput": 4, "clients": 4},
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
-        await self.assert_schedule([
-            (0.0, metrics.SampleType.Normal, 1 / 11, {"body": ["a"], "size": 11}),
-            (1.0, metrics.SampleType.Normal, 2 / 11, {"body": ["a"], "size": 11}),
-            (2.0, metrics.SampleType.Normal, 3 / 11, {"body": ["a"], "size": 11}),
-            (3.0, metrics.SampleType.Normal, 4 / 11, {"body": ["a"], "size": 11}),
-            (4.0, metrics.SampleType.Normal, 5 / 11, {"body": ["a"], "size": 11}),
-            (5.0, metrics.SampleType.Normal, 6 / 11, {"body": ["a"], "size": 11}),
-            (6.0, metrics.SampleType.Normal, 7 / 11, {"body": ["a"], "size": 11}),
-            (7.0, metrics.SampleType.Normal, 8 / 11, {"body": ["a"], "size": 11}),
-            (8.0, metrics.SampleType.Normal, 9 / 11, {"body": ["a"], "size": 11}),
-            (9.0, metrics.SampleType.Normal, 10 / 11, {"body": ["a"], "size": 11}),
-            (10.0, metrics.SampleType.Normal, 11 / 11, {"body": ["a"], "size": 11}),
-        ], schedule)
+        await self.assert_schedule(
+            [
+                (0.0, metrics.SampleType.Normal, 1 / 11, {"body": ["a"], "size": 11}),
+                (1.0, metrics.SampleType.Normal, 2 / 11, {"body": ["a"], "size": 11}),
+                (2.0, metrics.SampleType.Normal, 3 / 11, {"body": ["a"], "size": 11}),
+                (3.0, metrics.SampleType.Normal, 4 / 11, {"body": ["a"], "size": 11}),
+                (4.0, metrics.SampleType.Normal, 5 / 11, {"body": ["a"], "size": 11}),
+                (5.0, metrics.SampleType.Normal, 6 / 11, {"body": ["a"], "size": 11}),
+                (6.0, metrics.SampleType.Normal, 7 / 11, {"body": ["a"], "size": 11}),
+                (7.0, metrics.SampleType.Normal, 8 / 11, {"body": ["a"], "size": 11}),
+                (8.0, metrics.SampleType.Normal, 9 / 11, {"body": ["a"], "size": 11}),
+                (9.0, metrics.SampleType.Normal, 10 / 11, {"body": ["a"], "size": 11}),
+                (10.0, metrics.SampleType.Normal, 11 / 11, {"body": ["a"], "size": 11}),
+            ],
+            schedule,
+        )
 
     @run_async
     async def test_infinite_schedule_without_progress_indication(self):
-        task = workload.Task("time-based", workload.Operation("time-based", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                        params={"body": ["a"]},
-                                                        param_source="worker-coordinator-test-param-source"),
-                          warmup_time_period=0, clients=4, params={"target-throughput": 4, "clients": 4})
+        task = workload.Task(
+            "time-based",
+            workload.Operation("time-based", workload.OperationType.Bulk.to_hyphenated_string(), params={"body": ["a"]}, param_source="worker-coordinator-test-param-source"),
+            warmup_time_period=0,
+            clients=4,
+            params={"target-throughput": 4, "clients": 4},
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
-        await self.assert_schedule([
-            (0.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-            (1.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-            (2.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-            (3.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-            (4.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-        ], schedule, infinite_schedule=True)
+        await self.assert_schedule(
+            [
+                (0.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+                (1.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+                (2.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+                (3.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+                (4.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+            ],
+            schedule,
+            infinite_schedule=True,
+        )
 
     @run_async
     async def test_finite_schedule_with_progress_indication(self):
-        task = workload.Task("time-based", workload.Operation("time-based", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                              params={
-                                                                  "body": ["a"], "size": 5},
-                                                              param_source="worker-coordinator-test-param-source"),
-                             warmup_time_period=0, clients=4, params={"target-throughput": 4, "clients": 4})
+        task = workload.Task(
+            "time-based",
+            workload.Operation(
+                "time-based", workload.OperationType.Bulk.to_hyphenated_string(), params={"body": ["a"], "size": 5}, param_source="worker-coordinator-test-param-source"
+            ),
+            warmup_time_period=0,
+            clients=4,
+            params={"target-throughput": 4, "clients": 4},
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
-        await self.assert_schedule([
-            (0.0, metrics.SampleType.Normal,
-             1 / 5, {"body": ["a"], "size": 5}),
-            (1.0, metrics.SampleType.Normal,
-             2 / 5, {"body": ["a"], "size": 5}),
-            (2.0, metrics.SampleType.Normal,
-             3 / 5, {"body": ["a"], "size": 5}),
-            (3.0, metrics.SampleType.Normal,
-             4 / 5, {"body": ["a"], "size": 5}),
-            (4.0, metrics.SampleType.Normal,
-             5 / 5, {"body": ["a"], "size": 5}),
-        ], schedule, infinite_schedule=False)
+        await self.assert_schedule(
+            [
+                (0.0, metrics.SampleType.Normal, 1 / 5, {"body": ["a"], "size": 5}),
+                (1.0, metrics.SampleType.Normal, 2 / 5, {"body": ["a"], "size": 5}),
+                (2.0, metrics.SampleType.Normal, 3 / 5, {"body": ["a"], "size": 5}),
+                (3.0, metrics.SampleType.Normal, 4 / 5, {"body": ["a"], "size": 5}),
+                (4.0, metrics.SampleType.Normal, 5 / 5, {"body": ["a"], "size": 5}),
+            ],
+            schedule,
+            infinite_schedule=False,
+        )
 
     @run_async
     async def test_schedule_with_progress_determined_by_runner(self):
-        task = workload.Task("time-based", workload.Operation("time-based", "worker-coordinator-test-runner-with-completion",
-                                                        params={"body": ["a"]},
-                                                        param_source="worker-coordinator-test-param-source"),
-                          clients=1,
-                          params={"target-throughput": 1, "clients": 1})
+        task = workload.Task(
+            "time-based",
+            workload.Operation("time-based", "worker-coordinator-test-runner-with-completion", params={"body": ["a"]}, param_source="worker-coordinator-test-param-source"),
+            clients=1,
+            params={"target-throughput": 1, "clients": 1},
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
-        await self.assert_schedule([
-            (0.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-            (1.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-            (2.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-            (3.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-            (4.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
-        ], schedule, infinite_schedule=True)
+        await self.assert_schedule(
+            [
+                (0.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+                (1.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+                (2.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+                (3.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+                (4.0, metrics.SampleType.Normal, None, {"body": ["a"]}),
+            ],
+            schedule,
+            infinite_schedule=True,
+        )
 
     @run_async
     async def test_schedule_for_time_based(self):
-        task = workload.Task("time-based", workload.Operation("time-based", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                        params={"body": ["a"], "size": 11},
-                                                        param_source="worker-coordinator-test-param-source"),
-                          warmup_time_period=0.1,
-                          time_period=0.1,
-                          clients=1)
+        task = workload.Task(
+            "time-based",
+            workload.Operation(
+                "time-based", workload.OperationType.Bulk.to_hyphenated_string(), params={"body": ["a"], "size": 11}, param_source="worker-coordinator-test-param-source"
+            ),
+            warmup_time_period=0.1,
+            time_period=0.1,
+            clients=1,
+        )
 
         param_source = workload.operation_parameters(self.test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(
-            task=task,
-            client_index_in_task=0,
-            global_client_index=0,
-            total_clients=task.clients
-        )
-        schedule_handle = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule_handle = worker_coordinator.schedule_for(task_allocation, param_source)
         schedule_handle.start()
         self.assertEqual(0.0, schedule_handle.ramp_up_wait_time)
         schedule = schedule_handle()
@@ -1294,18 +1126,14 @@ class AsyncExecutorTests(TestCase):
 
         @property
         def task_progress(self):
-            return ((self.iterations - self.iterations_left) / self.iterations, '%')
+            return ((self.iterations - self.iterations_left) / self.iterations, "%")
 
         async def __call__(self, opensearch, params):
             self.iterations_left -= 1
 
     class RunnerOverridingThroughput:
         async def __call__(self, opensearch, params):
-            return {
-                "weight": 1,
-                "unit": "ops",
-                "throughput": 1.23
-            }
+            return {"weight": 1, "unit": "ops", "throughput": 1.23}
 
     def __init__(self, methodName):
         super().__init__(methodName)
@@ -1328,8 +1156,8 @@ class AsyncExecutorTests(TestCase):
         runner.remove_runner("override-throughput")
         runner.remove_runner("bulk")
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_start')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_start")
     @mock.patch("tests.worker_coordinator.worker_coordinator_test._FakeOSClient")
     @run_async
     async def test_run_schedule_in_throughput_mode(self, opensearch, on_client_request_start, on_client_request_end):
@@ -1339,45 +1167,47 @@ class AsyncExecutorTests(TestCase):
         opensearch.bulk.return_value = as_future(io.StringIO('{"errors": false, "took": 8}'))
 
         params.register_param_source_for_name("worker-coordinator-test-param-source", WorkerCoordinatorTestParamSource)
-        test_workload = workload.Workload(name="unittest", description="unittest workload",
-                                 test_procedures=None)
+        test_workload = workload.Workload(name="unittest", description="unittest workload", test_procedures=None)
 
-        task = workload.Task("time-based", workload.Operation("time-based", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                        params={
-                                                            "body": ["action_metadata_line", "index_line"],
-                                                            "action-metadata-present": True,
-                                                            "bulk-size": 1,
-                                                            "unit": "docs",
-                                                            # we need this because WorkerCoordinatorTestParamSource does not know
-                                                            # that we only have one bulk and hence size() returns
-                                                            # incorrect results
-                                                            "size": 1
-                                                        },
-                                                        param_source="worker-coordinator-test-param-source"),
-                          warmup_time_period=0, clients=4)
+        task = workload.Task(
+            "time-based",
+            workload.Operation(
+                "time-based",
+                workload.OperationType.Bulk.to_hyphenated_string(),
+                params={
+                    "body": ["action_metadata_line", "index_line"],
+                    "action-metadata-present": True,
+                    "bulk-size": 1,
+                    "unit": "docs",
+                    # we need this because WorkerCoordinatorTestParamSource does not know
+                    # that we only have one bulk and hence size() returns
+                    # incorrect results
+                    "size": 1,
+                },
+                param_source="worker-coordinator-test-param-source",
+            ),
+            warmup_time_period=0,
+            clients=4,
+        )
         param_source = workload.operation_parameters(test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(task=task,
-                                                            client_index_in_task=0,
-                                                            global_client_index=0,
-                                                            total_clients=task.clients)
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
         sampler = worker_coordinator.DefaultSampler(start_timestamp=task_start)
         profile_sampler = worker_coordinator.ProfileMetricsSampler(start_timestamp=task_start)
         cancel = threading.Event()
         complete = threading.Event()
 
-        execute_schedule = worker_coordinator.AsyncExecutor(client_id=2,
-                                                task=task,
-                                                schedule=schedule,
-                                                clients={
-                                                    "default": opensearch
-                                                },
-                                                sampler=sampler,
-                                                profile_sampler=profile_sampler,
-                                                cancel=cancel,
-                                                complete=complete,
-                                                on_error="continue")
+        execute_schedule = worker_coordinator.AsyncExecutor(
+            client_id=2,
+            task=task,
+            schedule=schedule,
+            clients={"default": opensearch},
+            sampler=sampler,
+            profile_sampler=profile_sampler,
+            cancel=cancel,
+            complete=complete,
+            on_error="continue",
+        )
         await execute_schedule()
 
         samples = sampler.samples
@@ -1407,45 +1237,50 @@ class AsyncExecutorTests(TestCase):
         opensearch.new_request_context.return_value = AsyncExecutorTests.StaticRequestTiming(task_start=task_start)
 
         params.register_param_source_for_name("worker-coordinator-test-param-source", WorkerCoordinatorTestParamSource)
-        test_workload = workload.Workload(name="unittest", description="unittest workload",
-                                 test_procedures=None)
+        test_workload = workload.Workload(name="unittest", description="unittest workload", test_procedures=None)
 
-        task = workload.Task("time-based", workload.Operation("time-based", operation_type="unit-test-recovery", params={
-            "indices-to-restore": "*",
-            # The runner will determine progress
-            "size": None
-        }, param_source="worker-coordinator-test-param-source"), warmup_time_period=0, clients=4)
+        task = workload.Task(
+            "time-based",
+            workload.Operation(
+                "time-based",
+                operation_type="unit-test-recovery",
+                params={
+                    "indices-to-restore": "*",
+                    # The runner will determine progress
+                    "size": None,
+                },
+                param_source="worker-coordinator-test-param-source",
+            ),
+            warmup_time_period=0,
+            clients=4,
+        )
         param_source = workload.operation_parameters(test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(task=task,
-                                                            client_index_in_task=0,
-                                                            global_client_index=0,
-                                                            total_clients=task.clients)
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
         sampler = worker_coordinator.DefaultSampler(start_timestamp=task_start)
         profile_sampler = worker_coordinator.ProfileMetricsSampler(start_timestamp=task_start)
         cancel = threading.Event()
         complete = threading.Event()
 
-        execute_schedule = worker_coordinator.AsyncExecutor(client_id=2,
-                                                task=task,
-                                                schedule=schedule,
-                                                clients={
-                                                    "default": opensearch
-                                                },
-                                                sampler=sampler,
-                                                profile_sampler=profile_sampler,
-                                                cancel=cancel,
-                                                complete=complete,
-                                                on_error="continue")
+        execute_schedule = worker_coordinator.AsyncExecutor(
+            client_id=2,
+            task=task,
+            schedule=schedule,
+            clients={"default": opensearch},
+            sampler=sampler,
+            profile_sampler=profile_sampler,
+            cancel=cancel,
+            complete=complete,
+            on_error="continue",
+        )
         await execute_schedule()
 
         samples = sampler.samples
 
         self.assertEqual(5, len(samples))
         self.assertTrue(self.runner_with_progress.completed)
-        self.assertEqual((1.0, '%'), self.runner_with_progress.task_progress)
+        self.assertEqual((1.0, "%"), self.runner_with_progress.task_progress)
         self.assertFalse(complete.is_set(), "Executor should not auto-complete a normal task")
         previous_absolute_time = -1.0
         previous_relative_time = -1.0
@@ -1472,41 +1307,44 @@ class AsyncExecutorTests(TestCase):
         opensearch.new_request_context.return_value = AsyncExecutorTests.StaticRequestTiming(task_start=task_start)
 
         params.register_param_source_for_name("worker-coordinator-test-param-source", WorkerCoordinatorTestParamSource)
-        test_workload = workload.Workload(name="unittest", description="unittest workload",
-                                 test_procedures=None)
+        test_workload = workload.Workload(name="unittest", description="unittest workload", test_procedures=None)
 
-        task = workload.Task("override-throughput", workload.Operation("override-throughput",
-                                                                 operation_type="override-throughput", params={
-                # we need this because WorkerCoordinatorTestParamSource does not know that we only have one iteration and hence
-                # size() returns incorrect results
-                "size": 1
-            },
-                                                                 param_source="worker-coordinator-test-param-source"),
-                          warmup_iterations=0, iterations=1, clients=1)
+        task = workload.Task(
+            "override-throughput",
+            workload.Operation(
+                "override-throughput",
+                operation_type="override-throughput",
+                params={
+                    # we need this because WorkerCoordinatorTestParamSource does not know that we only have one iteration and hence
+                    # size() returns incorrect results
+                    "size": 1
+                },
+                param_source="worker-coordinator-test-param-source",
+            ),
+            warmup_iterations=0,
+            iterations=1,
+            clients=1,
+        )
         param_source = workload.operation_parameters(test_workload, task)
-        task_allocation = worker_coordinator.TaskAllocation(task=task,
-                                                            client_index_in_task=0,
-                                                            global_client_index=0,
-                                                            total_clients=task.clients)
-        schedule = worker_coordinator.schedule_for(
-            task_allocation, param_source)
+        task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+        schedule = worker_coordinator.schedule_for(task_allocation, param_source)
 
         sampler = worker_coordinator.DefaultSampler(start_timestamp=task_start)
         profile_sampler = worker_coordinator.ProfileMetricsSampler(start_timestamp=task_start)
         cancel = threading.Event()
         complete = threading.Event()
 
-        execute_schedule = worker_coordinator.AsyncExecutor(client_id=0,
-                                                task=task,
-                                                schedule=schedule,
-                                                clients={
-                                                    "default": opensearch
-                                                },
-                                                sampler=sampler,
-                                                profile_sampler=profile_sampler,
-                                                cancel=cancel,
-                                                complete=complete,
-                                                on_error="continue")
+        execute_schedule = worker_coordinator.AsyncExecutor(
+            client_id=0,
+            task=task,
+            schedule=schedule,
+            clients={"default": opensearch},
+            sampler=sampler,
+            profile_sampler=profile_sampler,
+            cancel=cancel,
+            complete=complete,
+            on_error="continue",
+        )
         await execute_schedule()
 
         samples = sampler.samples
@@ -1528,53 +1366,46 @@ class AsyncExecutorTests(TestCase):
     @mock.patch("tests.worker_coordinator.worker_coordinator_test._FakeOSClient")
     @run_async
     async def test_cancel_execute_schedule(self, opensearch):
-        opensearch.init_request_context.return_value = {
-            "client_request_start": 0,
-            "request_start": 1,
-            "request_end": 11,
-            "client_request_end": 12
-        }
+        opensearch.init_request_context.return_value = {"client_request_start": 0, "request_start": 1, "request_end": 11, "client_request_end": 12}
         opensearch.bulk.return_value = as_future(io.StringIO('{"errors": false, "took": 8}'))
 
         params.register_param_source_for_name("worker-coordinator-test-param-source", WorkerCoordinatorTestParamSource)
-        test_workload = workload.Workload(name="unittest", description="unittest workload",
-                                 test_procedures=None)
+        test_workload = workload.Workload(name="unittest", description="unittest workload", test_procedures=None)
 
         # in one second (0.5 warmup + 0.5 measurement) we should get 1000 [ops/s] / 4 [clients] = 250 samples
         for target_throughput in [10, 100, 1000]:
-            task = workload.Task("time-based", workload.Operation("time-based",
-                                                            workload.OperationType.Bulk.to_hyphenated_string(),
-                                                            params={
-                                                                "body": ["action_metadata_line", "index_line"],
-                                                                "action-metadata-present": True,
-                                                                "bulk-size": 1
-                                                            },
-                                                            param_source="worker-coordinator-test-param-source"),
-                              warmup_time_period=0.5, time_period=0.5, clients=4,
-                              params={"target-throughput": target_throughput, "clients": 4})
+            task = workload.Task(
+                "time-based",
+                workload.Operation(
+                    "time-based",
+                    workload.OperationType.Bulk.to_hyphenated_string(),
+                    params={"body": ["action_metadata_line", "index_line"], "action-metadata-present": True, "bulk-size": 1},
+                    param_source="worker-coordinator-test-param-source",
+                ),
+                warmup_time_period=0.5,
+                time_period=0.5,
+                clients=4,
+                params={"target-throughput": target_throughput, "clients": 4},
+            )
 
             param_source = workload.operation_parameters(test_workload, task)
-            task_allocation = worker_coordinator.TaskAllocation(task=task,
-                                                                client_index_in_task=0,
-                                                                global_client_index=0,
-                                                                total_clients=task.clients)
-            schedule = worker_coordinator.schedule_for(
-                task_allocation, param_source)
+            task_allocation = worker_coordinator.TaskAllocation(task=task, client_index_in_task=0, global_client_index=0, total_clients=task.clients)
+            schedule = worker_coordinator.schedule_for(task_allocation, param_source)
             sampler = worker_coordinator.DefaultSampler(start_timestamp=0)
             profile_sampler = worker_coordinator.ProfileMetricsSampler(start_timestamp=0)
             cancel = threading.Event()
             complete = threading.Event()
-            execute_schedule = worker_coordinator.AsyncExecutor(client_id=0,
-                                                    task=task,
-                                                    schedule=schedule,
-                                                    clients={
-                                                        "default": opensearch
-                                                    },
-                                                    sampler=sampler,
-                                                    profile_sampler=profile_sampler,
-                                                    cancel=cancel,
-                                                    complete=complete,
-                                                    on_error="continue")
+            execute_schedule = worker_coordinator.AsyncExecutor(
+                client_id=0,
+                task=task,
+                schedule=schedule,
+                clients={"default": opensearch},
+                sampler=sampler,
+                profile_sampler=profile_sampler,
+                cancel=cancel,
+                complete=complete,
+                on_error="continue",
+            )
 
             cancel.set()
             await execute_schedule()
@@ -1588,7 +1419,6 @@ class AsyncExecutorTests(TestCase):
     @run_async
     async def test_run_schedule_aborts_on_error(self, opensearch):
         class ExpectedUnitTestException(Exception):
-
             def __str__(self):
                 return "expected unit test exception"
 
@@ -1596,7 +1426,6 @@ class AsyncExecutorTests(TestCase):
             raise ExpectedUnitTestException()
 
         class ScheduleHandle:
-
             def __init__(self):
                 self.ramp_up_wait_time = 0
 
@@ -1614,27 +1443,30 @@ class AsyncExecutorTests(TestCase):
                 for invocation in invocations:
                     yield invocation
 
-        task = workload.Task("no-op", workload.Operation("no-op", workload.OperationType.Bulk.to_hyphenated_string(),
-                                                   params={},
-                                                   param_source="worker-coordinator-test-param-source"),
-                          warmup_time_period=0.5, time_period=0.5, clients=4,
-                          params={"clients": 4})
+        task = workload.Task(
+            "no-op",
+            workload.Operation("no-op", workload.OperationType.Bulk.to_hyphenated_string(), params={}, param_source="worker-coordinator-test-param-source"),
+            warmup_time_period=0.5,
+            time_period=0.5,
+            clients=4,
+            params={"clients": 4},
+        )
 
         sampler = worker_coordinator.DefaultSampler(start_timestamp=0)
         profile_sampler = worker_coordinator.ProfileMetricsSampler(start_timestamp=0)
         cancel = threading.Event()
         complete = threading.Event()
-        execute_schedule = worker_coordinator.AsyncExecutor(client_id=2,
-                                                task=task,
-                                                schedule=ScheduleHandle(),
-                                                clients={
-                                                    "default": opensearch
-                                                },
-                                                sampler=sampler,
-                                                profile_sampler=profile_sampler,
-                                                cancel=cancel,
-                                                complete=complete,
-                                                on_error="continue")
+        execute_schedule = worker_coordinator.AsyncExecutor(
+            client_id=2,
+            task=task,
+            schedule=ScheduleHandle(),
+            clients={"default": opensearch},
+            sampler=sampler,
+            profile_sampler=profile_sampler,
+            cancel=cancel,
+            complete=complete,
+            on_error="continue",
+        )
 
         with self.assertRaisesRegex(exceptions.BenchmarkError, r"Cannot run task \[no-op\]: expected unit test exception"):
             await execute_schedule()
@@ -1648,11 +1480,7 @@ class AsyncExecutorTests(TestCase):
         runner = mock.Mock()
         runner.return_value = as_future()
 
-        ops, unit, request_meta_data = await worker_coordinator.execute_single(
-            self.context_managed(runner),
-            opensearch,
-            params,
-            on_error="continue")
+        ops, unit, request_meta_data = await worker_coordinator.execute_single(self.context_managed(runner), opensearch, params, on_error="continue")
 
         self.assertEqual(1, ops)
         self.assertEqual("ops", unit)
@@ -1665,11 +1493,7 @@ class AsyncExecutorTests(TestCase):
         runner = mock.Mock()
         runner.return_value = as_future(result=(500, "MB"))
 
-        ops, unit, request_meta_data = await worker_coordinator.execute_single(
-            self.context_managed(runner),
-            opensearch,
-            params,
-            on_error="continue")
+        ops, unit, request_meta_data = await worker_coordinator.execute_single(self.context_managed(runner), opensearch, params, on_error="continue")
 
         self.assertEqual(500, ops)
         self.assertEqual("MB", unit)
@@ -1680,28 +1504,15 @@ class AsyncExecutorTests(TestCase):
         opensearch = None
         params = None
         runner = mock.Mock()
-        runner.return_value = as_future({
-            "weight": 50,
-            "unit": "docs",
-            "some-custom-meta-data": "valid",
-            "http-status": 200
-        })
+        runner.return_value = as_future({"weight": 50, "unit": "docs", "some-custom-meta-data": "valid", "http-status": 200})
 
-        ops, unit, request_meta_data = await worker_coordinator.execute_single(
-            self.context_managed(runner),
-            opensearch,
-            params,
-            on_error="continue")
+        ops, unit, request_meta_data = await worker_coordinator.execute_single(self.context_managed(runner), opensearch, params, on_error="continue")
 
         self.assertEqual(50, ops)
         self.assertEqual("docs", unit)
-        self.assertEqual({
-            "some-custom-meta-data": "valid",
-            "http-status": 200,
-            "success": True
-        }, request_meta_data)
+        self.assertEqual({"some-custom-meta-data": "valid", "http-status": 200, "success": True}, request_meta_data)
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
     @run_async
     async def test_run_single_with_connection_error_always_aborts(self, on_client_request_end):
         for on_error in ["abort", "continue"]:
@@ -1712,65 +1523,52 @@ class AsyncExecutorTests(TestCase):
 
                 with self.assertRaises(exceptions.BenchmarkAssertionError) as ctx:
                     await worker_coordinator.execute_single(self.context_managed(runner), opensearch, params, on_error=on_error)
-                self.assertEqual(
-                    "Request returned an error. Error type: transport, Description: no route to host",
-                    ctx.exception.args[0])
+                self.assertEqual("Request returned an error. Error type: transport, Description: no route to host", ctx.exception.args[0])
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
     @run_async
     async def test_run_single_with_http_400_aborts_when_specified(self, on_client_request_end):
         opensearch = None
         params = None
-        runner = mock.Mock(side_effect=
-                           as_future(exception=exceptions.BenchmarkTransportError(status_code=404, error="not found", info="the requested document could not be found")))
+        runner = mock.Mock(
+            side_effect=as_future(exception=exceptions.BenchmarkTransportError(status_code=404, error="not found", info="the requested document could not be found"))
+        )
 
         with self.assertRaises(exceptions.BenchmarkAssertionError) as ctx:
             await worker_coordinator.execute_single(self.context_managed(runner), opensearch, params, on_error="abort")
-        self.assertEqual(
-            "Request returned an error. Error type: transport, Description: not found (the requested document could not be found)",
-            ctx.exception.args[0])
+        self.assertEqual("Request returned an error. Error type: transport, Description: not found (the requested document could not be found)", ctx.exception.args[0])
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
     @run_async
     async def test_run_single_with_http_400(self, on_client_request_end):
         opensearch = None
         params = None
-        runner = mock.Mock(side_effect=
-                           as_future(exception=exceptions.BenchmarkTransportError(status_code=404, error="not found", info="the requested document could not be found")))
+        runner = mock.Mock(
+            side_effect=as_future(exception=exceptions.BenchmarkTransportError(status_code=404, error="not found", info="the requested document could not be found"))
+        )
 
-        ops, unit, request_meta_data = await worker_coordinator.execute_single(
-            self.context_managed(runner), opensearch, params, on_error="continue")
+        ops, unit, request_meta_data = await worker_coordinator.execute_single(self.context_managed(runner), opensearch, params, on_error="continue")
 
         self.assertEqual(0, ops)
         self.assertEqual("ops", unit)
-        self.assertEqual({
-            "http-status": 404,
-            "error-type": "transport",
-            "error-description": "not found (the requested document could not be found)",
-            "success": False
-        }, request_meta_data)
+        self.assertEqual(
+            {"http-status": 404, "error-type": "transport", "error-description": "not found (the requested document could not be found)", "success": False}, request_meta_data
+        )
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
     @run_async
     async def test_run_single_with_http_413(self, on_client_request_end):
         opensearch = None
         params = None
-        runner = mock.Mock(side_effect=
-                           as_future(exception=exceptions.BenchmarkTransportError(status_code=413)))
+        runner = mock.Mock(side_effect=as_future(exception=exceptions.BenchmarkTransportError(status_code=413)))
 
-        ops, unit, request_meta_data = await worker_coordinator.execute_single(
-            self.context_managed(runner), opensearch, params, on_error="continue")
+        ops, unit, request_meta_data = await worker_coordinator.execute_single(self.context_managed(runner), opensearch, params, on_error="continue")
 
         self.assertEqual(0, ops)
         self.assertEqual("ops", unit)
-        self.assertEqual({
-            "http-status": 413,
-            "error-type": "transport",
-            "error-description": "",
-            "success": False
-        }, request_meta_data)
+        self.assertEqual({"http-status": 413, "error-type": "transport", "error-description": "", "success": False}, request_meta_data)
 
-    @mock.patch('solrorbit.client.RequestContextHolder.on_client_request_end')
+    @mock.patch("solrorbit.client.RequestContextHolder.on_client_request_end")
     @run_async
     async def test_run_single_with_key_error(self, on_client_request_end):
         class FailingRunner:
@@ -1789,9 +1587,7 @@ class AsyncExecutorTests(TestCase):
 
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             await worker_coordinator.execute_single(self.context_managed(runner), opensearch, params, on_error="continue")
-        self.assertEqual(
-            "Cannot execute [failing_mock_runner]. Provided parameters are: ['bulk', 'mode']. Error: ['bulk-size missing'].",
-            ctx.exception.args[0])
+        self.assertEqual("Cannot execute [failing_mock_runner]. Provided parameters are: ['bulk', 'mode']. Error: ['bulk-size missing'].", ctx.exception.args[0])
 
 
 class AsyncExecutorHelperMethodsTests(TestCase):
@@ -1811,12 +1607,9 @@ class AsyncExecutorHelperMethodsTests(TestCase):
         self.cfg.add(config.Scope.application, "workload", "test.mode.enabled", True)
 
         all_client_options = {"default": {"base_timeout": 10}}
-        self.cfg.add(config.Scope.application, "client", "options",
-                     WorkerCoordinatorTests.Holder(all_client_options=all_client_options))
+        self.cfg.add(config.Scope.application, "client", "options", WorkerCoordinatorTests.Holder(all_client_options=all_client_options))
 
-        self.task = workload.Task("test-task",
-                                  workload.Operation("test-op", workload.OperationType.Bulk),
-                                  clients=2)
+        self.task = workload.Task("test-task", workload.Operation("test-op", workload.OperationType.Bulk), clients=2)
         self.sampler = mock.Mock()
         self.profile_sampler = mock.Mock()
         self.cancel = threading.Event()
@@ -1844,7 +1637,7 @@ class AsyncExecutorHelperMethodsTests(TestCase):
             config=self.cfg,
             shared_states=self.shared_states,
             error_queue=self.error_queue,
-            queue_lock=self.queue_lock
+            queue_lock=self.queue_lock,
         )
 
     def test_get_client_options_with_valid_config(self):
@@ -1894,11 +1687,7 @@ class AsyncExecutorHelperMethodsTests(TestCase):
         """Test report_error when an error queue is present."""
         error_q = queue.Queue()
         self.executor.error_queue = error_q
-        error_info = {
-            "client_id": self.executor.client_id,
-            "task": str(self.executor.task),
-            "error_details": {"success": False, "error-type": "test-error"}
-        }
+        error_info = {"client_id": self.executor.client_id, "task": str(self.executor.task), "error_details": {"success": False, "error-type": "test-error"}}
         self.executor.report_error(error_info)
         queued_error = error_q.get_nowait()
         self.assertEqual(queued_error, error_info)
@@ -1906,31 +1695,30 @@ class AsyncExecutorHelperMethodsTests(TestCase):
     def test_report_error_without_queue(self):
         """Test report_error runs without error when the error queue is None."""
         self.executor.error_queue = None
-        error_info = {
-            "client_id": self.executor.client_id,
-            "task": str(self.executor.task),
-            "error_details": {"success": False, "error-type": "test-error"}
-        }
+        error_info = {"client_id": self.executor.client_id, "task": str(self.executor.task), "error_details": {"success": False, "error-type": "test-error"}}
         self.executor.report_error(error_info)
 
     def test_process_results_with_active_client(self):
         """Test _process_results adds a sample for an active client."""
         result_data = {
             "absolute_processing_start": time.time(),
-            "request_start": 10.0, "request_end": 11.0,
-            "client_request_start": 9.9, "client_request_end": 11.1,
-            "processing_start": 9.8, "processing_end": 11.2,
-            "total_ops": 100, "total_ops_unit": "docs",
-            "request_meta_data": {"success": True}, "throughput_throttled": True
+            "request_start": 10.0,
+            "request_end": 11.0,
+            "client_request_start": 9.9,
+            "client_request_end": 11.1,
+            "processing_start": 9.8,
+            "processing_end": 11.2,
+            "total_ops": 100,
+            "total_ops_unit": "docs",
+            "request_meta_data": {"success": True},
+            "throughput_throttled": True,
         }
-        self.executor.runner = mock.Mock(completed=False, task_progress=(0.5, '%'))
+        self.executor.runner = mock.Mock(completed=False, task_progress=(0.5, "%"))
         self.executor.task_completes_parent = False
         self.executor.sample_type = metrics.SampleType.Normal
         self.executor.expected_scheduled_time = 0
 
-        completed = self.executor._process_results(
-            result_data, total_start=5.0, client_state=True, task_progress=(0.8, '%')
-        )
+        completed = self.executor._process_results(result_data, total_start=5.0, client_state=True, task_progress=(0.8, "%"))
         self.assertFalse(completed)
         self.schedule_handle.after_request.assert_called_once()
         self.sampler.add.assert_called_once()
@@ -1940,20 +1728,23 @@ class AsyncExecutorHelperMethodsTests(TestCase):
         """Test _process_results does not add a sample for an inactive client."""
         result_data = {
             "absolute_processing_start": time.time(),
-            "request_start": 10.0, "request_end": 11.0,
-            "client_request_start": 9.9, "client_request_end": 11.1,
-            "processing_start": 9.8, "processing_end": 11.2,
-            "total_ops": 100, "total_ops_unit": "docs",
-            "request_meta_data": {"success": True}, "throughput_throttled": True
+            "request_start": 10.0,
+            "request_end": 11.0,
+            "client_request_start": 9.9,
+            "client_request_end": 11.1,
+            "processing_start": 9.8,
+            "processing_end": 11.2,
+            "total_ops": 100,
+            "total_ops_unit": "docs",
+            "request_meta_data": {"success": True},
+            "throughput_throttled": True,
         }
-        self.executor.runner = mock.Mock(completed=False, task_progress=(0.5, '%'))
+        self.executor.runner = mock.Mock(completed=False, task_progress=(0.5, "%"))
         self.executor.task_completes_parent = False
         self.executor.sample_type = metrics.SampleType.Normal
         self.executor.expected_scheduled_time = 0
 
-        completed = self.executor._process_results(
-            result_data, total_start=5.0, client_state=False, task_progress=(0.8, '%')
-        )
+        completed = self.executor._process_results(result_data, total_start=5.0, client_state=False, task_progress=(0.8, "%"))
         self.assertFalse(completed)
         self.schedule_handle.after_request.assert_called_once()
         self.sampler.add.assert_not_called()
@@ -1978,13 +1769,11 @@ class AsyncExecutorHelperMethodsTests(TestCase):
         self.executor._prepare_context_manager = mock.AsyncMock(return_value=context_manager)
         self.executor.runner = mock.Mock()
 
-        with mock.patch('solrorbit.worker_coordinator.worker_coordinator.execute_single'):
-            with mock.patch('asyncio.wait_for') as wait_for_mock:
+        with mock.patch("solrorbit.worker_coordinator.worker_coordinator.execute_single"):
+            with mock.patch("asyncio.wait_for") as wait_for_mock:
                 wait_for_mock.return_value = (100, "docs", {"success": True})
 
-                result = await self.executor._execute_request(
-                    params, expected_scheduled_time, total_start, client_state
-                )
+                result = await self.executor._execute_request(params, expected_scheduled_time, total_start, client_state)
 
         self.assertEqual(result["total_ops"], 100)
         self.assertEqual(result["total_ops_unit"], "docs")
@@ -2010,14 +1799,12 @@ class AsyncExecutorHelperMethodsTests(TestCase):
         self.executor._prepare_context_manager = mock.AsyncMock(return_value=context_manager)
         self.executor.runner = mock.Mock()
 
-        with mock.patch('time.perf_counter', side_effect=[10.0, 10.5, 13.0]):
-            with mock.patch('asyncio.sleep') as sleep_mock:
-                with mock.patch('asyncio.wait_for') as wait_for_mock:
+        with mock.patch("time.perf_counter", side_effect=[10.0, 10.5, 13.0]):
+            with mock.patch("asyncio.sleep") as sleep_mock:
+                with mock.patch("asyncio.wait_for") as wait_for_mock:
                     wait_for_mock.return_value = (50, "docs", {"success": True})
 
-                    result = await self.executor._execute_request(
-                        params, expected_scheduled_time, total_start, client_state
-                    )
+                    result = await self.executor._execute_request(params, expected_scheduled_time, total_start, client_state)
 
         sleep_mock.assert_called_once_with(1.0)
         self.assertTrue(result["throughput_throttled"])
@@ -2040,6 +1827,7 @@ class AsyncProfilerTests(TestCase):
         duration = end - start
         self.assertTrue(0.9 <= duration <= 1.2, "Should sleep for roughly 1 second but took [%.2f] seconds." % duration)
 
+
 class FeedbackActorTests(TestCase):
     @pytest.fixture(autouse=True)
     def setup_actor(self):
@@ -2051,15 +1839,8 @@ class FeedbackActorTests(TestCase):
 
     def test_receive_shared_client_state_sets_total_client_count(self):
         self.actor.wakeupAfter = mock.MagicMock()
-        shared_states = {
-            0: {0: False, 1: False},
-            1: {2: False, 3: False, 4: False}
-        }
-        message = worker_coordinator.StartFeedbackActor(
-            shared_states=shared_states,
-            error_queue=queue.Queue(),
-            queue_lock=mock.MagicMock()
-        )
+        shared_states = {0: {0: False, 1: False}, 1: {2: False, 3: False, 4: False}}
+        message = worker_coordinator.StartFeedbackActor(shared_states=shared_states, error_queue=queue.Queue(), queue_lock=mock.MagicMock())
         self.actor.receiveMsg_StartFeedbackActor(message, sender=None)
 
         assert self.actor.total_client_count == 5
@@ -2072,11 +1853,7 @@ class FeedbackActorTests(TestCase):
         dummy_queue_lock = mock.MagicMock()
         dummy_states = {0: {0: False}}
 
-        message = worker_coordinator.StartFeedbackActor(
-            shared_states=dummy_states,
-            error_queue=dummy_error_queue,
-            queue_lock=dummy_queue_lock
-        )
+        message = worker_coordinator.StartFeedbackActor(shared_states=dummy_states, error_queue=dummy_error_queue, queue_lock=dummy_queue_lock)
         self.actor.receiveMsg_StartFeedbackActor(message, sender=None)
 
         assert self.actor.error_queue == dummy_error_queue
@@ -2085,10 +1862,7 @@ class FeedbackActorTests(TestCase):
         self.actor.wakeupAfter.assert_called_once()
 
     def test_scale_up_only_activates_n_clients(self):
-        self.actor.shared_client_states = {
-            0: {0: False, 1: False},
-            1: {2: False, 3: False}
-        }
+        self.actor.shared_client_states = {0: {0: False, 1: False}, 1: {2: False, 3: False}}
         self.actor.total_active_client_count = 0
 
         self.actor.num_clients_to_scale_up = 2
@@ -2096,10 +1870,7 @@ class FeedbackActorTests(TestCase):
         assert self.actor.total_active_client_count == 2
 
     def test_scale_down_pauses_percentage(self):
-        self.actor.shared_client_states = {
-            0: {0: True, 1: True},
-            1: {2: True, 3: True, 4: False}
-        }
+        self.actor.shared_client_states = {0: {0: True, 1: True}, 1: {2: True, 3: True, 4: False}}
         self.actor.total_active_client_count = 4  # 4 active clients
 
         self.actor.percentage_clients_to_scale_down = 0.5
@@ -2112,29 +1883,22 @@ class FeedbackActorTests(TestCase):
         self.actor.total_active_client_count = 0
         self.actor.last_error_time = time.perf_counter() - 31
         self.actor.last_scaleup_time = time.perf_counter() - 2
-        self.actor.shared_client_states = {
-            0: {0: False, 1: False},
-            1: {2: False, 3: False}
-        }
+        self.actor.shared_client_states = {0: {0: False, 1: False}, 1: {2: False, 3: False}}
 
         self.monkeypatch.setattr(self.actor, "check_for_errors", lambda: [])
 
-        self.actor.handle_state() # once to set to SCALING_UP
-        self.actor.handle_state() # once to scale up
+        self.actor.handle_state()  # once to set to SCALING_UP
+        self.actor.handle_state()  # once to scale up
 
         assert self.actor.state == worker_coordinator.FeedbackState.NEUTRAL
         assert self.actor.total_active_client_count > 0
 
         self.monkeypatch.undo()
 
-
     def test_handle_state_enters_sleep_on_error(self):
         self.actor.state = worker_coordinator.FeedbackState.NEUTRAL
         self.actor.total_active_client_count = 2
-        self.actor.shared_client_states = {
-            0: {0: True, 1: True},
-            1: {2: True, 3: True, 4: False}
-        }
+        self.actor.shared_client_states = {0: {0: True, 1: True}, 1: {2: True, 3: True, 4: False}}
 
         self.actor.error_queue.put({"error": "foo"})
         self.actor.handle_state()
@@ -2146,20 +1910,16 @@ class FeedbackActorTests(TestCase):
         # CPU-based redline feedback is not supported in Solr Orbit;
         # _check_cpu_usage must raise SystemSetupError immediately.
         from solrorbit.exceptions import SystemSetupError
+
         with self.assertRaises(SystemSetupError):
             self.actor._check_cpu_usage()  # pylint: disable=protected-access
+
 
 class TimePeriodBasedTests(TestCase):
     # pylint: disable=protected-access
     def test_time_period_based_without_ramp_down(self):
         # Test basic time-period based schedule without ramp-down
-        loop_control = worker_coordinator.TimePeriodBased(
-            warmup_time_period=10,
-            time_period=100,
-            ramp_down_time_period=None,
-            client_index=0,
-            total_clients=4
-        )
+        loop_control = worker_coordinator.TimePeriodBased(warmup_time_period=10, time_period=100, ramp_down_time_period=None, client_index=0, total_clients=4)
 
         # Verify duration calculation
         self.assertEqual(110, loop_control._duration)
@@ -2170,13 +1930,7 @@ class TimePeriodBasedTests(TestCase):
 
     def test_time_period_based_with_ramp_down_client_0(self):
         # Test ramp-down for client 0 (first client, stops earliest)
-        loop_control = worker_coordinator.TimePeriodBased(
-            warmup_time_period=10,
-            time_period=100,
-            ramp_down_time_period=20,
-            client_index=0,
-            total_clients=4
-        )
+        loop_control = worker_coordinator.TimePeriodBased(warmup_time_period=10, time_period=100, ramp_down_time_period=20, client_index=0, total_clients=4)
 
         # Client 0: reverse_index = 3, early_stop = 20 * (3/4) = 15
         # duration = 110 - 15 = 95
@@ -2186,13 +1940,7 @@ class TimePeriodBasedTests(TestCase):
 
     def test_time_period_based_with_ramp_down_client_3(self):
         # Test ramp-down for client 3 (last client, runs full duration)
-        loop_control = worker_coordinator.TimePeriodBased(
-            warmup_time_period=10,
-            time_period=100,
-            ramp_down_time_period=20,
-            client_index=3,
-            total_clients=4
-        )
+        loop_control = worker_coordinator.TimePeriodBased(warmup_time_period=10, time_period=100, ramp_down_time_period=20, client_index=3, total_clients=4)
 
         # Client 3: reverse_index = 0, early_stop = 20 * (0/4) = 0
         # duration = 110 - 0 = 110
@@ -2209,11 +1957,7 @@ class TimePeriodBasedTests(TestCase):
         durations = []
         for client_index in range(total_clients):
             loop_control = worker_coordinator.TimePeriodBased(
-                warmup_time_period=warmup,
-                time_period=time_period,
-                ramp_down_time_period=ramp_down,
-                client_index=client_index,
-                total_clients=total_clients
+                warmup_time_period=warmup, time_period=time_period, ramp_down_time_period=ramp_down, client_index=client_index, total_clients=total_clients
             )
             durations.append(loop_control._duration)
 
@@ -2222,23 +1966,16 @@ class TimePeriodBasedTests(TestCase):
 
         # Verify spacing is correct
         for i in range(1, len(durations)):
-            spacing = durations[i] - durations[i-1]
+            spacing = durations[i] - durations[i - 1]
             expected_spacing = ramp_down / total_clients
             self.assertAlmostEqual(expected_spacing, spacing, places=2)
+
 
 class TaskRampDownTests(TestCase):
     def test_task_with_ramp_down_time_period(self):
         # Test that Task accepts ramp_down_time_period parameter
         op = workload.Operation("test-op", workload.OperationType.Bulk.to_hyphenated_string(), {})
-        task = workload.Task(
-            name="test-task",
-            operation=op,
-            warmup_time_period=10,
-            time_period=100,
-            ramp_up_time_period=20,
-            ramp_down_time_period=30,
-            clients=4
-        )
+        task = workload.Task(name="test-task", operation=op, warmup_time_period=10, time_period=100, ramp_up_time_period=20, ramp_down_time_period=30, clients=4)
 
         self.assertEqual(10, task.warmup_time_period)
         self.assertEqual(100, task.time_period)
@@ -2249,12 +1986,7 @@ class TaskRampDownTests(TestCase):
     def test_task_without_ramp_down_defaults_to_none(self):
         # Test that ramp_down_time_period defaults to None
         op = workload.Operation("test-op", workload.OperationType.Bulk.to_hyphenated_string(), {})
-        task = workload.Task(
-            name="test-task",
-            operation=op,
-            time_period=100,
-            clients=4
-        )
+        task = workload.Task(name="test-task", operation=op, time_period=100, clients=4)
 
         self.assertIsNone(task.ramp_down_time_period)
 
@@ -2262,29 +1994,11 @@ class TaskRampDownTests(TestCase):
         # Test that tasks with different ramp_down_time_period are not equal
         op = workload.Operation("test-op", workload.OperationType.Bulk.to_hyphenated_string(), {})
 
-        task1 = workload.Task(
-            name="test-task",
-            operation=op,
-            time_period=100,
-            ramp_down_time_period=20,
-            clients=4
-        )
+        task1 = workload.Task(name="test-task", operation=op, time_period=100, ramp_down_time_period=20, clients=4)
 
-        task2 = workload.Task(
-            name="test-task",
-            operation=op,
-            time_period=100,
-            ramp_down_time_period=30,
-            clients=4
-        )
+        task2 = workload.Task(name="test-task", operation=op, time_period=100, ramp_down_time_period=30, clients=4)
 
-        task3 = workload.Task(
-            name="test-task",
-            operation=op,
-            time_period=100,
-            ramp_down_time_period=20,
-            clients=4
-        )
+        task3 = workload.Task(name="test-task", operation=op, time_period=100, ramp_down_time_period=20, clients=4)
 
         self.assertNotEqual(task1, task2)
         self.assertEqual(task1, task3)
@@ -2293,21 +2007,9 @@ class TaskRampDownTests(TestCase):
         # Test that hash includes ramp_down_time_period
         op = workload.Operation("test-op", workload.OperationType.Bulk.to_hyphenated_string(), {})
 
-        task1 = workload.Task(
-            name="test-task",
-            operation=op,
-            time_period=100,
-            ramp_down_time_period=20,
-            clients=4
-        )
+        task1 = workload.Task(name="test-task", operation=op, time_period=100, ramp_down_time_period=20, clients=4)
 
-        task2 = workload.Task(
-            name="test-task",
-            operation=op,
-            time_period=100,
-            ramp_down_time_period=30,
-            clients=4
-        )
+        task2 = workload.Task(name="test-task", operation=op, time_period=100, ramp_down_time_period=30, clients=4)
 
         # Different ramp_down should produce different hashes
         self.assertNotEqual(hash(task1), hash(task2))

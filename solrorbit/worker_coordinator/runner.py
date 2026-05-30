@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -70,6 +70,7 @@ def register_default_runners():
     register_runner("paginated-search", _paginated_runner, async_runner=True)
     register_runner("scroll-search", _paginated_runner, async_runner=True)
 
+
 def runner_for(operation_type):
     try:
         return __RUNNERS[operation_type]
@@ -93,8 +94,7 @@ def register_runner(operation_type, runner, **kwargs):
         operation_type = operation_type.to_hyphenated_string()
 
     if not async_runner:
-        raise exceptions.BenchmarkAssertionError(
-            "Runner [{}] must be implemented as async runner and registered with async_runner=True.".format(str(runner)))
+        raise exceptions.BenchmarkAssertionError("Runner [{}] must be implemented as async runner and registered with async_runner=True.".format(str(runner)))
 
     if getattr(runner, "multi_cluster", False):
         if "__aenter__" in dir(runner) and "__aexit__" in dir(runner):
@@ -120,6 +120,7 @@ def register_runner(operation_type, runner, **kwargs):
         cluster_aware_runner = _single_cluster_runner(runner, str(runner))
 
     __RUNNERS[operation_type] = _with_completion(_with_assertions(cluster_aware_runner))
+
 
 # Only intended for unit-testing!
 def remove_runner(operation_type):
@@ -163,7 +164,7 @@ class Runner:
             "params": "request-params",
             "request_timeout": "request-timeout",
         }
-        full_result =  {k: params.get(v) for (k, v) in kw_dict.items()}
+        full_result = {k: params.get(v) for (k, v) in kw_dict.items()}
         # filter Nones
         return dict(filter(lambda kv: kv[1] is not None, full_result.items()))
 
@@ -178,7 +179,9 @@ class Runner:
             headers.update({"x-opaque-id": opaque_id})
         return request_params, headers
 
+
 request_context_holder = RequestContextHolder()
+
 
 def time_func(func):
     async def advised(*args, **kwargs):
@@ -188,6 +191,7 @@ def time_func(func):
             return response
         finally:
             request_context_holder.on_client_request_end()
+
     return advised
 
 
@@ -195,6 +199,7 @@ class Delegator:
     """
     Mixin to unify delegate handling
     """
+
     def __init__(self, delegate, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.delegate = delegate
@@ -371,8 +376,7 @@ class AssertingRunner(Runner, Delegator):
                 for assertion in params["assertions"]:
                     self.check_assertion(op_name, assertion, return_value)
             else:
-                self.logger.debug("Skipping assertion check in [%s] as [%s] does not return a dict.",
-                                  op_name, repr(self.delegate))
+                self.logger.debug("Skipping assertion check in [%s] as [%s] does not return a dict.", op_name, repr(self.delegate))
         return return_value
 
     def __repr__(self, *args, **kwargs):
@@ -390,10 +394,7 @@ def mandatory(params, key, op):
     try:
         return params[key]
     except KeyError:
-        raise exceptions.DataError(
-            f"Parameter source for operation '{str(op)}' did not provide the mandatory parameter '{key}'. "
-            f"Add it to your parameter source and try again.")
-
+        raise exceptions.DataError(f"Parameter source for operation '{str(op)}' did not provide the mandatory parameter '{key}'. Add it to your parameter source and try again.")
 
 
 def escape(v):
@@ -450,11 +451,11 @@ def parse(text: BytesIO, props: List[str], lists: List[str] = None) -> dict:
     return parsed
 
 
-
 class Sleep(Runner):
     """
     Sleeps for the specified duration not issuing any request.
     """
+
     @time_func
     async def __call__(self, client, params):
         sleep_duration = mandatory(params, "duration", "sleep")
@@ -476,10 +477,10 @@ class DeleteBackupRepository(Runner):
     """
     Deletes a snapshot repository
     """
+
     async def __call__(self, client, params):
         raise exceptions.BenchmarkError(
-            f"[{repr(self)}] is not yet implemented for Apache Solr. "
-            "Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
+            f"[{repr(self)}] is not yet implemented for Apache Solr. Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
         )
 
     def __repr__(self, *args, **kwargs):
@@ -494,10 +495,10 @@ class CreateBackupRepository(Runner):
     """
     Creates a new snapshot repository
     """
+
     async def __call__(self, client, params):
         raise exceptions.BenchmarkError(
-            f"[{repr(self)}] is not yet implemented for Apache Solr. "
-            "Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
+            f"[{repr(self)}] is not yet implemented for Apache Solr. Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
         )
 
     def __repr__(self, *args, **kwargs):
@@ -512,10 +513,10 @@ class CreateBackup(Runner):
     """
     Creates a new snapshot repository
     """
+
     async def __call__(self, client, params):
         raise exceptions.BenchmarkError(
-            f"[{repr(self)}] is not yet implemented for Apache Solr. "
-            "Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
+            f"[{repr(self)}] is not yet implemented for Apache Solr. Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
         )
 
     def __repr__(self, *args, **kwargs):
@@ -529,8 +530,7 @@ class WaitForBackupCreate(Runner):
     #   Current implementation is OpenSearch-specific and will fail against Solr.
     async def __call__(self, client, params):
         raise exceptions.BenchmarkError(
-            f"[{repr(self)}] is not yet implemented for Apache Solr. "
-            "Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
+            f"[{repr(self)}] is not yet implemented for Apache Solr. Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
         )
 
     def __repr__(self, *args, **kwargs):
@@ -545,15 +545,14 @@ class RestoreBackup(Runner):
     """
     Restores a snapshot from an already registered repository
     """
+
     async def __call__(self, client, params):
         raise exceptions.BenchmarkError(
-            f"[{repr(self)}] is not yet implemented for Apache Solr. "
-            "Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
+            f"[{repr(self)}] is not yet implemented for Apache Solr. Port to Solr Backup V2 API: https://solr.apache.org/guide/solr/latest/configuration-guide/backups.html"
         )
 
     def __repr__(self, *args, **kwargs):
         return "restore-snapshot"
-
 
 
 class CompositeContext:
@@ -579,16 +578,14 @@ class CompositeContext:
         try:
             return CompositeContext._ctx()[key]
         except KeyError:
-            raise KeyError(f"Unknown property [{key}]. Currently recognized "
-                           f"properties are [{', '.join(CompositeContext._ctx().keys())}].") from None
+            raise KeyError(f"Unknown property [{key}]. Currently recognized properties are [{', '.join(CompositeContext._ctx().keys())}].") from None
 
     @staticmethod
     def remove(key):
         try:
             CompositeContext._ctx().pop(key)
         except KeyError:
-            raise KeyError(f"Unknown property [{key}]. Currently recognized "
-                           f"properties are [{', '.join(CompositeContext._ctx().keys())}].") from None
+            raise KeyError(f"Unknown property [{key}]. Currently recognized properties are [{', '.join(CompositeContext._ctx().keys())}].") from None
 
     @staticmethod
     def _ctx():
@@ -602,6 +599,7 @@ class Composite(Runner):
     """
     Executes a complex request structure which is measured as one composite operation.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.supported_op_types = [
@@ -639,8 +637,7 @@ class Composite(Runner):
                         streams = []
                     op_type = item["operation-type"]
                     if op_type not in self.supported_op_types:
-                        raise exceptions.BenchmarkAssertionError(
-                            f"Unsupported operation-type [{op_type}]. Use one of [{', '.join(self.supported_op_types)}].")
+                        raise exceptions.BenchmarkAssertionError(f"Unsupported operation-type [{op_type}]. Use one of [{', '.join(self.supported_op_types)}].")
                     runner = RequestTiming(runner_for(op_type))
                     async with connection_limit:
                         async with runner:
@@ -670,11 +667,7 @@ class Composite(Runner):
         max_connections = params.get("max-connections", sys.maxsize)
         async with CompositeContext():
             response = await self.run_stream(client, requests, asyncio.BoundedSemaphore(max_connections))
-        return {
-            "weight": 1,
-            "unit": "ops",
-            "dependent_timing": response
-        }
+        return {"weight": 1, "unit": "ops", "dependent_timing": response}
 
     def __repr__(self, *args, **kwargs):
         return "composite"
@@ -694,19 +687,11 @@ class RequestTiming(Runner, Delegator):
             return_value = await self.delegate(client, params)
             if isinstance(return_value, tuple) and len(return_value) == 2:
                 total_ops, total_ops_unit = return_value
-                result = {
-                    "weight": total_ops,
-                    "unit": total_ops_unit,
-                    "success": True
-                }
+                result = {"weight": total_ops, "unit": total_ops_unit, "success": True}
             elif isinstance(return_value, dict):
                 result = return_value
             else:
-                result = {
-                    "weight": 1,
-                    "unit": "ops",
-                    "success": True
-                }
+                result = {"weight": 1, "unit": "ops", "success": True}
 
             start = request_context.request_start
             end = request_context.request_end
@@ -716,7 +701,7 @@ class RequestTiming(Runner, Delegator):
                 "absolute_time": absolute_time,
                 "request_start": start,
                 "request_end": end,
-                "service_time": end - start
+                "service_time": end - start,
             }
         return result
 
@@ -752,6 +737,7 @@ class Retry(Runner, Delegator):
     async def __call__(self, client, params):
         # pylint: disable=import-outside-toplevel
         import socket
+
         retry_until_success = params.get("retry-until-success", self.retry_until_success)
         if retry_until_success:
             max_attempts = sys.maxsize
@@ -774,8 +760,7 @@ class Retry(Runner, Delegator):
                         self.logger.debug("%s has returned successfully", repr(self.delegate))
                         return return_value
                     else:
-                        self.logger.info("[%s] has returned with an error: %s. Retrying in [%.2f] seconds.",
-                                         repr(self.delegate), return_value, sleep_time)
+                        self.logger.info("[%s] has returned with an error: %s. Retrying in [%.2f] seconds.", repr(self.delegate), return_value, sleep_time)
                         await asyncio.sleep(sleep_time)
                 else:
                     return return_value
@@ -811,6 +796,7 @@ class Retry(Runner, Delegator):
 # Error translation helpers
 # ---------------------------------------------------------------------------
 
+
 def _translate_solr_error(e):
     """Translate a pysolr or requests exception to a BenchmarkTransportError."""
     if isinstance(e, requests.exceptions.ConnectionError):
@@ -821,9 +807,7 @@ def _translate_solr_error(e):
         status_code = e.response.status_code if e.response is not None else None
         if status_code == 404:
             return exceptions.BenchmarkNotFoundError(str(e), cause=e)
-        return exceptions.BenchmarkTransportError(
-            str(e), cause=e, status_code=status_code,
-            error=f"HTTP {status_code}", info=str(e))
+        return exceptions.BenchmarkTransportError(str(e), cause=e, status_code=status_code, error=f"HTTP {status_code}", info=str(e))
     if isinstance(e, pysolr.SolrError):
         msg = str(e)
         status_code = None
@@ -833,8 +817,7 @@ def _translate_solr_error(e):
                 if 100 <= code < 600:
                     status_code = code
                     break
-        return exceptions.BenchmarkTransportError(
-            msg, cause=e, status_code=status_code, error="SolrError", info=msg)
+        return exceptions.BenchmarkTransportError(msg, cause=e, status_code=status_code, error="SolrError", info=msg)
     return exceptions.BenchmarkTransportError(str(e), cause=e, error=type(e).__name__, info=str(e))
 
 
@@ -850,12 +833,14 @@ def _solr_runner_decorator(fn):
             raise
         except (pysolr.SolrError, requests.exceptions.RequestException) as e:
             raise _translate_solr_error(e) from e
+
     return wrapper
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _get_collection(params):
     """Extract and validate the collection name from params."""
@@ -919,9 +904,7 @@ def _translate_ndjson_batch(lines):
         logging.getLogger(__name__).warning("Skipping malformed first line: %s", first_line)
         return docs
 
-    has_action_keys = isinstance(first_obj, dict) and any(
-        k in first_obj for k in ("index", "create", "update", "delete")
-    )
+    has_action_keys = isinstance(first_obj, dict) and any(k in first_obj for k in ("index", "create", "update", "delete"))
 
     if has_action_keys:
         docs = _parse_bulk_pairs(first_line, it)
@@ -968,9 +951,7 @@ def _translate_ndjson_stream(lines):
         _logger.warning("Skipping malformed first line: %s", first_line)
         return
 
-    has_action_keys = isinstance(first_obj, dict) and any(
-        k in first_obj for k in ("index", "create", "update", "delete")
-    )
+    has_action_keys = isinstance(first_obj, dict) and any(k in first_obj for k in ("index", "create", "update", "delete"))
 
     if has_action_keys:
         yield from _stream_bulk_pairs(first_line, it)
@@ -1040,9 +1021,9 @@ def _stream_bulk_pairs(first_action_line, lines_iter):
             if isinstance(value, list) and len(value) == 2:
                 if all(isinstance(v, (int, float)) for v in value):
                     doc[key] = f"{value[1]},{value[0]}"
-            elif isinstance(value, str) and len(value) == 19 and value[10] == ' ':
-                if value[4] == '-' and value[7] == '-' and value[13] == ':' and value[16] == ':':
-                    doc[key] = value.replace(' ', 'T') + 'Z'
+            elif isinstance(value, str) and len(value) == 19 and value[10] == " ":
+                if value[4] == "-" and value[7] == "-" and value[13] == ":" and value[16] == ":":
+                    doc[key] = value.replace(" ", "T") + "Z"
 
         yield doc
         action_line = next(lines_iter, "").strip()
@@ -1100,6 +1081,7 @@ def _parse_bulk_pairs(first_action_line, lines_iter):
 # Base runner with automatic error translation
 # ---------------------------------------------------------------------------
 
+
 class SolrRunner(Runner):
     """Base class for all Solr runners.
 
@@ -1117,6 +1099,7 @@ class SolrRunner(Runner):
 # ---------------------------------------------------------------------------
 # Runner: bulk-index
 # ---------------------------------------------------------------------------
+
 
 class SolrBulkIndex(SolrRunner):
     """
@@ -1190,6 +1173,7 @@ class SolrBulkIndex(SolrRunner):
 # Runner: search
 # ---------------------------------------------------------------------------
 
+
 class SolrSearch(SolrRunner):
     """
     Execute a Solr search query.
@@ -1207,10 +1191,7 @@ class SolrSearch(SolrRunner):
 
         body = params.get("body")
         if body is not None:
-            resp = await _run_in_executor(
-                sc.raw_request, "POST", f"/solr/{collection}/query", body,
-                {"Content-Type": "application/json"}
-            )
+            resp = await _run_in_executor(sc.raw_request, "POST", f"/solr/{collection}/query", body, {"Content-Type": "application/json"})
             resp.raise_for_status()
             num_hits = resp.json().get("response", {}).get("numFound", 0)
         else:
@@ -1241,6 +1222,7 @@ class SolrSearch(SolrRunner):
 # ---------------------------------------------------------------------------
 # Runner: paginated search (cursorMark deep pagination)
 # ---------------------------------------------------------------------------
+
 
 class SolrPaginatedSearch(SolrRunner):
     """
@@ -1298,6 +1280,7 @@ class SolrPaginatedSearch(SolrRunner):
 # Runner: commit
 # ---------------------------------------------------------------------------
 
+
 class SolrCommit(SolrRunner):
     """
     Commit pending changes in Solr.
@@ -1328,6 +1311,7 @@ class SolrCommit(SolrRunner):
 # Runner: optimize
 # ---------------------------------------------------------------------------
 
+
 class SolrOptimize(SolrRunner):
     """
     Force-merge Solr segments (optimize).
@@ -1355,6 +1339,7 @@ class SolrOptimize(SolrRunner):
 # Runner: wait-for-merges
 # ---------------------------------------------------------------------------
 
+
 class SolrWaitForMerges(SolrRunner):
     """
     Poll Solr node metrics until no active merge operations remain across any core.
@@ -1380,8 +1365,7 @@ class SolrWaitForMerges(SolrRunner):
                         total_running += int(val)
             elif isinstance(raw, dict):
                 for core_metrics in raw.get("metrics", {}).values():
-                    for key in ("INDEX.merge.major.running",
-                                "INDEX.merge.minor.running"):
+                    for key in ("INDEX.merge.major.running", "INDEX.merge.minor.running"):
                         val = core_metrics.get(key, 0)
                         if isinstance(val, dict):
                             val = val.get("value", 0)
@@ -1406,6 +1390,7 @@ class SolrWaitForMerges(SolrRunner):
 # ---------------------------------------------------------------------------
 # Runner: create-collection
 # ---------------------------------------------------------------------------
+
 
 class SolrCreateCollection(SolrRunner):
     """
@@ -1466,6 +1451,7 @@ class SolrCreateCollection(SolrRunner):
 # Runner: delete-collection
 # ---------------------------------------------------------------------------
 
+
 class SolrDeleteCollection(SolrRunner):
     """
     Delete a Solr collection, optionally deleting its configset too.
@@ -1507,6 +1493,7 @@ class SolrDeleteCollection(SolrRunner):
 # ---------------------------------------------------------------------------
 # Runner: raw-request
 # ---------------------------------------------------------------------------
+
 
 class RawRequest(Runner):
     """

@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -65,21 +65,17 @@ class InMemoryConfigStore:
         self.backup_created = True
 
     def store_default_config(self):
-        self.store({
-            "distributions": {
-                "release.url": "https://acme.com/releases",
-                "release.cache": "true",
-            },
-            "system": {
-                "env.name": "existing-unit-test-config"
-            },
-            "meta": {
-                "config.version": config.Config.CURRENT_CONFIG_VERSION
-            },
-            "benchmarks": {
-                "local.dataset.cache": "/tmp/benchmark/data"
+        self.store(
+            {
+                "distributions": {
+                    "release.url": "https://acme.com/releases",
+                    "release.cache": "true",
+                },
+                "system": {"env.name": "existing-unit-test-config"},
+                "meta": {"config.version": config.Config.CURRENT_CONFIG_VERSION},
+                "benchmarks": {"local.dataset.cache": "/tmp/benchmark/data"},
             }
-        })
+        )
 
     def store(self, c):
         self.present = True
@@ -102,14 +98,7 @@ class ConfigTests(TestCase):
         cfg = config.Config(config_file_class=InMemoryConfigStore)
         self.assertFalse(cfg.config_present())
 
-        sample_config = {
-            "tests": {
-                "sample.key": "value"
-            },
-            "meta": {
-                "config.version": config.Config.CURRENT_CONFIG_VERSION
-            }
-        }
+        sample_config = {"tests": {"sample.key": "value"}, "meta": {"config.version": config.Config.CURRENT_CONFIG_VERSION}}
         cfg.config_file.store(sample_config)
 
         self.assertTrue(cfg.config_present())
@@ -126,18 +115,9 @@ class ConfigTests(TestCase):
         self.assertFalse(cfg.config_present())
 
         sample_config = {
-            "distributions": {
-                "release.url": "https://acme.com/releases",
-                "release.cache": "true",
-                "snapshot.url": "https://acme.com/snapshots",
-                "snapshot.cache": "false"
-            },
-            "system": {
-                "env.name": "local"
-            },
-            "meta": {
-                "config.version": config.Config.CURRENT_CONFIG_VERSION
-            }
+            "distributions": {"release.url": "https://acme.com/releases", "release.cache": "true", "snapshot.url": "https://acme.com/snapshots", "snapshot.cache": "false"},
+            "system": {"env.name": "local"},
+            "meta": {"config.version": config.Config.CURRENT_CONFIG_VERSION},
         }
         cfg.config_file.store(sample_config)
 
@@ -146,27 +126,23 @@ class ConfigTests(TestCase):
         # override a value so we can see that the scoping logic still works. Default is scope "application"
         cfg.add(config.Scope.applicationOverride, "distributions", "snapshot.cache", "true")
 
-        self.assertEqual({
-            "release.url": "https://acme.com/releases",
-            "release.cache": "true",
-            "snapshot.url": "https://acme.com/snapshots",
-            # overridden!
-            "snapshot.cache": "true"
-        }, cfg.all_opts("distributions"))
+        self.assertEqual(
+            {
+                "release.url": "https://acme.com/releases",
+                "release.cache": "true",
+                "snapshot.url": "https://acme.com/snapshots",
+                # overridden!
+                "snapshot.cache": "true",
+            },
+            cfg.all_opts("distributions"),
+        )
 
     def test_add_all_in_section(self):
         source_cfg = config.Config(config_file_class=InMemoryConfigStore)
         sample_config = {
-            "tests": {
-                "sample.key": "value",
-                "sample.key2": "value"
-            },
-            "no_copy": {
-                "other.key": "value"
-            },
-            "meta": {
-                "config.version": config.Config.CURRENT_CONFIG_VERSION
-            }
+            "tests": {"sample.key": "value", "sample.key2": "value"},
+            "no_copy": {"other.key": "value"},
+            "meta": {"config.version": config.Config.CURRENT_CONFIG_VERSION},
         }
         source_cfg.config_file.store(sample_config)
         source_cfg.load_config()
@@ -211,22 +187,21 @@ class AutoLoadConfigTests(TestCase):
         base_cfg.add(config.Scope.application, "benchmarks", "local.dataset.cache", "/base-config/data-set-cache")
         base_cfg.add(config.Scope.application, "unit-test", "sample.property", "let me copy you")
 
-        cfg = config.auto_load_local_config(base_cfg, additional_sections=["unit-test"],
-                                            config_file_class=InMemoryConfigStore, present=True, config={
-            "distributions": {
-                "release.url": "https://acme.com/releases",
-                "release.cache": "true",
+        cfg = config.auto_load_local_config(
+            base_cfg,
+            additional_sections=["unit-test"],
+            config_file_class=InMemoryConfigStore,
+            present=True,
+            config={
+                "distributions": {
+                    "release.url": "https://acme.com/releases",
+                    "release.cache": "true",
+                },
+                "system": {"env.name": "existing-unit-test-config"},
+                "meta": {"config.version": config.Config.CURRENT_CONFIG_VERSION},
+                "benchmarks": {"local.dataset.cache": "/tmp/benchmark/data"},
             },
-            "system": {
-                "env.name": "existing-unit-test-config"
-            },
-            "meta": {
-                "config.version": config.Config.CURRENT_CONFIG_VERSION
-            },
-            "benchmarks": {
-                "local.dataset.cache": "/tmp/benchmark/data"
-            }
-        })
+        )
         self.assertTrue(cfg.config_file.present)
         # did not just copy base config
         self.assertNotEqual(base_cfg.opts("benchmarks", "local.dataset.cache"), cfg.opts("benchmarks", "local.dataset.cache"))
@@ -241,27 +216,26 @@ class AutoLoadConfigTests(TestCase):
         base_cfg.add(config.Scope.application, "benchmarks", "local.dataset.cache", "/base-config/data-set-cache")
         base_cfg.add(config.Scope.application, "unit-test", "sample.property", "let me copy you")
 
-        cfg = config.auto_load_local_config(base_cfg, additional_sections=["unit-test"],
-                                            config_file_class=InMemoryConfigStore, present=True, config={
+        cfg = config.auto_load_local_config(
+            base_cfg,
+            additional_sections=["unit-test"],
+            config_file_class=InMemoryConfigStore,
+            present=True,
+            config={
                 "distributions": {
                     "release.url": "https://acme.com/releases",
                     "release.cache": "true",
                 },
-                "system": {
-                    "env.name": "existing-unit-test-config"
-                },
+                "system": {"env.name": "existing-unit-test-config"},
                 # outdated
                 "meta": {
                     # ensure we don't attempt to migrate if that version is unsupported
                     "config.version": max(config.Config.CURRENT_CONFIG_VERSION - 1, config.Config.EARLIEST_SUPPORTED_VERSION)
                 },
-                "benchmarks": {
-                    "local.dataset.cache": "/tmp/benchmark/data"
-                },
-                "runtime": {
-                    "java8.home": "/opt/jdk8"
-                }
-            })
+                "benchmarks": {"local.dataset.cache": "/tmp/benchmark/data"},
+                "runtime": {"java8.home": "/opt/jdk8"},
+            },
+        )
         self.assertTrue(cfg.config_file.present)
         # did not just copy base config
         self.assertNotEqual(base_cfg.opts("benchmarks", "local.dataset.cache"), cfg.opts("benchmarks", "local.dataset.cache"))
@@ -276,62 +250,34 @@ class ConfigMigrationTests(TestCase):
     def test_does_not_migrate_outdated_config(self):
         config_file = InMemoryConfigStore("test")
         sample_config = {
-            "system": {
-                "root.dir": "in-memory"
-            },
-            "provisioning": {
-
-            },
-            "build": {
-                "maven.bin": "/usr/local/mvn"
-            },
-            "benchmarks": {
-                "metrics.stats.disk.device": "/dev/hdd1"
-            },
-            "reporting": {
-                "results.base.dir": "/tests/benchmark/reporting",
-                "output.html.results.filename": "index.html"
-            },
+            "system": {"root.dir": "in-memory"},
+            "provisioning": {},
+            "build": {"maven.bin": "/usr/local/mvn"},
+            "benchmarks": {"metrics.stats.disk.device": "/dev/hdd1"},
+            "reporting": {"results.base.dir": "/tests/benchmark/reporting", "output.html.results.filename": "index.html"},
             "runtime": {
                 "java8.home": "/opt/jdk/8",
-            }
+            },
         }
 
         config_file.store(sample_config)
-        with self.assertRaisesRegex(exceptions.ConfigError,
-                                    "The config file.*is too old. Please delete it and reconfigure from scratch"):
+        with self.assertRaisesRegex(exceptions.ConfigError, "The config file.*is too old. Please delete it and reconfigure from scratch"):
             config.migrate(config_file, config.Config.EARLIEST_SUPPORTED_VERSION - 1, config.Config.CURRENT_CONFIG_VERSION, out=null_output)
 
     # catch all test, migrations are checked in more detail in the other tests
     def test_migrate_from_earliest_supported_to_latest(self):
         config_file = InMemoryConfigStore("test")
         sample_config = {
-            "meta": {
-                "config.version": config.Config.EARLIEST_SUPPORTED_VERSION
-            },
-            "system": {
-                "root.dir": "in-memory"
-            },
-            "provisioning": {
-
-            },
-            "build": {
-                "maven.bin": "/usr/local/mvn"
-            },
-            "benchmarks": {
-                "metrics.stats.disk.device": "/dev/hdd1"
-            },
-            "reporting": {
-                "results.base.dir": "/tests/benchmark/reporting",
-                "output.html.results.filename": "index.html"
-            },
+            "meta": {"config.version": config.Config.EARLIEST_SUPPORTED_VERSION},
+            "system": {"root.dir": "in-memory"},
+            "provisioning": {},
+            "build": {"maven.bin": "/usr/local/mvn"},
+            "benchmarks": {"metrics.stats.disk.device": "/dev/hdd1"},
+            "reporting": {"results.base.dir": "/tests/benchmark/reporting", "output.html.results.filename": "index.html"},
             "runtime": {
                 "java8.home": "/opt/jdk/8",
             },
-            "distributions": {
-                "release.url": "https://artifacts.opensearch.org/releases/bundle/opensearch/{{VERSION}}/opensearch-"
-                               "{{VERSION}}-linux-x64.tar.gz"
-            }
+            "distributions": {"release.url": "https://artifacts.opensearch.org/releases/bundle/opensearch/{{VERSION}}/opensearch-{{VERSION}}-linux-x64.tar.gz"},
         }
 
         config_file.store(sample_config)

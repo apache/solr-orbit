@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -63,7 +63,7 @@ def run_subprocess_with_out_and_err(command_line):
     sp = subprocess.Popen(command_line_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     sp.wait()
     out, err = sp.communicate()
-    return out.decode('UTF-8'), err.decode('UTF-8'), sp.returncode
+    return out.decode("UTF-8"), err.decode("UTF-8"), sp.returncode
 
 
 def run_subprocess_with_stderr(command_line):
@@ -74,7 +74,7 @@ def run_subprocess_with_stderr(command_line):
     sp = subprocess.Popen(command_line_args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
     sp.wait()
     _, err = sp.communicate()
-    return err.decode('UTF-8'), sp.returncode
+    return err.decode("UTF-8"), sp.returncode
 
 
 def exit_status_as_bool(runnable, quiet=False):
@@ -93,8 +93,9 @@ def exit_status_as_bool(runnable, quiet=False):
         return False
 
 
-def run_subprocess_with_logging(command_line, header=None, level=logging.INFO, stdin=None, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, env=None, detach=False, capture_output=False):
+def run_subprocess_with_logging(
+    command_line, header=None, level=logging.INFO, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, detach=False, capture_output=False
+):
     """
     Runs the provided command line in a subprocess. All output will be captured by a logger.
 
@@ -119,13 +120,9 @@ def run_subprocess_with_logging(command_line, header=None, level=logging.INFO, s
         logger.info(header)
 
     # pylint: disable=subprocess-popen-preexec-fn
-    with subprocess.Popen(command_line_args,
-                          stdout=stdout,
-                          stderr=stderr,
-                          universal_newlines=True,
-                          env=env,
-                          stdin=stdin if stdin else None,
-                          preexec_fn=pre_exec) as command_line_process:
+    with subprocess.Popen(
+        command_line_args, stdout=stdout, stderr=stderr, universal_newlines=True, env=env, stdin=stdin if stdin else None, preexec_fn=pre_exec
+    ) as command_line_process:
         stdout, _ = command_line_process.communicate()
         if stdout:
             logger.log(level=level, msg=stdout)
@@ -136,10 +133,7 @@ def run_subprocess_with_logging(command_line, header=None, level=logging.INFO, s
 
 def is_benchmark_process(p):
     cmdline = p.cmdline()
-    return p.name() == "solr-orbit" or \
-        (len(cmdline) > 1 and
-         os.path.basename(cmdline[0].lower()).startswith("python") and
-         os.path.basename(cmdline[1]) == "solr-orbit")
+    return p.name() == "solr-orbit" or (len(cmdline) > 1 and os.path.basename(cmdline[0].lower()).startswith("python") and os.path.basename(cmdline[1]) == "solr-orbit")
 
 
 def find_all_other_benchmark_processes():
@@ -160,6 +154,7 @@ def kill_all(predicate):
                 time.sleep(1)
             except psutil.NoSuchProcess:
                 break
+
     for_all_other_processes(predicate, kill)
 
 

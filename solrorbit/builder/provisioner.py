@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -48,9 +48,7 @@ def local(cfg, cluster_config, ip, http_port, all_node_ips, all_node_names, targ
     runtime_jdk = cluster_config.mandatory_var("runtime.jdk")
     _, java_home = java_resolver.java_home(runtime_jdk, cfg.opts("builder", "runtime.jdk"))
 
-    os_installer = NodeInstaller(
-        cluster_config, java_home, node_name,
-        node_root_dir, all_node_ips, all_node_names, ip, http_port)
+    os_installer = NodeInstaller(cluster_config, java_home, node_name, node_root_dir, all_node_ips, all_node_names, ip, http_port)
     return BareProvisioner(os_installer, distribution_version=distribution_version)
 
 
@@ -81,14 +79,12 @@ class NodeConfiguration:
             "node-name": self.node_name,
             "node-root-path": self.node_root_path,
             "binary-path": self.binary_path,
-            "data-paths": self.data_paths
+            "data-paths": self.data_paths,
         }
 
     @staticmethod
     def from_dict(d):
-        return NodeConfiguration(
-            d["build-type"], d["cluster-config-instance-runtime-jdks"], d["ip"],
-            d["node-name"], d["node-root-path"], d["binary-path"], d["data-paths"])
+        return NodeConfiguration(d["build-type"], d["cluster-config-instance-runtime-jdks"], d["ip"], d["node-name"], d["node-root-path"], d["binary-path"], d["data-paths"])
 
 
 def save_node_configuration(path, n):
@@ -148,9 +144,8 @@ def cleanup(preserve, install_dir, data_paths):
 def _apply_config(source_root_path, target_root_path, config_vars):
     logger = logging.getLogger(__name__)
     for root, _, files in os.walk(source_root_path):
-
-        env = jinja2.Environment(loader=jinja2.FileSystemLoader(root), autoescape=select_autoescape(['html', 'xml']))
-        relative_root = root[len(source_root_path) + 1:]
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(root), autoescape=select_autoescape(["html", "xml"]))
+        relative_root = root[len(source_root_path) + 1 :]
         absolute_target_root = os.path.join(target_root_path, relative_root)
         io.ensure_dir(absolute_target_root)
 
@@ -192,10 +187,15 @@ class BareProvisioner:
         # Never let install hooks modify our original provisioner variables and just provide a copy!
         self.os_installer.invoke_install_hook(cluster_config.BootstrapPhase.post_install, provisioner_vars.copy())
 
-        return NodeConfiguration("tar", self.os_installer.cluster_config.mandatory_var("runtime.jdk"),
-                                 self.os_installer.node_ip, self.os_installer.node_name,
-                                 self.os_installer.node_root_dir, self.os_installer.os_home_path,
-                                 self.os_installer.data_paths)
+        return NodeConfiguration(
+            "tar",
+            self.os_installer.cluster_config.mandatory_var("runtime.jdk"),
+            self.os_installer.node_ip,
+            self.os_installer.node_name,
+            self.os_installer.node_root_dir,
+            self.os_installer.os_home_path,
+            self.os_installer.data_paths,
+        )
 
     def _provisioner_variables(self):
         provisioner_vars = {}
@@ -206,8 +206,7 @@ class BareProvisioner:
 
 
 class NodeInstaller:
-    def __init__(self, cluster_config, java_home, node_name, node_root_dir, all_node_ips, all_node_names, ip, http_port,
-                 hook_handler_class=cluster_config.BootstrapHookHandler):
+    def __init__(self, cluster_config, java_home, node_name, node_root_dir, all_node_ips, all_node_names, ip, http_port, hook_handler_class=cluster_config.BootstrapHookHandler):
         self.cluster_config = cluster_config
         self.java_home = java_home
         self.node_name = node_name
@@ -270,11 +269,11 @@ class NodeInstaller:
             "network_host": network_host,
             "http_port": str(self.http_port),
             "zookeeper_port": str(self.http_port + 1000),
-            "all_node_ips": "[\"%s\"]" % "\",\"".join(self.all_node_ips),
-            "all_node_names": "[\"%s\"]" % "\",\"".join(self.all_node_names),
+            "all_node_ips": '["%s"]' % '","'.join(self.all_node_ips),
+            "all_node_names": '["%s"]' % '","'.join(self.all_node_names),
             # at the moment we are strict and enforce that all nodes are master eligible nodes
             "minimum_master_nodes": len(self.all_node_ips),
-            "install_root_path": self.os_home_path
+            "install_root_path": self.os_home_path,
         }
         variables = {}
         variables.update(self.cluster_config.variables)
@@ -327,7 +326,7 @@ class DockerProvisioner:
             "discovery_type": "single-node",
             "http_port": str(self.http_port),
             "zookeeper_port": str(self.http_port + 1000),
-            "cluster_settings": {}
+            "cluster_settings": {},
         }
 
         self.config_vars = {}
@@ -352,9 +351,9 @@ class DockerProvisioner:
 
         for cluster_config_config_path in self.cluster_config.config_paths:
             for root, _, files in os.walk(cluster_config_config_path):
-                env = jinja2.Environment(loader=jinja2.FileSystemLoader(root), autoescape=select_autoescape(['html', 'xml']))
+                env = jinja2.Environment(loader=jinja2.FileSystemLoader(root), autoescape=select_autoescape(["html", "xml"]))
 
-                relative_root = root[len(cluster_config_config_path) + 1:]
+                relative_root = root[len(cluster_config_config_path) + 1 :]
                 absolute_target_root = os.path.join(self.binary_path, relative_root)
                 io.ensure_dir(absolute_target_root)
 
@@ -376,8 +375,7 @@ class DockerProvisioner:
         with open(os.path.join(self.binary_path, "docker-compose.yml"), mode="wt", encoding="utf-8") as f:
             f.write(docker_cfg)
 
-        return NodeConfiguration("docker", self.cluster_config.mandatory_var("runtime.jdk"),
-                                 self.node_ip, self.node_name, self.node_root_dir, self.binary_path, self.data_paths)
+        return NodeConfiguration("docker", self.cluster_config.mandatory_var("runtime.jdk"), self.node_ip, self.node_name, self.node_root_dir, self.binary_path, self.data_paths)
 
     def docker_vars(self, mounts):
         # Determine Docker image based on version type
@@ -397,7 +395,7 @@ class DockerProvisioner:
             "solr_data_dir": self.data_paths[0],
             "solr_log_dir": self.node_log_dir,
             "solr_heap_dump_dir": self.heap_dump_dir,
-            "mounts": mounts
+            "mounts": mounts,
         }
         self._add_if_defined_for_cluster_config(v, "docker_mem_limit")
         self._add_if_defined_for_cluster_config(v, "docker_cpu_count")
@@ -409,7 +407,7 @@ class DockerProvisioner:
 
     def _render_template(self, loader, template_name, variables):
         try:
-            env = jinja2.Environment(loader=loader, autoescape=select_autoescape(['html', 'xml']))
+            env = jinja2.Environment(loader=loader, autoescape=select_autoescape(["html", "xml"]))
             for k, v in variables.items():
                 env.globals[k] = v
             template = env.get_template(template_name)
@@ -422,6 +420,4 @@ class DockerProvisioner:
 
     def _render_template_from_file(self, variables):
         compose_file = os.path.join(self.benchmark_root, "resources", "docker-compose.yml.j2")
-        return self._render_template(loader=jinja2.FileSystemLoader(io.dirname(compose_file)),
-                                     template_name=io.basename(compose_file),
-                                     variables=variables)
+        return self._render_template(loader=jinja2.FileSystemLoader(io.dirname(compose_file)), template_name=io.basename(compose_file), variables=variables)

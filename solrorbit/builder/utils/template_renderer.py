@@ -11,7 +11,7 @@ class TemplateRenderer:
         return self._handle_template_rendering_exceptions(self._render_template_file, root_path, variables, file_name)
 
     def _render_template_file(self, root_path, variables, file_name):
-        env = jinja2.Environment(loader=jinja2.FileSystemLoader(root_path), autoescape=select_autoescape(['html', 'xml']))
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(root_path), autoescape=select_autoescape(["html", "xml"]))
         env.filters["version_between"] = loader.version_between
         template = env.get_template(io.basename(file_name))
         # force a new line at the end. Jinja seems to remove it.
@@ -21,7 +21,7 @@ class TemplateRenderer:
         return self._handle_template_rendering_exceptions(self._render_template_string, template_string, variables)
 
     def _render_template_string(self, template_string, variables):
-        env = jinja2.Environment(loader=jinja2.BaseLoader, autoescape=select_autoescape(['html', 'xml']))
+        env = jinja2.Environment(loader=jinja2.BaseLoader, autoescape=select_autoescape(["html", "xml"]))
         env.filters["version_between"] = loader.version_between
         template = env.from_string(template_string)
 

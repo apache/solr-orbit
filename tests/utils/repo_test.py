@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -41,15 +41,9 @@ class BenchmarkRepositoryTests(TestCase):
         exists.return_value = True
 
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
-            repo.BenchmarkRepository(
-                default_directory=None,
-                root_dir="/benchmark-resources",
-                repo_name="unit-test",
-                resource_name="unittest-resources",
-                offline=True)
+            repo.BenchmarkRepository(default_directory=None, root_dir="/benchmark-resources", repo_name="unit-test", resource_name="unittest-resources", offline=True)
 
-        self.assertEqual("[/benchmark-resources/unit-test] must be a git repository.\n\n"
-                         "Please run:\ngit -C /benchmark-resources/unit-test init", ctx.exception.args[0])
+        self.assertEqual("[/benchmark-resources/unit-test] must be a git repository.\n\nPlease run:\ngit -C /benchmark-resources/unit-test init", ctx.exception.args[0])
 
     @mock.patch("solrorbit.utils.io.exists", autospec=True)
     @mock.patch("solrorbit.utils.git.is_working_copy", autospec=True)
@@ -57,12 +51,7 @@ class BenchmarkRepositoryTests(TestCase):
         is_working_copy.return_value = False
         exists.return_value = False
 
-        r = repo.BenchmarkRepository(
-            default_directory=None,
-            root_dir="/benchmark-resources",
-            repo_name="unit-test",
-            resource_name="unittest-resources",
-            offline=True)
+        r = repo.BenchmarkRepository(default_directory=None, root_dir="/benchmark-resources", repo_name="unit-test", resource_name="unittest-resources", offline=True)
 
         self.assertFalse(r.remote)
 
@@ -70,12 +59,7 @@ class BenchmarkRepositoryTests(TestCase):
     def test_does_nothing_if_working_copy_present(self, is_working_copy):
         is_working_copy.return_value = True
 
-        r = repo.BenchmarkRepository(
-                default_directory=None,
-                root_dir="/benchmark-resources",
-                repo_name="unit-test",
-                resource_name="unittest-resources",
-                offline=True)
+        r = repo.BenchmarkRepository(default_directory=None, root_dir="/benchmark-resources", repo_name="unit-test", resource_name="unittest-resources", offline=True)
 
         self.assertFalse(r.remote)
 
@@ -89,7 +73,8 @@ class BenchmarkRepositoryTests(TestCase):
             root_dir="/benchmark-resources",
             repo_name="unit-test",
             resource_name="unittest-resources",
-            offline=False)
+            offline=False,
+        )
 
         self.assertTrue(r.remote)
 
@@ -105,7 +90,8 @@ class BenchmarkRepositoryTests(TestCase):
             root_dir="/benchmark-resources",
             repo_name="unit-test",
             resource_name="unittest-resources",
-            offline=False)
+            offline=False,
+        )
 
         fetch.assert_called_with(src="/benchmark-resources/unit-test")
 
@@ -120,7 +106,8 @@ class BenchmarkRepositoryTests(TestCase):
             repo_name="unit-test",
             resource_name="unittest-resources",
             offline=False,
-            fetch=False)
+            fetch=False,
+        )
 
         self.assertTrue(r.remote)
 
@@ -137,7 +124,8 @@ class BenchmarkRepositoryTests(TestCase):
             root_dir="/benchmark-resources",
             repo_name="unit-test",
             resource_name="unittest-resources",
-            offline=False)
+            offline=False,
+        )
         # no exception during the call - we reach this here
         self.assertTrue(r.remote)
 
@@ -159,7 +147,8 @@ class BenchmarkRepositoryTests(TestCase):
             root_dir="/benchmark-resources",
             repo_name="unit-test",
             resource_name="unittest-resources",
-            offline=random.choice([True, False]))
+            offline=random.choice([True, False]),
+        )
 
         r.update(distribution_version="1.7.3")
 
@@ -180,12 +169,7 @@ class BenchmarkRepositoryTests(TestCase):
         is_working_copy.return_value = True
         head_revision.return_value = "123a"
 
-        r = repo.BenchmarkRepository(
-            default_directory=None,
-            root_dir="/benchmark-resources",
-            repo_name="unit-test",
-            resource_name="unittest-resources",
-            offline=False)
+        r = repo.BenchmarkRepository(default_directory=None, root_dir="/benchmark-resources", repo_name="unit-test", resource_name="unittest-resources", offline=False)
 
         r.update(distribution_version="6.0.0")
 
@@ -208,12 +192,7 @@ class BenchmarkRepositoryTests(TestCase):
         is_working_copy.return_value = True
         head_revision.return_value = "123a"
 
-        r = repo.BenchmarkRepository(
-            default_directory=None,
-            root_dir="/benchmark-resources",
-            repo_name="unit-test",
-            resource_name="unittest-resources",
-            offline=False)
+        r = repo.BenchmarkRepository(default_directory=None, root_dir="/benchmark-resources", repo_name="unit-test", resource_name="unittest-resources", offline=False)
 
         r.update(distribution_version="1.7.4")
 
@@ -238,7 +217,8 @@ class BenchmarkRepositoryTests(TestCase):
             root_dir="/benchmark-resources",
             repo_name="unit-test",
             resource_name="unittest-resources",
-            offline=False)
+            offline=False,
+        )
 
         self.assertTrue(r.remote)
 
@@ -267,8 +247,7 @@ class BenchmarkRepositoryTests(TestCase):
     @mock.patch("solrorbit.utils.git.checkout", autospec=True)
     @mock.patch("solrorbit.utils.git.rebase")
     @mock.patch("solrorbit.utils.git.current_branch")
-    def test_does_not_update_unknown_branch_remotely_local_fallback(self, curr_branch, rebase, checkout, branches, tags,
-                                                                    fetch, is_working_copy, head_revision):
+    def test_does_not_update_unknown_branch_remotely_local_fallback(self, curr_branch, rebase, checkout, branches, tags, fetch, is_working_copy, head_revision):
         curr_branch.return_value = "main"
         # we have only "main" remotely but a few more branches locally
         branches.side_effect = ["5", ["1", "2", "5", "main"]]
@@ -281,7 +260,8 @@ class BenchmarkRepositoryTests(TestCase):
             root_dir="/benchmark-resources",
             repo_name="unit-test",
             resource_name="unittest-resources",
-            offline=False)
+            offline=False,
+        )
 
         r.update(distribution_version="1.7.3")
 
@@ -308,12 +288,7 @@ class BenchmarkRepositoryTests(TestCase):
         tags.return_value = []
         is_working_copy.return_value = True
 
-        r = repo.BenchmarkRepository(
-            default_directory=None,
-            root_dir="/benchmark-resources",
-            repo_name="unit-test",
-            resource_name="unittest-resources",
-            offline=False)
+        r = repo.BenchmarkRepository(default_directory=None, root_dir="/benchmark-resources", repo_name="unit-test", resource_name="unittest-resources", offline=False)
 
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             r.update(distribution_version="4.0.0")
@@ -330,12 +305,7 @@ class BenchmarkRepositoryTests(TestCase):
     def test_checkout_revision(self, checkout, fetch, is_working_copy):
         is_working_copy.return_value = True
 
-        r = repo.BenchmarkRepository(
-            default_directory=None,
-            root_dir="/benchmark-resources",
-            repo_name="unit-test",
-            resource_name="unittest-resources",
-            offline=False)
+        r = repo.BenchmarkRepository(default_directory=None, root_dir="/benchmark-resources", repo_name="unit-test", resource_name="unittest-resources", offline=False)
 
         r.checkout("abcdef123")
 

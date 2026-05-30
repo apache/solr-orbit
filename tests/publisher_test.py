@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -30,6 +30,7 @@ from unittest.mock import Mock, patch
 
 from solrorbit import publisher
 
+
 # pylint: disable=protected-access
 class FormatterTests(TestCase):
     def setUp(self):
@@ -40,7 +41,7 @@ class FormatterTests(TestCase):
         self.metrics_data = [
             ["Min Throughput", "index", "17300", "18000", "700", "ops/s"],
             ["Median Throughput", "index", "17500", "18500", "1000", "ops/s"],
-            ["Max Throughput", "index", "17700", "19000", "1300", "ops/s"]
+            ["Max Throughput", "index", "17700", "19000", "1300", "ops/s"],
         ]
         self.numbers_align = "right"
 
@@ -62,7 +63,7 @@ class FormatterTests(TestCase):
         # 1 header line, no separation line + 3 data lines
         self.assertEqual(1 + 3, len(formatted.splitlines()))
 
-    @patch('solrorbit.publisher.convert.to_bool')
+    @patch("solrorbit.publisher.convert.to_bool")
     def test_publish_throughput_handles_different_metrics(self, mock_to_bool):
         config = Mock()
 
@@ -81,29 +82,11 @@ class FormatterTests(TestCase):
 
         # Mock for regular test run
         regular_stats = Mock()
-        regular_stats.metrics.return_value = {
-            "throughput": {
-                "min": 100,
-                "max": 200,
-                "mean": 150,
-                "median": 160,
-                "unit": "ops/s"
-            }
-        }
+        regular_stats.metrics.return_value = {"throughput": {"min": 100, "max": 200, "mean": 150, "median": 160, "unit": "ops/s"}}
 
         # Mock for aggregated test run
         aggregated_stats = Mock()
-        aggregated_stats.metrics.return_value = {
-            "throughput": {
-                "overall_min": 95,
-                "overall_max": 205,
-                "min": 100,
-                "max": 200,
-                "mean": 150,
-                "median": 160,
-                "unit": "ops/s"
-            }
-        }
+        aggregated_stats.metrics.return_value = {"throughput": {"overall_min": 95, "overall_max": 205, "min": 100, "max": 200, "mean": 150, "median": 160, "unit": "ops/s"}}
 
         # Test with regular stats
         result_regular = comparison_publisher._publish_throughput(regular_stats, regular_stats, "test_task")

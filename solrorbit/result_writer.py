@@ -102,11 +102,13 @@ class LocalFilesystemResultWriter(ResultWriter):
         # Example: 20260222_143052_7a82f1ea
         if timestamp and run_id != "unknown":
             from datetime import datetime
+
             # timestamp can be either a datetime object or Unix timestamp (float/int)
             if isinstance(timestamp, datetime):
                 time_str = timestamp.strftime("%Y%m%d_%H%M%S")
             elif isinstance(timestamp, (int, float)):
                 import time
+
                 time_str = time.strftime("%Y%m%d_%H%M%S", time.gmtime(timestamp))
             else:
                 # Unknown timestamp type, fall back to run_id only
@@ -191,10 +193,7 @@ class LocalFilesystemResultWriter(ResultWriter):
             return "(no metrics recorded)"
 
         normal = [m for m in self._metrics if m.get("sample_type") != "warmup"]
-        rows = [
-            [m.get("task", ""), m.get("name", ""), m.get("value", ""), m.get("unit", "")]
-            for m in normal
-        ]
+        rows = [[m.get("task", ""), m.get("name", ""), m.get("value", ""), m.get("unit", "")] for m in normal]
         table = tabulate_lib.tabulate(
             rows,
             headers=["Task", "Metric", "Value", "Unit"],
@@ -234,8 +233,5 @@ def create_writer(name: str, **kwargs) -> ResultWriter:
         "local_filesystem": LocalFilesystemResultWriter,
     }
     if name not in registry:
-        raise exceptions.SystemSetupError(
-            f"Unknown results_writer '{name}'. "
-            f"Available: {', '.join(registry)}"
-        )
+        raise exceptions.SystemSetupError(f"Unknown results_writer '{name}'. Available: {', '.join(registry)}")
     return registry[name](**kwargs)

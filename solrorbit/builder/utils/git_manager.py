@@ -15,7 +15,7 @@ class GitManager:
         self.executor.execute(host, f"git -C {target_dir} rebase {remote}/{branch}")
 
     def get_revision_from_timestamp(self, host, target_dir, timestamp):
-        get_revision_from_timestamp_command = f"git -C {target_dir} rev-list -n 1 --before=\"{timestamp}\" --date=iso8601 origin/main"
+        get_revision_from_timestamp_command = f'git -C {target_dir} rev-list -n 1 --before="{timestamp}" --date=iso8601 origin/main'
 
         return self.executor.execute(host, get_revision_from_timestamp_command, output=True)[0].strip()
 

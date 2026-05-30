@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -36,9 +36,7 @@ import time
 import tabulate
 import thespian.actors
 
-from solrorbit import actor, config, doc_link, \
-    worker_coordinator, exceptions, builder, metrics, \
-        publisher, workload, version, PROGRAM_NAME
+from solrorbit import actor, config, doc_link, worker_coordinator, exceptions, builder, metrics, publisher, workload, version, PROGRAM_NAME
 from solrorbit.builder import cluster_config as cc_module
 from solrorbit.builder.supplier import SourceRepository, Builder
 from solrorbit.builder.solr_provisioner import SolrProvisioner, SolrDockerLauncher
@@ -117,21 +115,13 @@ class BenchmarkActor(actor.BenchmarkActor):
         self.coordinator.setup(sources=msg.sources)
         self.logger.info("Asking builder to start the engine.")
         self.builder = self.createActor(builder.BuilderActor, targetActorRequirements={"coordinator": True})
-        self.send(self.builder, builder.StartEngine(self.cfg,
-                                                      self.coordinator.metrics_store.open_context,
-                                                      msg.sources,
-                                                      msg.distribution,
-                                                      msg.external,
-                                                      msg.docker))
+        self.send(self.builder, builder.StartEngine(self.cfg, self.coordinator.metrics_store.open_context, msg.sources, msg.distribution, msg.external, msg.docker))
 
     @actor.no_retry("test run orchestrator")  # pylint: disable=no-value-for-parameter
     def receiveMsg_EngineStarted(self, msg, sender):
         self.logger.info("Builder has started engine successfully.")
         self.coordinator.test_run.cluster_config_revision = msg.cluster_config_revision
-        self.main_worker_coordinator = self.createActor(
-            worker_coordinator.WorkerCoordinatorActor,
-            targetActorRequirements={"coordinator": True}
-            )
+        self.main_worker_coordinator = self.createActor(worker_coordinator.WorkerCoordinatorActor, targetActorRequirements={"coordinator": True})
         self.logger.info("Telling worker_coordinator to prepare for benchmarking.")
         self.send(self.main_worker_coordinator, worker_coordinator.PrepareBenchmark(self.cfg, self.coordinator.current_workload))
 
@@ -215,6 +205,7 @@ class BenchmarkCoordinator:
             return
 
         from solrorbit.conversion.detector import is_opensearch_workload_path
+
         if is_opensearch_workload_path(workload_path):
             msg = (
                 f"This workload is in OpenSearch Benchmark format and cannot be run directly.\n"
@@ -225,9 +216,7 @@ class BenchmarkCoordinator:
                 f"Then re-run with --workload-path {workload_path}-solr"
             )
             console.error(msg)
-            raise exceptions.SystemSetupError(
-                f"OSB workload detected at '{workload_path}' — convert it first with 'solr-orbit convert-workload'"
-            )
+            raise exceptions.SystemSetupError(f"OSB workload detected at '{workload_path}' — convert it first with 'solr-orbit convert-workload'")
 
     def setup(self, sources=False):
         # to load the workload we need to know the correct cluster distribution version. Usually, this value should be set
@@ -252,21 +241,15 @@ class BenchmarkCoordinator:
         if self.current_test_procedure is None:
             raise exceptions.SystemSetupError(
                 "Workload [{}] does not provide test_procedure [{}]. List the available workloads with {} list workloads.".format(
-                    self.current_workload.name, test_procedure_name, PROGRAM_NAME))
+                    self.current_workload.name, test_procedure_name, PROGRAM_NAME
+                )
+            )
         if self.current_test_procedure.user_info:
             console.info(self.current_test_procedure.user_info)
 
-        self.test_run = metrics.create_test_run(
-            self.cfg, self.current_workload,
-            self.current_test_procedure,
-            self.workload_revision)
+        self.test_run = metrics.create_test_run(self.cfg, self.current_workload, self.current_test_procedure, self.workload_revision)
 
-        self.metrics_store = metrics.metrics_store(
-            self.cfg,
-            workload=self.test_run.workload_name,
-            test_procedure=self.test_run.test_procedure_name,
-            read_only=False
-        )
+        self.metrics_store = metrics.metrics_store(self.cfg, workload=self.test_run.workload_name, test_procedure=self.test_run.test_procedure_name, read_only=False)
         self.test_run_store = metrics.test_run_store(self.cfg)
 
     def on_preparation_complete(self, distribution_flavor, distribution_version, revision):
@@ -286,20 +269,17 @@ class BenchmarkCoordinator:
         # pipeline = how the cluster is provisioned (e.g., "docker", "from-sources", "benchmark-only")
         cluster_cfg_display = ", ".join(self.test_run.cluster_config or ["none"])
         if self.test_run.test_procedure.auto_generated:
-            console.info("Running benchmark with pipeline [{}], workload [{}], cluster_config [{}], version [{}].\n"
-                         .format(self.test_run.pipeline,
-                         self.test_run.workload_name,
-                         cluster_cfg_display,
-                         self.test_run.distribution_version or "unknown"))
+            console.info(
+                "Running benchmark with pipeline [{}], workload [{}], cluster_config [{}], version [{}].\n".format(
+                    self.test_run.pipeline, self.test_run.workload_name, cluster_cfg_display, self.test_run.distribution_version or "unknown"
+                )
+            )
         else:
-            console.info("Running benchmark with pipeline [{}], workload [{}], test_procedure [{}], cluster_config [{}], version [{}].\n"
-                         .format(
-                             self.test_run.pipeline,
-                             self.test_run.workload_name,
-                             self.test_run.test_procedure_name,
-                             cluster_cfg_display,
-                             self.test_run.distribution_version or "unknown"
-                             ))
+            console.info(
+                "Running benchmark with pipeline [{}], workload [{}], test_procedure [{}], cluster_config [{}], version [{}].\n".format(
+                    self.test_run.pipeline, self.test_run.workload_name, self.test_run.test_procedure_name, cluster_cfg_display, self.test_run.distribution_version or "unknown"
+                )
+            )
 
     def on_task_finished(self, new_metrics):
         self.logger.info("Task has finished.")
@@ -373,7 +353,7 @@ def set_default_hosts(cfg, host="127.0.0.1", port=9200):
         logger.info("Using configured hosts %s", configured_hosts.default)
     else:
         logger.info("Setting default host to [%s:%d]", host, port)
-        default_host_object = opts.TargetHosts("{}:{}".format(host,port))
+        default_host_object = opts.TargetHosts("{}:{}".format(host, port))
         cfg.add(config.Scope.benchmark, "client", "hosts", default_host_object)
 
 
@@ -419,13 +399,13 @@ def benchmark_only(cfg):
     return run_test(cfg, external=True)
 
 
-Pipeline("benchmark-only",
-         "Assumes an already running search engine instance, runs a benchmark and publishes results", benchmark_only)
+Pipeline("benchmark-only", "Assumes an already running search engine instance, runs a benchmark and publishes results", benchmark_only)
 
 
 # ---------------------------------------------------------------------------
 # Solr-specific pipelines
 # ---------------------------------------------------------------------------
+
 
 def _load_cluster_config(cfg):
     """
@@ -473,11 +453,9 @@ def solr_from_sources(cfg):
     revision = cfg.opts("builder", "source.revision", mandatory=False, default_value="latest")
     port = int(cfg.opts("solr", "port", mandatory=False, default_value=8983))
     src_dir = os.path.join(base_dir, "sources", "solr")
-    install_dir = cfg.opts("solr", "install_dir", mandatory=False,
-                           default_value=os.path.join(base_dir, "builds", revision or "latest"))
+    install_dir = cfg.opts("solr", "install_dir", mandatory=False, default_value=os.path.join(base_dir, "builds", revision or "latest"))
     log_dir = os.path.join(base_dir, "logs")
-    remote_url = cfg.opts("source", "remote.repo.url", mandatory=False,
-                          default_value="https://github.com/apache/solr.git")
+    remote_url = cfg.opts("source", "remote.repo.url", mandatory=False, default_value="https://github.com/apache/solr.git")
 
     # Step 1: Clone / update source tree
     logger.info("Fetching Solr sources at revision [%s] from [%s].", revision, remote_url)
@@ -493,10 +471,7 @@ def solr_from_sources(cfg):
     pattern = os.path.join(src_dir, "solr", "packaging", "build", "distributions", "solr-*.tgz")
     tarballs = glob.glob(pattern)
     if not tarballs:
-        raise exceptions.SystemSetupError(
-            f"No Solr tarball found matching {pattern}. "
-            f"Check the Gradle build log at {os.path.join(log_dir, 'build.log')}."
-        )
+        raise exceptions.SystemSetupError(f"No Solr tarball found matching {pattern}. Check the Gradle build log at {os.path.join(log_dir, 'build.log')}.")
     tarball_path = sorted(tarballs)[-1]  # pick the newest if multiple
     logger.info("Using built Solr tarball: %s", tarball_path)
 
@@ -509,8 +484,7 @@ def solr_from_sources(cfg):
 
     cc_instance = _load_cluster_config(cfg)
     solr_modules = cfg.opts("solr", "modules", mandatory=False, default_value="")
-    provisioner = SolrProvisioner(cache_dir=os.path.join(base_dir, "cache"), port=port,
-                                  cluster_config=cc_instance, solr_modules=solr_modules)
+    provisioner = SolrProvisioner(cache_dir=os.path.join(base_dir, "cache"), port=port, cluster_config=cc_instance, solr_modules=solr_modules)
     try:
         provisioner.start(solr_root, mode="cloud")
         set_default_hosts(cfg, host="127.0.0.1", port=port)
@@ -526,9 +500,7 @@ def solr_from_sources(cfg):
             logger.warning("Solr clean failed during teardown: %s", exc)
 
 
-Pipeline("from-sources",
-         "Builds Solr from source (git clone + Gradle assemble), provisions it locally, "
-         "runs a benchmark, and tears down.", solr_from_sources)
+Pipeline("from-sources", "Builds Solr from source (git clone + Gradle assemble), provisions it locally, runs a benchmark, and tears down.", solr_from_sources)
 
 
 def solr_from_distribution(cfg):
@@ -547,15 +519,12 @@ def solr_from_distribution(cfg):
     version_str = cfg.opts("builder", "distribution.version")
     port = int(cfg.opts("solr", "port", mandatory=False, default_value=8983))
     base_dir = os.path.expanduser("~/.solr-orbit")
-    install_dir = cfg.opts("solr", "install_dir", mandatory=False,
-                           default_value=os.path.join(base_dir, "installs", version_str))
-    cache_dir = cfg.opts("solr", "cache_dir", mandatory=False,
-                         default_value=os.path.join(base_dir, "cache"))
+    install_dir = cfg.opts("solr", "install_dir", mandatory=False, default_value=os.path.join(base_dir, "installs", version_str))
+    cache_dir = cfg.opts("solr", "cache_dir", mandatory=False, default_value=os.path.join(base_dir, "cache"))
 
     cc_instance = _load_cluster_config(cfg)
     solr_modules = cfg.opts("solr", "modules", mandatory=False, default_value="")
-    provisioner = SolrProvisioner(cache_dir=cache_dir, port=port, cluster_config=cc_instance,
-                                  solr_modules=solr_modules)
+    provisioner = SolrProvisioner(cache_dir=cache_dir, port=port, cluster_config=cc_instance, solr_modules=solr_modules)
     _tarball = provisioner.download(version_str)
     solr_root = provisioner.install(version_str, install_dir)
 
@@ -612,11 +581,9 @@ def solr_docker(cfg):
             logging.getLogger(__name__).warning("Solr Docker teardown failed: %s", exc)
 
 
-Pipeline("from-distribution",
-         "Downloads a Solr distribution, provisions it locally, runs a benchmark, and tears down.", solr_from_distribution)
+Pipeline("from-distribution", "Downloads a Solr distribution, provisions it locally, runs a benchmark, and tears down.", solr_from_distribution)
 
-Pipeline("docker",
-         "Starts Solr via Docker, runs a benchmark, and removes the container on teardown.", solr_docker)
+Pipeline("docker", "Starts Solr via Docker, runs a benchmark, and removes the container on teardown.", solr_docker)
 
 
 def available_pipelines():
@@ -652,14 +619,13 @@ def run(cfg):
             raise exceptions.SystemSetupError(
                 "Only the [benchmark-only] pipeline is supported by the Docker image.\n"
                 "Add --pipeline=benchmark-only in your arguments and try again.\n"
-                "For more details read the docs for the benchmark-only pipeline in {}\n".format(
-                    doc_link("")))
+                "For more details read the docs for the benchmark-only pipeline in {}\n".format(doc_link(""))
+            )
 
     try:
         pipeline = pipelines[name]
     except KeyError:
-        raise exceptions.SystemSetupError(
-            "Unknown pipeline [%s]. List the available pipelines with %s list pipelines." % (name, PROGRAM_NAME))
+        raise exceptions.SystemSetupError("Unknown pipeline [%s]. List the available pipelines with %s list pipelines." % (name, PROGRAM_NAME))
     try:
         pipeline(cfg)
     except exceptions.BenchmarkError as e:

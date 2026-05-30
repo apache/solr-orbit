@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -40,10 +40,9 @@ import thespian.actors
 class NotFoundError(Exception):
     pass
 
-from solrorbit import (PROGRAM_NAME, actor, client, config, exceptions,
-                         metrics, paths)
-from solrorbit.builder import (launcher, provisioner,
-                                 supplier)
+
+from solrorbit import PROGRAM_NAME, actor, client, config, exceptions, metrics, paths
+from solrorbit.builder import launcher, provisioner, supplier
 from solrorbit.builder import cluster_config as cc
 from solrorbit.utils import console, net
 
@@ -74,25 +73,19 @@ def install(cfg):
 
     # Ensure node_name and master_nodes match, using node_name as the default
     if node_name not in master_nodes:
-        print(
-            f"The provided --node-name '{node_name}' and --master-nodes '{master_nodes}' are different. "
-            f"Using '{node_name}' for both node name and initial master node."
-        )
+        print(f"The provided --node-name '{node_name}' and --master-nodes '{master_nodes}' are different. Using '{node_name}' for both node name and initial master node.")
         master_nodes = [node_name]
 
     if build_type == "tar":
         binary_supplier = supplier.create(cfg, sources, cluster_config)
-        p = provisioner.local(cfg=cfg, cluster_config=cluster_config, ip=ip, http_port=http_port,
-                              all_node_ips=seed_hosts, all_node_names=master_nodes, target_root=root_path,
-                              node_name=node_name)
+        p = provisioner.local(
+            cfg=cfg, cluster_config=cluster_config, ip=ip, http_port=http_port, all_node_ips=seed_hosts, all_node_names=master_nodes, target_root=root_path, node_name=node_name
+        )
         node_config = p.prepare(binary=binary_supplier())
     elif build_type == "docker":
         if len(plugins) > 0:
-            raise exceptions.SystemSetupError("You cannot specify any plugins for Docker clusters. Please remove "
-                                              "\"--plugins\" and try again.")
-        p = provisioner.docker(
-            cfg=cfg, cluster_config=cluster_config,
-            ip=ip, http_port=http_port, target_root=root_path, node_name=node_name)
+            raise exceptions.SystemSetupError('You cannot specify any plugins for Docker clusters. Please remove "--plugins" and try again.')
+        p = provisioner.docker(cfg=cfg, cluster_config=cluster_config, ip=ip, http_port=http_port, target_root=root_path, node_name=node_name)
         # there is no binary for Docker that can be downloaded / built upfront
         node_config = p.prepare(binary=None)
     else:
@@ -109,8 +102,9 @@ def start(cfg):
     with contextlib.suppress(FileNotFoundError):
         _load_node_file(root_path)
         install_id = cfg.opts("system", "install.id")
-        raise exceptions.SystemSetupError("A node with this installation id is already running. Please stop it first "
-                                          "with {} stop --installation-id={}".format(PROGRAM_NAME, install_id))
+        raise exceptions.SystemSetupError(
+            "A node with this installation id is already running. Please stop it first with {} stop --installation-id={}".format(PROGRAM_NAME, install_id)
+        )
 
     node_config = provisioner.load_node_configuration(root_path)
 
@@ -146,7 +140,7 @@ def stop(cfg):
             test_run_id=current_test_run.test_run_id,
             test_run_timestamp=current_test_run.test_run_timestamp,
             workload_name=current_test_run.workload_name,
-            test_procedure_name=current_test_run.test_procedure_name
+            test_procedure_name=current_test_run.test_procedure_name,
         )
     except exceptions.NotFound:
         logging.getLogger(__name__).info("Could not find test_run [%s] and will thus not persist system metrics.", test_run_id)
@@ -167,9 +161,7 @@ def stop(cfg):
         metrics_store.close()
 
     # TODO: Do we need to expose this as a separate command as well?
-    provisioner.cleanup(preserve=cfg.opts("builder", "preserve.install"),
-                        install_dir=node_config.binary_path,
-                        data_paths=node_config.data_paths)
+    provisioner.cleanup(preserve=cfg.opts("builder", "preserve.install"), install_dir=node_config.binary_path, data_paths=node_config.data_paths)
 
 
 def _load_node_file(root_path):
@@ -190,9 +182,9 @@ def _delete_node_file(root_path):
 # Public Messages
 ##############################
 
+
 class StartEngine:
-    def __init__(self, cfg, open_metrics_context, sources, distribution, external, docker, ip=None, port=None,
-                 node_id=None):
+    def __init__(self, cfg, open_metrics_context, sources, distribution, external, docker, ip=None, port=None, node_id=None):
         self.cfg = cfg
         self.open_metrics_context = open_metrics_context
         self.sources = sources
@@ -215,8 +207,7 @@ class StartEngine:
         :param node_ids: A list of node id to set.
         :return: A corresponding ``StartNodes`` message with the specified IP, port number and node ids.
         """
-        return StartNodes(self.cfg, self.open_metrics_context, self.sources, self.distribution,
-                          self.external, self.docker, all_node_ips, all_node_ids, ip, port, node_ids)
+        return StartNodes(self.cfg, self.open_metrics_context, self.sources, self.distribution, self.external, self.docker, all_node_ips, all_node_ids, ip, port, node_ids)
 
 
 class EngineStarted:
@@ -241,9 +232,9 @@ class ResetRelativeTime:
 # Builder internal messages
 ##############################
 
+
 class StartNodes:
-    def __init__(self, cfg, open_metrics_context, sources, distribution, external, docker,
-                 all_node_ips, all_node_ids, ip, port, node_ids):
+    def __init__(self, cfg, open_metrics_context, sources, distribution, external, docker, all_node_ips, all_node_ids, ip, port, node_ids):
         self.cfg = cfg
         self.open_metrics_context = open_metrics_context
         self.sources = sources
@@ -293,9 +284,9 @@ def to_ip_port(hosts):
         host_or_ip = host.pop("host")
         port = host.pop("port", 8983)
         if host:
-            raise exceptions.SystemSetupError("When specifying nodes to be managed by solr-orbit you can only supply "
-                                              "hostname:port pairs (e.g. 'localhost:8983'), any additional options cannot "
-                                              "be supported.")
+            raise exceptions.SystemSetupError(
+                "When specifying nodes to be managed by solr-orbit you can only supply hostname:port pairs (e.g. 'localhost:8983'), any additional options cannot be supported."
+            )
         ip = net.resolve(host_or_ip)
         ip_port_pairs.append((ip, port))
     return ip_port_pairs
@@ -453,17 +444,17 @@ class BuilderActor(actor.BenchmarkActor):
         # do not self-terminate, let the parent actor handle this
 
 
-@thespian.actors.requireCapability('coordinator')
+@thespian.actors.requireCapability("coordinator")
 class Dispatcher(actor.BenchmarkActor):
     """This Actor receives a copy of the startmsg (with the computed hosts
-       attached) and creates a NodeBuilderActor on each targeted
-       remote host.  It uses Thespian SystemRegistration to get
-       notification of when remote nodes are available.  As a special
-       case, if an IP address is localhost, the NodeBuilderActor is
-       immediately created locally.  Once All NodeBuilderActors are
-       started, it will send them all their startup message, with a
-       reply-to back to the actor that made the request of the
-       Dispatcher.
+    attached) and creates a NodeBuilderActor on each targeted
+    remote host.  It uses Thespian SystemRegistration to get
+    notification of when remote nodes are available.  As a special
+    case, if an IP address is localhost, the NodeBuilderActor is
+    immediately created locally.  Once All NodeBuilderActors are
+    started, it will send them all their startup message, with a
+    reply-to back to the actor that made the request of the
+    Dispatcher.
     """
 
     def __init__(self):
@@ -485,9 +476,8 @@ class Dispatcher(actor.BenchmarkActor):
         for (ip, port), node in all_nodes_by_host.items():
             submsg = startmsg.for_nodes(all_node_ips, all_node_ids, ip, port, node)
             submsg.reply_to = sender
-            if ip == '127.0.0.1':
-                m = self.createActor(NodeBuilderActor,
-                                     targetActorRequirements={"coordinator": True})
+            if ip == "127.0.0.1":
+                m = self.createActor(NodeBuilderActor, targetActorRequirements={"coordinator": True})
                 self.pending.append((m, submsg))
             else:
                 self.remotes[ip].append(submsg)
@@ -505,16 +495,13 @@ class Dispatcher(actor.BenchmarkActor):
     def receiveMsg_ActorSystemConventionUpdate(self, convmsg, sender):
         if not convmsg.remoteAdded:
             self.logger.warning("Remote Solr Orbit node [%s] exited during NodeBuilderActor startup process.", convmsg.remoteAdminAddress)
-            self.start_sender(actor.BenchmarkFailure(
-                "Remote Solr Orbit node [%s] has been shutdown prematurely." % convmsg.remoteAdminAddress))
+            self.start_sender(actor.BenchmarkFailure("Remote Solr Orbit node [%s] has been shutdown prematurely." % convmsg.remoteAdminAddress))
         else:
-            remote_ip = convmsg.remoteCapabilities.get('ip', None)
+            remote_ip = convmsg.remoteCapabilities.get("ip", None)
             self.logger.info("Remote Solr Orbit node [%s] has started.", remote_ip)
 
             for eachmsg in self.remotes[remote_ip]:
-                self.pending.append((self.createActor(NodeBuilderActor,
-                                                      targetActorRequirements={"ip": remote_ip}),
-                                     eachmsg))
+                self.pending.append((self.createActor(NodeBuilderActor, targetActorRequirements={"ip": remote_ip}), eachmsg))
             if remote_ip in self.remotes:
                 del self.remotes[remote_ip]
             if not self.remotes:
@@ -559,13 +546,19 @@ class NodeBuilderActor(actor.BenchmarkActor):
                 self.logger.info("Starting node(s) %s on [%s].", msg.node_ids, msg.ip)
 
             # Load node-specific configuration
-            cfg = config.auto_load_local_config(msg.cfg, additional_sections=[
-                # only copy the relevant bits
-                "workload", "builder", "client", "telemetry",
-                # allow metrics store to extract test_run meta-data
-                "test_run",
-                "source"
-            ])
+            cfg = config.auto_load_local_config(
+                msg.cfg,
+                additional_sections=[
+                    # only copy the relevant bits
+                    "workload",
+                    "builder",
+                    "client",
+                    "telemetry",
+                    # allow metrics store to extract test_run meta-data
+                    "test_run",
+                    "source",
+                ],
+            )
             # set root path (normally done by the main entry point)
             cfg.add(config.Scope.application, "node", "benchmark.root", paths.benchmark_root())
             if not msg.external:
@@ -576,8 +569,7 @@ class NodeBuilderActor(actor.BenchmarkActor):
             metrics_store.open(ctx=msg.open_metrics_context)
             # avoid follow-up errors in case we receive an unexpected ActorExitRequest due to an early failure in a parent actor.
 
-            self.builder = create(cfg, metrics_store, msg.ip, msg.port, msg.all_node_ips, msg.all_node_ids,
-                                   msg.sources, msg.distribution, msg.external, msg.docker)
+            self.builder = create(cfg, metrics_store, msg.ip, msg.port, msg.all_node_ips, msg.all_node_ids, msg.sources, msg.distribution, msg.external, msg.docker)
             self.builder.start_engine()
             self.wakeupAfter(METRIC_FLUSH_INTERVAL_SECONDS)
             self.send(getattr(msg, "reply_to", sender), NodesStarted())
@@ -622,6 +614,7 @@ class NodeBuilderActor(actor.BenchmarkActor):
 # Internal API (only used by the actor and for tests)
 #####################################################
 
+
 def load_cluster_config(cfg, external):
     # externally provisioned clusters do not support cluster_configs / plugins
     if external:
@@ -629,20 +622,14 @@ def load_cluster_config(cfg, external):
         plugins = []
     else:
         cluster_config_path = cc.cluster_config_path(cfg)
-        cluster_config = cc.load_cluster_config(
-            cluster_config_path,
-            cfg.opts("builder", "cluster_config.names"),
-            cfg.opts("builder", "cluster_config.params"))
-        plugins = cc.load_plugins(cluster_config_path,
-                                    cfg.opts("builder", "cluster_config.plugins", mandatory=False),
-                                    cfg.opts("builder", "plugin.params", mandatory=False))
+        cluster_config = cc.load_cluster_config(cluster_config_path, cfg.opts("builder", "cluster_config.names"), cfg.opts("builder", "cluster_config.params"))
+        plugins = cc.load_plugins(cluster_config_path, cfg.opts("builder", "cluster_config.plugins", mandatory=False), cfg.opts("builder", "plugin.params", mandatory=False))
         # Store cluster_config_instance in config for TestRun to access (for result metadata)
         cfg.add(config.Scope.applicationOverride, "builder", "cluster_config.instance", cluster_config)
     return cluster_config, plugins
 
 
-def create(cfg, metrics_store, node_ip, node_http_port, all_node_ips, all_node_ids, sources=False, distribution=False,
-           external=False, docker=False):
+def create(cfg, metrics_store, node_ip, node_http_port, all_node_ips, all_node_ids, sources=False, distribution=False, external=False, docker=False):
     test_run_root_path = paths.test_run_root(cfg)
     node_ids = cfg.opts("provisioning", "node.ids", mandatory=False)
     node_name_prefix = cfg.opts("provisioning", "node.name.prefix")
@@ -654,16 +641,13 @@ def create(cfg, metrics_store, node_ip, node_http_port, all_node_ips, all_node_i
         all_node_names = ["%s-%s" % (node_name_prefix, n) for n in all_node_ids]
         for node_id in node_ids:
             node_name = "%s-%s" % (node_name_prefix, node_id)
-            p.append(
-                provisioner.local(cfg, cluster_config, node_ip, node_http_port, all_node_ips,
-                                  all_node_names, test_run_root_path, node_name))
+            p.append(provisioner.local(cfg, cluster_config, node_ip, node_http_port, all_node_ips, all_node_names, test_run_root_path, node_name))
         l = launcher.ProcessLauncher(cfg)
     elif external:
         raise exceptions.BenchmarkAssertionError("Externally provisioned clusters should not need to be managed by Solr Orbit's builder")
     elif docker:
         if len(plugins) > 0:
-            raise exceptions.SystemSetupError("You cannot specify any plugins for Docker clusters. Please remove "
-                                              "\"--plugin-params\" and try again.")
+            raise exceptions.SystemSetupError('You cannot specify any plugins for Docker clusters. Please remove "--plugin-params" and try again.')
         s = lambda: None
         p = []
         for node_id in node_ids:
@@ -724,9 +708,7 @@ class Builder:
         self.metrics_store.close()
         self.nodes = []
         for node_config in self.node_configs:
-            provisioner.cleanup(preserve=self.preserve_install,
-                                install_dir=node_config.binary_path,
-                                data_paths=node_config.data_paths)
+            provisioner.cleanup(preserve=self.preserve_install, install_dir=node_config.binary_path, data_paths=node_config.data_paths)
         self.node_configs = []
 
     def _current_test_run(self):

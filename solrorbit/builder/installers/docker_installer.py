@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -64,15 +64,17 @@ class DockerInstaller(Installer):
         node_log_dir = os.path.join(node_root_dir, "logs", "server")
         node_heap_dump_dir = os.path.join(node_root_dir, "heapdump")
 
-        return Node(name=node_name,
-                    port=node_port,
-                    pid=None,
-                    root_dir=node_root_dir,
-                    binary_path=node_binary_path,
-                    log_path=node_log_dir,
-                    heap_dump_path=node_heap_dump_dir,
-                    data_paths=node_data_paths,
-                    telemetry=None)
+        return Node(
+            name=node_name,
+            port=node_port,
+            pid=None,
+            root_dir=node_root_dir,
+            binary_path=node_binary_path,
+            log_path=node_log_dir,
+            heap_dump_path=node_heap_dump_dir,
+            data_paths=node_data_paths,
+            telemetry=None,
+        )
 
     def _prepare_node(self, host, node):
         directories_to_create = [node.binary_path, node.log_path, node.heap_dump_path, node.data_paths[0]]
@@ -106,7 +108,7 @@ class DockerInstaller(Installer):
             "discovery_type": "single-node",
             "http_port": str(node.port),
             "zookeeper_port": str(node.port + 1000),
-            "cluster_settings": {}
+            "cluster_settings": {},
         }
 
         config_vars = {}
@@ -123,7 +125,7 @@ class DockerInstaller(Installer):
             "solr_data_dir": node.data_paths[0],
             "solr_log_dir": node.log_path,
             "solr_heap_dump_dir": node.heap_dump_path,
-            "mounts": mounts
+            "mounts": mounts,
         }
         self._add_if_defined_for_cluster_config(docker_vars, "docker_mem_limit")
         self._add_if_defined_for_cluster_config(docker_vars, "docker_cpu_count")

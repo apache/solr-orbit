@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -34,8 +34,7 @@ def test_tar_distributions(cfg):
     for dist in it.DISTRIBUTIONS:
         for workload in it.WORKLOADS:
             it.wait_until_port_is_free(port_number=port)
-            assert it.run_test(cfg, f"--distribution-version=\"{dist}\" --workload=\"{workload}\" "
-                                f"--test-mode --cluster-config=4gheap --target-hosts=127.0.0.1:{port}") == 0
+            assert it.run_test(cfg, f'--distribution-version="{dist}" --workload="{workload}" --test-mode --cluster-config=4gheap --target-hosts=127.0.0.1:{port}') == 0
 
 
 @it.random_benchmark_config
@@ -44,6 +43,12 @@ def test_docker_distribution(cfg):
     # only test the most recent Docker distribution
     dist = it.DISTRIBUTIONS[-1]
     it.wait_until_port_is_free(port_number=port)
-    assert it.run_test(cfg, f"--pipeline=\"docker\" --distribution-version=\"{dist}\" "
-                        f"--workload=\"geonames\" --test-procedure=\"append-no-conflicts-index-only\" --test-mode "
-                        f"--cluster-config=4gheap --target-hosts=127.0.0.1:{port}") == 0
+    assert (
+        it.run_test(
+            cfg,
+            f'--pipeline="docker" --distribution-version="{dist}" '
+            f'--workload="geonames" --test-procedure="append-no-conflicts-index-only" --test-mode '
+            f"--cluster-config=4gheap --target-hosts=127.0.0.1:{port}",
+        )
+        == 0
+    )

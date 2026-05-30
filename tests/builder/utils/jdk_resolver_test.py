@@ -35,8 +35,9 @@ class JdkResolverTests(TestCase):
     def test_multiple_majors(self):
         # printenv, $JAVA_HOME -XshowSettings:properties -version x 2
         self.executor.execute.side_effect = [
-            ["JAVA_HOME=/fake/path", "JAVA14_HOME=/another/fake/path"], ["java.vm.specification.version = 14"],
-            ["java.vm.specification.version = 9"]
+            ["JAVA_HOME=/fake/path", "JAVA14_HOME=/another/fake/path"],
+            ["java.vm.specification.version = 14"],
+            ["java.vm.specification.version = 9"],
         ]
 
         _, jdk_path = self.jdk_resolver.resolve_jdk_path(self.host, [8, 14, 16])

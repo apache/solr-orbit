@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -49,7 +49,7 @@ class ConfigApplier:
         mounts = {}
 
         for root, _, files in os.walk(source_root_path):
-            relative_root = root[len(source_root_path) + 1:]
+            relative_root = root[len(source_root_path) + 1 :]
             absolute_target_root = os.path.join(target_root_path, relative_root)
             self.path_manager.create_path(host, absolute_target_root)
 

@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -49,9 +49,7 @@ def java_home(cluster_config_runtime_jdks, specified_runtime_jdk=None):
         allowed_runtime_jdks = [int(v) for v in cluster_config_runtime_jdks.split(",")]
 
     except ValueError:
-        raise exceptions.SystemSetupError(
-            "ClusterConfigInstance config key \"runtime.jdk\" is invalid: \"{}\" (must be int)".format(
-                cluster_config_runtime_jdks))
+        raise exceptions.SystemSetupError('ClusterConfigInstance config key "runtime.jdk" is invalid: "{}" (must be int)'.format(cluster_config_runtime_jdks))
 
     runtime_jdk_versions = determine_runtime_jdks()
 

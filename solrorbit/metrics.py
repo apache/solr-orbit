@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -43,11 +43,14 @@ import tabulate
 from solrorbit import time, exceptions, version, paths
 from solrorbit.utils import convert, console, io, versions
 from solrorbit.visualizations.benchmark_report_renderer import render_results_html
+
+
 class MetaInfoScope(Enum):
     """
     Defines the scope of a meta-information. Meta-information provides more context for a metric, for example the concrete version
     of OpenSearch that has been benchmarked or environment information like CPU model or OS.
     """
+
     cluster = 1
     """
     Cluster level meta-information is valid for all nodes in the cluster (e.g. the benchmarked OpenSearch version)
@@ -60,12 +63,8 @@ class MetaInfoScope(Enum):
 
 def calculate_results(store, test_run):
     calc = GlobalStatsCalculator(
-        store,
-        test_run.workload,
-        test_run.test_procedure,
-        latency_percentiles=test_run.latency_percentiles,
-        throughput_percentiles=test_run.throughput_percentiles
-        )
+        store, test_run.workload, test_run.test_procedure, latency_percentiles=test_run.latency_percentiles, throughput_percentiles=test_run.throughput_percentiles
+    )
     return calc()
 
 
@@ -89,13 +88,9 @@ def metrics_store(cfg, read_only=True, workload=None, test_procedure=None, clust
 
     test_run_id = cfg.opts("system", "test_run.id")
     test_run_timestamp = cfg.opts("system", "time.start")
-    selected_cluster_config = cfg.opts("builder", "cluster_config.names") \
-        if cluster_config is None else cluster_config
+    selected_cluster_config = cfg.opts("builder", "cluster_config.names") if cluster_config is None else cluster_config
 
-    store.open(
-        test_run_id, test_run_timestamp,
-        workload, test_procedure, selected_cluster_config,
-        create=not read_only)
+    store.open(test_run_id, test_run_timestamp, workload, test_procedure, selected_cluster_config, create=not read_only)
     return store
 
 
@@ -171,9 +166,7 @@ class MetricsStore:
         self._stop_watch = self._clock.stop_watch()
         self.logger = logging.getLogger(__name__)
 
-    def open(self, test_run_id=None, test_run_timestamp=None, workload_name=None,\
-         test_procedure_name=None, cluster_config_name=None, ctx=None,\
-         create=False):
+    def open(self, test_run_id=None, test_run_timestamp=None, workload_name=None, test_procedure_name=None, cluster_config_name=None, ctx=None, create=False):
         """
         Opens a metrics store for a specific test_run, workload, test_procedure and cluster_config.
 
@@ -201,13 +194,15 @@ class MetricsStore:
         assert self._test_run_id is not None, "Attempting to open metrics store without a test run id"
         assert self._test_run_timestamp is not None, "Attempting to open metrics store without a test run timestamp"
 
-        self._cluster_config_name = "+".join(self._cluster_config) \
-            if isinstance(self._cluster_config, list) \
-                else self._cluster_config
+        self._cluster_config_name = "+".join(self._cluster_config) if isinstance(self._cluster_config, list) else self._cluster_config
 
-        self.logger.info("Opening metrics store for test run timestamp=[%s], workload=[%s],"
-        "test_procedure=[%s], cluster_config=[%s]",
-                         self._test_run_timestamp, self._workload, self._test_procedure, self._cluster_config_name)
+        self.logger.info(
+            "Opening metrics store for test run timestamp=[%s], workload=[%s],test_procedure=[%s], cluster_config=[%s]",
+            self._test_run_timestamp,
+            self._workload,
+            self._test_procedure,
+            self._cluster_config_name,
+        )
 
         user_tags = extract_user_tags_from_config(self._config)
         for k, v in user_tags.items():
@@ -264,10 +259,7 @@ class MetricsStore:
         """
         Clears all internally stored meta-info. This is considered Solr Orbit internal API and not intended for normal client consumption.
         """
-        self._meta_info = {
-            MetaInfoScope.cluster: {},
-            MetaInfoScope.node: {}
-        }
+        self._meta_info = {MetaInfoScope.cluster: {}, MetaInfoScope.node: {}}
 
     @property
     def open_context(self):
@@ -276,11 +268,12 @@ class MetricsStore:
             "test-run-timestamp": self._test_run_timestamp,
             "workload": self._workload,
             "test_procedure": self._test_procedure,
-            "cluster-config-instance": self._cluster_config
+            "cluster-config-instance": self._cluster_config,
         }
 
-    def put_value_cluster_level(self, name, value, unit=None, task=None, operation=None, operation_type=None, sample_type=SampleType.Normal,
-                                absolute_time=None, relative_time=None, meta_data=None):
+    def put_value_cluster_level(
+        self, name, value, unit=None, task=None, operation=None, operation_type=None, sample_type=SampleType.Normal, absolute_time=None, relative_time=None, meta_data=None
+    ):
         """
         Adds a new cluster level value metric.
 
@@ -297,11 +290,22 @@ class MetricsStore:
                Defaults to None. The metrics store will derive the timestamp automatically.
         :param meta_data: A dict, containing additional key-value pairs. Defaults to None.
         """
-        self._put_metric(MetaInfoScope.cluster, None, name, value, unit, task, operation, operation_type, sample_type, absolute_time,
-                         relative_time, meta_data)
+        self._put_metric(MetaInfoScope.cluster, None, name, value, unit, task, operation, operation_type, sample_type, absolute_time, relative_time, meta_data)
 
-    def put_value_node_level(self, node_name, name, value, unit=None, task=None, operation=None, operation_type=None,
-                             sample_type=SampleType.Normal, absolute_time=None, relative_time=None, meta_data=None):
+    def put_value_node_level(
+        self,
+        node_name,
+        name,
+        value,
+        unit=None,
+        task=None,
+        operation=None,
+        operation_type=None,
+        sample_type=SampleType.Normal,
+        absolute_time=None,
+        relative_time=None,
+        meta_data=None,
+    ):
         """
         Adds a new node level value metric.
 
@@ -319,11 +323,9 @@ class MetricsStore:
                Defaults to None. The metrics store will derive the timestamp automatically.
         :param meta_data: A dict, containing additional key-value pairs. Defaults to None.
         """
-        self._put_metric(MetaInfoScope.node, node_name, name, value, unit, task, operation, operation_type, sample_type, absolute_time,
-                         relative_time, meta_data)
+        self._put_metric(MetaInfoScope.node, node_name, name, value, unit, task, operation, operation_type, sample_type, absolute_time, relative_time, meta_data)
 
-    def _put_metric(self, level, level_key, name, value, unit, task, operation, operation_type, sample_type, absolute_time=None,
-                    relative_time=None, meta_data=None):
+    def _put_metric(self, level, level_key, name, value, unit, task, operation, operation_type, sample_type, absolute_time=None, relative_time=None, meta_data=None):
         if level == MetaInfoScope.cluster:
             meta = self._meta_info[MetaInfoScope.cluster].copy()
         elif level == MetaInfoScope.node:
@@ -353,7 +355,7 @@ class MetricsStore:
             "value": value,
             "unit": unit,
             "sample-type": sample_type.name.lower(),
-            "meta": meta
+            "meta": meta,
         }
         if task:
             doc["task"] = task
@@ -397,17 +399,18 @@ class MetricsStore:
         if relative_time is None:
             relative_time = self._stop_watch.split_time()
 
-        doc.update({
-            "@timestamp": time.to_epoch_millis(absolute_time),
-            "relative-time-ms": convert.seconds_to_ms(relative_time),
-            "test-run-id": self._test_run_id,
-            "test-run-timestamp": self._test_run_timestamp,
-            "environment": self._environment_name,
-            "workload": self._workload,
-            "test_procedure": self._test_procedure,
-            "cluster-config-instance": self._cluster_config_name,
-
-        })
+        doc.update(
+            {
+                "@timestamp": time.to_epoch_millis(absolute_time),
+                "relative-time-ms": convert.seconds_to_ms(relative_time),
+                "test-run-id": self._test_run_id,
+                "test-run-timestamp": self._test_run_timestamp,
+                "environment": self._environment_name,
+                "workload": self._workload,
+                "test_procedure": self._test_procedure,
+                "cluster-config-instance": self._cluster_config_name,
+            }
+        )
         if meta:
             doc["meta"] = meta
         if self._workload_params:
@@ -437,8 +440,7 @@ class MetricsStore:
         """
         raise NotImplementedError("abstract method")
 
-    def get_one(self, name, sample_type=None, node_name=None, task=None, mapper=lambda doc: doc["value"],
-                sort_key=None, sort_reverse=False):
+    def get_one(self, name, sample_type=None, node_name=None, task=None, mapper=lambda doc: doc["value"], sort_key=None, sort_reverse=False):
         """
         Gets one value for the given metric name (even if there should be more than one).
 
@@ -564,6 +566,8 @@ class MetricsStore:
         """
         stats = self.get_stats(name, task, operation_type, sample_type)
         return stats["avg"] if stats else None
+
+
 class InMemoryMetricsStore(MetricsStore):
     # Note that this implementation can run out of memory; generally, this can occur when ingesting very large corpora.
 
@@ -608,7 +612,6 @@ class InMemoryMetricsStore(MetricsStore):
         self.docs.append(doc)
         self.doc_count += 1
 
-
     def flush(self, refresh=True):
         pass
 
@@ -619,12 +622,10 @@ class InMemoryMetricsStore(MetricsStore):
             self.doc_count = 0
             self.out_of_memory = False
         if len(docs) * self.DOC_SIZE_IN_BYTES > psutil.virtual_memory().available - self.memory_available_threshold:
-            console.warn("Memory threshold exceeded by in-memory metrics store, skipping summary generation for current operation",
-                         logger=self.logger)
+            console.warn("Memory threshold exceeded by in-memory metrics store, skipping summary generation for current operation", logger=self.logger)
             return None
         compressed = zlib.compress(pickle.dumps(docs))
-        self.logger.debug("Compression changed size of metric store from [%d] bytes to [%d] bytes",
-                         sys.getsizeof(docs, -1), sys.getsizeof(compressed, -1))
+        self.logger.debug("Compression changed size of metric store from [%d] bytes to [%d] bytes", sys.getsizeof(docs, -1), sys.getsizeof(compressed, -1))
         return compressed
 
     def get_percentiles(self, name, task=None, operation_type=None, sample_type=None, percentiles=None):
@@ -665,9 +666,12 @@ class InMemoryMetricsStore(MetricsStore):
         total_count = 0
         for doc in self.docs:
             # we can use any request metrics record (i.e. service time or latency)
-            if doc["name"] == "service_time" and doc["task"] == task and \
-                    (operation_type is None or doc["operation-type"] == operation_type) and \
-                    (sample_type is None or doc["sample-type"] == sample_type.name.lower()):
+            if (
+                doc["name"] == "service_time"
+                and doc["task"] == task
+                and (operation_type is None or doc["operation-type"] == operation_type)
+                and (sample_type is None or doc["sample-type"] == sample_type.name.lower())
+            ):
                 total_count += 1
                 if doc["meta"]["success"] is False:
                     error += 1
@@ -680,36 +684,33 @@ class InMemoryMetricsStore(MetricsStore):
         values = self.get(name, task, operation_type, sample_type)
         sorted_values = sorted(values)
         if len(sorted_values) > 0:
-            return {
-                "count": len(sorted_values),
-                "min": sorted_values[0],
-                "max": sorted_values[-1],
-                "avg": statistics.mean(sorted_values),
-                "sum": sum(sorted_values)
-            }
+            return {"count": len(sorted_values), "min": sorted_values[0], "max": sorted_values[-1], "avg": statistics.mean(sorted_values), "sum": sum(sorted_values)}
         else:
             return None
 
     def _get(self, name, task, operation_type, sample_type, node_name, mapper):
-        return [mapper(doc)
-                for doc in self.docs
-                if doc["name"] == name and
-                (task is None or doc["task"] == task) and
-                (operation_type is None or doc["operation-type"] == operation_type) and
-                (sample_type is None or doc["sample-type"] == sample_type.name.lower()) and
-                (node_name is None or doc.get("meta", {}).get("node_name") == node_name)
-                ]
+        return [
+            mapper(doc)
+            for doc in self.docs
+            if doc["name"] == name
+            and (task is None or doc["task"] == task)
+            and (operation_type is None or doc["operation-type"] == operation_type)
+            and (sample_type is None or doc["sample-type"] == sample_type.name.lower())
+            and (node_name is None or doc.get("meta", {}).get("node_name") == node_name)
+        ]
 
-    def get_one(self, name, sample_type=None, node_name=None, task=None, mapper=lambda doc: doc["value"],
-                sort_key=None, sort_reverse=False):
+    def get_one(self, name, sample_type=None, node_name=None, task=None, mapper=lambda doc: doc["value"], sort_key=None, sort_reverse=False):
         if sort_key:
             docs = sorted(self.docs, key=lambda k: k[sort_key], reverse=sort_reverse)
         else:
             docs = self.docs
         for doc in docs:
-            if (doc["name"] == name and (task is None or doc["task"] == task) and
-                    (sample_type is None or doc["sample-type"] == sample_type.name.lower()) and
-                    (node_name is None or doc.get("meta", {}).get("node_name") == node_name)):
+            if (
+                doc["name"] == name
+                and (task is None or doc["task"] == task)
+                and (sample_type is None or doc["sample-type"] == sample_type.name.lower())
+                and (node_name is None or doc.get("meta", {}).get("node_name") == node_name)
+            ):
                 return mapper(doc)
         return None
 
@@ -724,10 +725,8 @@ class FilesystemMetricsStore(InMemoryMetricsStore):
         super().__init__(cfg=cfg, clock=clock, meta_info=meta_info)
         self._metrics_file = None
 
-    def open(self, test_run_id=None, test_run_timestamp=None, workload_name=None,
-             test_procedure_name=None, cluster_config_name=None, ctx=None, create=False):
-        super().open(test_run_id, test_run_timestamp, workload_name,
-                     test_procedure_name, cluster_config_name, ctx, create)
+    def open(self, test_run_id=None, test_run_timestamp=None, workload_name=None, test_procedure_name=None, cluster_config_name=None, ctx=None, create=False):
+        super().open(test_run_id, test_run_timestamp, workload_name, test_procedure_name, cluster_config_name, ctx, create)
         if create:
             run_dir = paths.test_run_root(self._config, test_run_id=self._test_run_id)
             io.ensure_dir(run_dir)
@@ -787,41 +786,50 @@ def list_test_helper(store_item, title):
 
     test_runs = []
     for test_run in store_item:
-        test_runs.append([
-            test_run.test_run_id,
-            time.to_iso8601(test_run.test_run_timestamp),
-            test_run.workload,
-            format_dict(test_run.workload_params),
-            test_run.test_procedure_name,
-            test_run.cluster_config_name,
-            format_dict(test_run.user_tags),
-            test_run.workload_revision,
-            test_run.cluster_config_revision])
+        test_runs.append(
+            [
+                test_run.test_run_id,
+                time.to_iso8601(test_run.test_run_timestamp),
+                test_run.workload,
+                format_dict(test_run.workload_params),
+                test_run.test_procedure_name,
+                test_run.cluster_config_name,
+                format_dict(test_run.user_tags),
+                test_run.workload_revision,
+                test_run.cluster_config_revision,
+            ]
+        )
 
     if len(test_runs) > 0:
         console.println(f"\nRecent {title}:\n")
-        console.println(tabulate.tabulate(
-            test_runs,
-            headers=[
-                "TestRun ID",
-                "TestRun Timestamp",
-                "Workload",
-                "Workload Parameters",
-                "TestProcedure",
-                "ClusterConfigInstance",
-                "User Tags",
-                "workload Revision",
-                "Cluster Config Revision"
-                ]))
+        console.println(
+            tabulate.tabulate(
+                test_runs,
+                headers=[
+                    "TestRun ID",
+                    "TestRun Timestamp",
+                    "Workload",
+                    "Workload Parameters",
+                    "TestProcedure",
+                    "ClusterConfigInstance",
+                    "User Tags",
+                    "workload Revision",
+                    "Cluster Config Revision",
+                ],
+            )
+        )
     else:
         console.println("")
         console.println(f"No recent {title} found.")
 
+
 def list_test_runs(cfg):
     list_test_helper(test_run_store(cfg).list(), "test-runs")
 
+
 def list_aggregated_results(cfg):
     list_test_helper(test_run_store(cfg).list_aggregations(), "aggregated-results")
+
 
 def create_test_run(cfg, workload, test_procedure, workload_revision=None):
     cluster_config = cfg.opts("builder", "cluster_config.names")
@@ -835,33 +843,62 @@ def create_test_run(cfg, workload, test_procedure, workload_revision=None):
     plugin_params = cfg.opts("builder", "plugin.params")
     benchmark_version = version.version()
     benchmark_revision = version.revision()
-    latency_percentiles = cfg.opts("workload", "latency.percentiles", mandatory=False,
-                                   default_value=GlobalStatsCalculator.DEFAULT_LATENCY_PERCENTILES)
-    throughput_percentiles = cfg.opts("workload", "throughput.percentiles", mandatory=False,
-                                      default_value=GlobalStatsCalculator.DEFAULT_THROUGHPUT_PERCENTILES)
+    latency_percentiles = cfg.opts("workload", "latency.percentiles", mandatory=False, default_value=GlobalStatsCalculator.DEFAULT_LATENCY_PERCENTILES)
+    throughput_percentiles = cfg.opts("workload", "throughput.percentiles", mandatory=False, default_value=GlobalStatsCalculator.DEFAULT_THROUGHPUT_PERCENTILES)
     # In tests, we don't get the default command-line arg value for percentiles,
     # so supply them as defaults here as well
 
     # Get cluster_config_instance if available (stored during provisioning)
     cluster_config_instance = cfg.opts("builder", "cluster_config.instance", mandatory=False, default_value=None)
 
-    return TestRun(benchmark_version, benchmark_revision,
-    environment, test_run_id, test_run_timestamp,
-    pipeline, user_tags, workload,
-    workload_params, test_procedure, cluster_config, cluster_config_params,
-    plugin_params, workload_revision, latency_percentiles=latency_percentiles,
-    throughput_percentiles=throughput_percentiles, cluster_config_instance=cluster_config_instance)
+    return TestRun(
+        benchmark_version,
+        benchmark_revision,
+        environment,
+        test_run_id,
+        test_run_timestamp,
+        pipeline,
+        user_tags,
+        workload,
+        workload_params,
+        test_procedure,
+        cluster_config,
+        cluster_config_params,
+        plugin_params,
+        workload_revision,
+        latency_percentiles=latency_percentiles,
+        throughput_percentiles=throughput_percentiles,
+        cluster_config_instance=cluster_config_instance,
+    )
 
 
 class TestRun:
-    def __init__(self, benchmark_version, benchmark_revision, environment_name,
-                 test_run_id, test_run_timestamp, pipeline, user_tags,
-                 workload, workload_params, test_procedure, cluster_config,
-                 cluster_config_params, plugin_params,
-                 workload_revision=None, cluster_config_revision=None,
-                 distribution_version=None, distribution_flavor=None,
-                 revision=None, results=None, meta_data=None, latency_percentiles=None, throughput_percentiles=None,
-                 cluster_config_instance=None):
+    def __init__(
+        self,
+        benchmark_version,
+        benchmark_revision,
+        environment_name,
+        test_run_id,
+        test_run_timestamp,
+        pipeline,
+        user_tags,
+        workload,
+        workload_params,
+        test_procedure,
+        cluster_config,
+        cluster_config_params,
+        plugin_params,
+        workload_revision=None,
+        cluster_config_revision=None,
+        distribution_version=None,
+        distribution_flavor=None,
+        revision=None,
+        results=None,
+        meta_data=None,
+        latency_percentiles=None,
+        throughput_percentiles=None,
+        cluster_config_instance=None,
+    ):
         if results is None:
             results = {}
         # this happens when the test run is created initially
@@ -900,7 +937,6 @@ class TestRun:
         self.throughput_percentiles = throughput_percentiles
         self.cluster_config_instance = cluster_config_instance
 
-
     @property
     def workload_name(self):
         return str(self.workload)
@@ -911,9 +947,7 @@ class TestRun:
 
     @property
     def cluster_config_name(self):
-        return "+".join(self.cluster_config) \
-            if isinstance(self.cluster_config, list) \
-                else self.cluster_config
+        return "+".join(self.cluster_config) if isinstance(self.cluster_config, list) else self.cluster_config
 
     def add_results(self, results):
         self.results = results
@@ -937,7 +971,7 @@ class TestRun:
                 "distribution-version": self.distribution_version,
                 "distribution-flavor": self.distribution_flavor,
                 "cluster-config-revision": self.cluster_config_revision,
-            }
+            },
         }
         if self.results:
             # if results was loaded from JSON it’s already a dict
@@ -968,6 +1002,7 @@ class TestRun:
                 "flavor": str(self.cluster_config_instance.flavor) if hasattr(self.cluster_config_instance, "flavor") else None,
             }
         return d
+
     def to_result_dicts(self):
         """
         :return: a list of dicts, suitable for persisting the results of this test run in a format that is Kibana-friendly.
@@ -985,7 +1020,7 @@ class TestRun:
             "test_procedure": self.test_procedure_name,
             "cluster-config-instance": self.cluster_config_name,
             # allow to logically delete records, e.g. for UI purposes when we only want to show the latest result
-            "active": True
+            "active": True,
         }
         if self.distribution_version:
             result_template["distribution-major-version"] = versions.major_version(self.distribution_version)
@@ -1016,16 +1051,28 @@ class TestRun:
         user_tags = d.get("user-tags", {})
         # TODO: cluster is optional for BWC. This can be removed after some grace period.
         cluster = d.get("cluster", {})
-        return TestRun(d["benchmark-version"], d.get("benchmark-revision"), d["environment"], d["test-run-id"],
-                    time.from_is8601(d["test-run-timestamp"]),
-                    d["pipeline"], user_tags, d["workload"], d.get("workload-params"),
-                    d.get("test_procedure"), d["cluster-config-instance"],
-                    d.get("cluster-config-instance-params"), d.get("plugin-params"),
-                    workload_revision=d.get("workload-revision"),
-                    cluster_config_revision=cluster.get("cluster-config-revision"),
-                    distribution_version=cluster.get("distribution-version"),
-                    distribution_flavor=cluster.get("distribution-flavor"),
-                    revision=cluster.get("revision"), results=d.get("results"), meta_data=d.get("meta", {}))
+        return TestRun(
+            d["benchmark-version"],
+            d.get("benchmark-revision"),
+            d["environment"],
+            d["test-run-id"],
+            time.from_is8601(d["test-run-timestamp"]),
+            d["pipeline"],
+            user_tags,
+            d["workload"],
+            d.get("workload-params"),
+            d.get("test_procedure"),
+            d["cluster-config-instance"],
+            d.get("cluster-config-instance-params"),
+            d.get("plugin-params"),
+            workload_revision=d.get("workload-revision"),
+            cluster_config_revision=cluster.get("cluster-config-revision"),
+            distribution_version=cluster.get("distribution-version"),
+            distribution_flavor=cluster.get("distribution-flavor"),
+            revision=cluster.get("revision"),
+            results=d.get("results"),
+            meta_data=d.get("meta", {}),
+        )
 
 
 class TestRunStore:
@@ -1056,6 +1103,7 @@ class CompositeTestRunStore:
     Not wired into any active code path. Does not inherit from TestRunStore —
     it is a delegator with the same API.
     """
+
     def __init__(self, external_store, file_store):
         self.external_store = external_store
         self.file_store = file_store
@@ -1080,6 +1128,7 @@ class FileTestRunStore(TestRunStore):
     def __init__(self, cfg):
         super().__init__(cfg)
         self._max_results = lambda: int(cfg.opts("system", "list.test_runs.max_results"))
+
     def store_test_run(self, test_run):
         open_browser = False
         doc = test_run.as_dict()
@@ -1114,7 +1163,7 @@ class FileTestRunStore(TestRunStore):
             dest = os.path.expanduser(custom_output_path)
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             print("[DEBUG]: ", dest)
-            with open(dest, 'w', encoding='utf-8') as f:
+            with open(dest, "w", encoding="utf-8") as f:
                 f.write(html_content)
             console.info(f"HTML report saved to: {dest}")
             if open_browser:
@@ -1133,22 +1182,21 @@ class FileTestRunStore(TestRunStore):
 
     def _test_run_file(self, test_run_id=None, is_aggregated=False):
         if is_aggregated:
-            return os.path.join(paths.aggregated_results_root(cfg=self.cfg, test_run_id=test_run_id),
-                                "aggregated_test_run.json")
+            return os.path.join(paths.aggregated_results_root(cfg=self.cfg, test_run_id=test_run_id), "aggregated_test_run.json")
         else:
             return os.path.join(paths.test_run_root(cfg=self.cfg, test_run_id=test_run_id), "test_run.json")
 
     def list(self):
         results = glob.glob(self._test_run_file(test_run_id="*"))
         all_test_runs = self._to_test_runs(results)
-        return all_test_runs[:self._max_results()]
+        return all_test_runs[: self._max_results()]
 
     def list_aggregations(self):
         aggregated_results = glob.glob(self._test_run_file(test_run_id="*", is_aggregated=True))
         return self._to_test_runs(aggregated_results)
 
     def find_by_test_run_id(self, test_run_id):
-        is_aggregated = test_run_id.startswith('aggregate')
+        is_aggregated = test_run_id.startswith("aggregate")
         test_run_file = self._test_run_file(test_run_id=test_run_id, is_aggregated=is_aggregated)
         if io.exists(test_run_file):
             test_runs = self._to_test_runs([test_run_file])
@@ -1166,10 +1214,13 @@ class FileTestRunStore(TestRunStore):
             except BaseException:
                 logging.getLogger(__name__).exception("Could not load test_run file [%s] (incompatible format?) Skipping...", result)
         return sorted(test_runs, key=lambda r: r.test_run_timestamp, reverse=True)
+
+
 class NoopResultsStore:
     """
     Does not store any results separately as these are stored as part of the test_run on the file system.
     """
+
     def store_results(self, test_run):
         pass
 
@@ -1200,26 +1251,28 @@ def filter_percentiles_by_sample_size(sample_size, percentiles):
             if p in percentiles:
                 filtered_percentiles.append(p)
     else:
-        effective_sample_size = 10 ** (int(math.log10(sample_size))) # round down to nearest power of ten
-        delta = 0.000001 # If (p / 100) * effective_sample_size is within this value of a whole number,
+        effective_sample_size = 10 ** (int(math.log10(sample_size)))  # round down to nearest power of ten
+        delta = 0.000001  # If (p / 100) * effective_sample_size is within this value of a whole number,
         # assume the discrepancy is due to floating point and allow it
         for p in percentiles:
             fraction = p / 100
             # check if fraction * effective_sample_size is close enough to a whole number
-            if abs((effective_sample_size * fraction) - round(effective_sample_size*fraction)) < delta or p in [25, 75]:
+            if abs((effective_sample_size * fraction) - round(effective_sample_size * fraction)) < delta or p in [25, 75]:
                 filtered_percentiles.append(p)
     # if no percentiles are suitable, just return 100
     if len(filtered_percentiles) == 0:
         return [100]
     return filtered_percentiles
 
+
 def percentiles_for_sample_size(sample_size, percentiles_list=None):
     # If latency_percentiles is present, as a list, display those values instead (assuming there are enough samples)
     percentiles = []
     if percentiles_list:
-        percentiles = percentiles_list # Defaults get overridden if a value is provided
+        percentiles = percentiles_list  # Defaults get overridden if a value is provided
         percentiles.sort()
     return filter_percentiles_by_sample_size(sample_size, percentiles)
+
 
 class GlobalStatsCalculator:
     DEFAULT_LATENCY_PERCENTILES = "50,90,99,99.9,99.99,100"
@@ -1228,7 +1281,7 @@ class GlobalStatsCalculator:
     DEFAULT_THROUGHPUT_PERCENTILES = ""
     DEFAULT_THROUGHPUT_PERCENTILES_LIST = []
 
-    OTHER_PERCENTILES = [50,90,99,99.9,99.99,100]
+    OTHER_PERCENTILES = [50, 90, 99, 99.9, 99.99, 100]
     # Use these percentiles when the single_latency fn is called for something other than latency
 
     def __init__(self, store, workload, test_procedure, latency_percentiles=None, throughput_percentiles=None):
@@ -1275,17 +1328,13 @@ class GlobalStatsCalculator:
                         self.single_latency(task_name, op_type, metric_name="recall@k"),
                         self.single_latency(task_name, op_type, metric_name="recall@1"),
                         error_rate,
-                        duration
+                        duration,
                     )
 
                     profile_metrics = task.operation.params.get("profile-metrics", None)
                     if profile_metrics:
                         profile_metrics.append("query_time")
-                        result.add_profile_metrics(
-                            task_name,
-                            task.operation.name,
-                            {name: self.single_latency(task_name, op_type, metric_name=name) for name in profile_metrics}
-                        )
+                        result.add_profile_metrics(task_name, task.operation.name, {name: self.single_latency(task_name, op_type, metric_name=name) for name in profile_metrics})
 
         self.logger.debug("Gathering indexing metrics.")
         result.total_time = self.sum("indexing_total_time")
@@ -1361,31 +1410,19 @@ class GlobalStatsCalculator:
 
         result = {}
         if mean and median and stats:
-            result = {
-                "min": stats["min"],
-                "mean": mean,
-                "median": median,
-                "max": stats["max"],
-                "unit": unit
-            }
+            result = {"min": stats["min"], "mean": mean, "median": median, "max": stats["max"], "unit": unit}
         else:
-            result = {
-                "min": None,
-                "mean": None,
-                "median": None,
-                "max": None,
-                "unit": unit
-            }
+            result = {"min": None, "mean": None, "median": None, "max": None, "unit": unit}
 
-        if percentiles_list: # modified from single_latency()
+        if percentiles_list:  # modified from single_latency()
             sample_size = stats["count"]
-            percentiles = self.store.get_percentiles(metric_name,
-                                                     task=task_name,
-                                                     operation_type=operation_type,
-                                                     sample_type=SampleType.Normal,
-                                                     percentiles=percentiles_for_sample_size(
-                                                         sample_size,
-                                                         percentiles_list=percentiles_list))
+            percentiles = self.store.get_percentiles(
+                metric_name,
+                task=task_name,
+                operation_type=operation_type,
+                sample_type=SampleType.Normal,
+                percentiles=percentiles_for_sample_size(sample_size, percentiles_list=percentiles_list),
+            )
             for k, v in percentiles.items():
                 # safely encode so we don't have any dots in field names
                 result[encode_float_key(k)] = v
@@ -1396,12 +1433,7 @@ class GlobalStatsCalculator:
         unit = self.store.get_unit(metric_name)
         if values:
             flat_values = [w for v in values for w in v]
-            return {
-                "min": min(flat_values),
-                "median": statistics.median(flat_values),
-                "max": max(flat_values),
-                "unit": unit
-            }
+            return {"min": min(flat_values), "median": statistics.median(flat_values), "max": max(flat_values), "unit": unit}
         else:
             return {}
 
@@ -1410,14 +1442,7 @@ class GlobalStatsCalculator:
         result = []
         if values:
             for v in values:
-                result.append({
-                    "job": v["job"],
-                    "min": v["min"],
-                    "mean": v["mean"],
-                    "median": v["median"],
-                    "max": v["max"],
-                    "unit": v["unit"]
-                })
+                result.append({"job": v["job"], "min": v["min"], "mean": v["mean"], "median": v["median"], "max": v["max"], "unit": v["unit"]})
         return result
 
     def total_transform_metric(self, metric_name):
@@ -1427,19 +1452,14 @@ class GlobalStatsCalculator:
             for v in values:
                 transform_id = v.get("meta", {}).get("transform_id")
                 if transform_id is not None:
-                    result.append({
-                        "id": transform_id,
-                        "mean": v["value"],
-                        "unit": v["unit"]
-                    })
+                    result.append({"id": transform_id, "mean": v["value"], "unit": v["unit"]})
         return result
 
     def error_rate(self, task_name, operation_type):
         return self.store.get_error_rate(task=task_name, operation_type=operation_type, sample_type=SampleType.Normal)
 
     def duration(self, task_name):
-        return self.store.get_one("service_time", task=task_name, mapper=lambda doc: doc["relative-time-ms"],
-                                  sort_key="relative-time-ms", sort_reverse=True)
+        return self.store.get_one("service_time", task=task_name, mapper=lambda doc: doc["relative-time-ms"], sort_key="relative-time-ms", sort_reverse=True)
 
     def median(self, metric_name, task_name=None, operation_type=None, sample_type=None):
         return self.store.get_median(metric_name, task=task_name, operation_type=operation_type, sample_type=sample_type)
@@ -1454,18 +1474,14 @@ class GlobalStatsCalculator:
         if sample_size > 0:
             # The custom latency percentiles have to be supplied here as the workload runs,
             # or else they aren't present when results are published
-            percentiles = self.store.get_percentiles(metric_name,
-                                                     task=task,
-                                                     operation_type=operation_type,
-                                                     sample_type=sample_type,
-                                                     percentiles=percentiles_for_sample_size(
-                                                         sample_size,
-                                                         percentiles_list=percentiles_list
-                                                         ))
-            mean = self.store.get_mean(metric_name,
-                                       task=task,
-                                       operation_type=operation_type,
-                                       sample_type=sample_type)
+            percentiles = self.store.get_percentiles(
+                metric_name,
+                task=task,
+                operation_type=operation_type,
+                sample_type=sample_type,
+                percentiles=percentiles_for_sample_size(sample_size, percentiles_list=percentiles_list),
+            )
+            mean = self.store.get_mean(metric_name, task=task, operation_type=operation_type, sample_type=sample_type)
             unit = self.store.get_unit(metric_name, task=task, operation_type=operation_type)
             stats = collections.OrderedDict()
             for k, v in percentiles.items():
@@ -1525,13 +1541,9 @@ class GlobalStats:
 
     def as_flat_list(self):
         def op_metrics(op_item, key, single_value=False):
-            doc = {
-                "task": op_item["task"],
-                "operation": op_item["operation"],
-                "name": key
-            }
+            doc = {"task": op_item["task"], "operation": op_item["operation"], "name": key}
             if single_value:
-                doc["value"] = {"single":  op_item[key]}
+                doc["value"] = {"single": op_item[key]}
             else:
                 doc["value"] = op_item[key]
             if "meta" in op_item:
@@ -1558,55 +1570,27 @@ class GlobalStats:
                         all_results.append(op_metrics(item, "duration", single_value=True))
             elif metric == "ml_processing_time":
                 for item in value:
-                    all_results.append({
-                        "job": item["job"],
-                        "name": "ml_processing_time",
-                        "value": {
-                            "min": item["min"],
-                            "mean": item["mean"],
-                            "median": item["median"],
-                            "max": item["max"]
-                        }
-                    })
+                    all_results.append(
+                        {"job": item["job"], "name": "ml_processing_time", "value": {"min": item["min"], "mean": item["mean"], "median": item["median"], "max": item["max"]}}
+                    )
             elif metric == "correctness_metrics":
                 for item in value:
                     for knn_metric in ["recall@k", "recall@1"]:
                         if knn_metric in item:
-                            all_results.append({
-                                "task": item["task"],
-                                "operation": item["operation"],
-                                "name": knn_metric,
-                                "value": item[knn_metric]
-                            })
+                            all_results.append({"task": item["task"], "operation": item["operation"], "name": knn_metric, "value": item[knn_metric]})
             elif metric == "profile_metrics":
                 for item in value:
                     for metric_name in item.keys():
                         if metric_name not in ["task", "operation", "error_rate", "duration"]:
-                            all_results.append({
-                                "task": item["task"],
-                                "operation": item["operation"],
-                                "name": metric_name,
-                                "value": item[metric_name]
-                            })
+                            all_results.append({"task": item["task"], "operation": item["operation"], "name": metric_name, "value": item[metric_name]})
             elif metric.startswith("total_transform_") and value is not None:
                 for item in value:
-                    all_results.append({
-                        "id": item["id"],
-                        "name": metric,
-                        "value": {
-                            "single": item["mean"]
-                        }
-                    })
+                    all_results.append({"id": item["id"], "name": metric, "value": {"single": item["mean"]}})
             elif metric.endswith("_time_per_shard"):
                 if value:
                     all_results.append({"name": metric, "value": value})
             elif value is not None:
-                result = {
-                    "name": metric,
-                    "value": {
-                        "single": value
-                    }
-                }
+                result = {"name": metric, "value": {"single": value}}
                 all_results.append(result)
         # sorting is just necessary to have a stable order for tests. As we just have a small number of metrics, the overhead is neglible.
         return sorted(all_results, key=lambda m: m["name"])
@@ -1614,8 +1598,7 @@ class GlobalStats:
     def v(self, d, k, default=None):
         return d.get(k, default) if d else default
 
-    def add_op_metrics(self, task, operation, throughput, latency, service_time, client_processing_time,
-                       processing_time, error_rate, duration, meta):
+    def add_op_metrics(self, task, operation, throughput, latency, service_time, client_processing_time, processing_time, error_rate, duration, meta):
         doc = {
             "task": task,
             "operation": operation,
@@ -1625,28 +1608,26 @@ class GlobalStats:
             "client_processing_time": client_processing_time,
             "processing_time": processing_time,
             "error_rate": error_rate,
-            "duration": duration
+            "duration": duration,
         }
         if meta:
             doc["meta"] = meta
         self.op_metrics.append(doc)
 
     def add_correctness_metrics(self, task, operation, recall_at_k_stats, recall_at_1_stats, error_rate, duration):
-        self.correctness_metrics.append({
-            "task": task,
-            "operation": operation,
-            "recall@k": recall_at_k_stats,
-            "recall@1":recall_at_1_stats,
-            "error_rate": error_rate,
-            "duration": duration,
-            })
+        self.correctness_metrics.append(
+            {
+                "task": task,
+                "operation": operation,
+                "recall@k": recall_at_k_stats,
+                "recall@1": recall_at_1_stats,
+                "error_rate": error_rate,
+                "duration": duration,
+            }
+        )
 
     def add_profile_metrics(self, task, operation, profile_metrics):
-        self.profile_metrics.append({
-            "task": task,
-            "operation": operation,
-            "metrics": profile_metrics
-            })
+        self.profile_metrics.append({"task": task, "operation": operation, "metrics": profile_metrics})
 
     def tasks(self):
         # ensure we can read test_run.json files before Solr Orbit 0.8.0
@@ -1694,11 +1675,7 @@ class SystemStats:
         return d.get(k, default) if d else default
 
     def add_node_metrics(self, node, name, value, unit):
-        metric = {
-            "node": node,
-            "name": name,
-            "value": value
-        }
+        metric = {"node": node, "name": name, "value": value}
         if unit:
             metric["unit"] = unit
         self.node_metrics.append(metric)

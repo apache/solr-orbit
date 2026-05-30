@@ -5,6 +5,7 @@ class Provisioner(ABC):
     """
     Provisioners are used to create and destroy any infrastructure required to construct a cluster.
     """
+
     def __init__(self):
         pass
 

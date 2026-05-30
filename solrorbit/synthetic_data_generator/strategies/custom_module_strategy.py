@@ -22,14 +22,15 @@ from solrorbit.synthetic_data_generator.strategies import DataGenerationStrategy
 from solrorbit.synthetic_data_generator.models import SyntheticDataGeneratorMetadata, SDGConfig
 from solrorbit.synthetic_data_generator.timeseries_partitioner import TimeSeriesPartitioner
 
+
 class CustomModuleStrategy(DataGenerationStrategy):
-    def __init__(self, sdg_metadata: SyntheticDataGeneratorMetadata,  sdg_config: SDGConfig, custom_module: ModuleType) -> None:
+    def __init__(self, sdg_metadata: SyntheticDataGeneratorMetadata, sdg_config: SDGConfig, custom_module: ModuleType) -> None:
         self.sdg_metadata = sdg_metadata
         self.sdg_config = sdg_config
         self.custom_module = custom_module
         self.logger = logging.getLogger(__name__)
 
-        if not hasattr(self.custom_module, 'generate_synthetic_document'):
+        if not hasattr(self.custom_module, "generate_synthetic_document"):
             msg = f"Custom module at [{self.sdg_metadata.custom_module_path}] does not define a function called generate_synthetic_document(). Ensure that this method is defined."
             raise exceptions.ConfigError(msg)
 
@@ -41,15 +42,12 @@ class CustomModuleStrategy(DataGenerationStrategy):
             try:
                 self.custom_lists = self.sdg_config.CustomGenerationValues.custom_lists or {}
                 provider_names = self.sdg_config.CustomGenerationValues.custom_providers or []
-                self.custom_providers = {
-                    name: getattr(self.custom_module, name) for name in provider_names
-                }
+                self.custom_providers = {name: getattr(self.custom_module, name) for name in provider_names}
             except AttributeError as e:
                 msg = f"Error when setting up custom lists and custom providers: {e}"
                 raise exceptions.ConfigError(msg)
             except TypeError:
                 msg = "Synthetic Data Generator Config has custom_lists and custom_providers pointing to null values. Either populate or remove."
-
 
     # pylint: disable=arguments-differ
     def generate_data_chunks_across_workers(self, dask_client: Client, docs_per_chunk: int, seeds: list, timeseries_enabled: dict = None, timeseries_windows: list = None) -> list:
@@ -65,23 +63,18 @@ class CustomModuleStrategy(DataGenerationStrategy):
             for _ in range(len(seeds)):
                 seed = seeds[_]
                 window = timeseries_windows[_]
-                future = dask_client.submit(
-                    self.generate_data_chunk_from_worker, self.custom_module.generate_synthetic_document,
-                    docs_per_chunk, seed, timeseries_enabled, window
-                )
+                future = dask_client.submit(self.generate_data_chunk_from_worker, self.custom_module.generate_synthetic_document, docs_per_chunk, seed, timeseries_enabled, window)
 
                 futures.append(future)
 
             return futures
         else:
             # If not using timeseries approach
-            return [dask_client.submit(
-                self.generate_data_chunk_from_worker, self.custom_module.generate_synthetic_document,
-                docs_per_chunk, seed) for seed in seeds]
+            return [dask_client.submit(self.generate_data_chunk_from_worker, self.custom_module.generate_synthetic_document, docs_per_chunk, seed) for seed in seeds]
 
-
-    def generate_data_chunk_from_worker(self, generate_synthetic_document: Callable, docs_per_chunk: int, seed: Optional[int],
-                                        timeseries_enabled: dict = None, timeseries_window: set = None) -> list:
+    def generate_data_chunk_from_worker(
+        self, generate_synthetic_document: Callable, docs_per_chunk: int, seed: Optional[int], timeseries_enabled: dict = None, timeseries_window: set = None
+    ) -> list:
         """
         This method is submitted to Dask worker and can be thought of as the worker performing a job, which is calling the
         custom module's generate_synthetic_document() function to generate documents.
@@ -104,7 +97,7 @@ class CustomModuleStrategy(DataGenerationStrategy):
             synthetic_docs = []
             datetimestamps: Generator = TimeSeriesPartitioner.generate_datetimestamps_from_window(
                 window=timeseries_window, frequency=timeseries_enabled.timeseries_frequency, format=timeseries_enabled.timeseries_format
-                )
+            )
             for datetimestamp in datetimestamps:
                 document = generate_synthetic_document(providers=seeded_providers, **self.custom_lists)
                 try:
@@ -128,14 +121,16 @@ class CustomModuleStrategy(DataGenerationStrategy):
             if timeseries_enabled and timeseries_enabled.timeseries_field:
                 datetimestamps: Generator = TimeSeriesPartitioner.generate_datetimestamps_from_window(
                     window=timeseries_window, frequency=timeseries_enabled.timeseries_frequency, format=timeseries_enabled.timeseries_format
-                    )
+                )
                 for datetimestamp in datetimestamps:
                     document[timeseries_enabled.timeseries_field] = datetimestamp
 
         except AttributeError as e:
-            msg = "Encountered AttributeError when setting up custom_providers and custom_lists. " + \
-                    "It seems that your module might be using custom_lists and custom_providers." + \
-                    f"Please ensure you have provided a custom config with custom_providers and custom_lists: {e}"
+            msg = (
+                "Encountered AttributeError when setting up custom_providers and custom_lists. "
+                + "It seems that your module might be using custom_lists and custom_providers."
+                + f"Please ensure you have provided a custom config with custom_providers and custom_lists: {e}"
+            )
             raise exceptions.ConfigError(msg)
 
         return document
@@ -147,21 +142,18 @@ class CustomModuleStrategy(DataGenerationStrategy):
         if custom_providers:
             g = self._add_custom_providers(g, custom_providers)
 
-        provider_instances = {
-            'generic': g,
-            'random': r
-        }
+        provider_instances = {"generic": g, "random": r}
 
         return provider_instances
 
     def _seed_providers(self, providers, seed=None):
-        '''
+        """
         Generic Mimesis uses reseed method while non-generic Mimesis (like Random) uses seed method. Both lead to the same effect.
-        '''
+        """
         for key, provider_instance in providers.items():
-            if key in ['generic']:
+            if key in ["generic"]:
                 provider_instance.reseed(seed)
-            elif key in ['random']:
+            elif key in ["random"]:
                 provider_instance.seed(seed)
 
         return providers

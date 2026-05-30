@@ -14,7 +14,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from solrorbit.synthetic_data_generator.timeseries_partitioner import TimeSeriesPartitioner
 
-GB_TO_BYTES = 1024 ** 3
+GB_TO_BYTES = 1024**3
+
 
 class TimeSeriesConfig(BaseModel):
     timeseries_field: str
@@ -24,61 +25,60 @@ class TimeSeriesConfig(BaseModel):
     timeseries_format: str
 
     # pylint: disable = no-self-argument
-    @field_validator('timeseries_start_date', 'timeseries_end_date', 'timeseries_frequency', 'timeseries_format')
+    @field_validator("timeseries_start_date", "timeseries_end_date", "timeseries_frequency", "timeseries_format")
     def validate_string_fields(cls, v, info):
         """Validate that timeseries configuration fields are strings"""
         if not isinstance(v, str):
-            field_name = info.field_name.replace('_', ' ').title()
+            field_name = info.field_name.replace("_", " ").title()
             raise ValueError(f"{field_name} requires a string value. Value {v} is not valid.")
 
         # Additional validation for frequency and format fields
-        if info.field_name == 'timeseries_frequency':
+        if info.field_name == "timeseries_frequency":
             if v not in TimeSeriesPartitioner.AVAILABLE_FREQUENCIES:
                 raise ValueError(f"Timeseries frequency {v} is not a valid value. Valid values are {TimeSeriesPartitioner.AVAILABLE_FREQUENCIES}")
 
-        if info.field_name == 'timeseries_format':
+        if info.field_name == "timeseries_format":
             if v not in TimeSeriesPartitioner.VALID_DATETIMESTAMPS_FORMATS:
                 raise ValueError(f"Timeseries format {v} is not a valid value. Valid values are {TimeSeriesPartitioner.VALID_DATETIMESTAMPS_FORMATS}")
 
         return v
 
     # pylint: disable = no-self-argument
-    @field_validator('timeseries_field')
+    @field_validator("timeseries_field")
     def validate_timeseries_field(cls, v):
         if not v or not v.strip():
             raise ValueError("timeseries_field cannot be empty")
 
         # Validate field name format
         # OpenSearch field names must start with a letter and contain only alphanumeric, underscores, and periods
-        if not re.match(r'^[a-zA-Z][a-zA-Z0-9_.]*$', v):
-            raise ValueError(
-                f"Invalid timeseries_field '{v}'. Field names must start with a letter "
-                "and contain only alphanumeric characters, underscores, and periods."
-            )
+        if not re.match(r"^[a-zA-Z][a-zA-Z0-9_.]*$", v):
+            raise ValueError(f"Invalid timeseries_field '{v}'. Field names must start with a letter and contain only alphanumeric characters, underscores, and periods.")
 
         return v
 
+
 class SettingsConfig(BaseModel):
-    workers: Optional[int] = Field(default_factory=os.cpu_count) # Number of workers recommended to not exceed CPU count
-    max_file_size_gb: Optional[int] = 40                         # Default because some CloudProviders limit the size of files stored
-    docs_per_chunk: Optional[int] = 10000                        # Default based on testing
-    filename_suffix_begins_at: Optional[int] = 0                 # Start at suffix 0
+    workers: Optional[int] = Field(default_factory=os.cpu_count)  # Number of workers recommended to not exceed CPU count
+    max_file_size_gb: Optional[int] = 40  # Default because some CloudProviders limit the size of files stored
+    docs_per_chunk: Optional[int] = 10000  # Default based on testing
+    filename_suffix_begins_at: Optional[int] = 0  # Start at suffix 0
     timeseries_enabled: Optional[TimeSeriesConfig] = None
 
     # pylint: disable = no-self-argument
-    @field_validator('workers', 'max_file_size_gb', 'docs_per_chunk')
+    @field_validator("workers", "max_file_size_gb", "docs_per_chunk")
     def validate_values_are_positive_integers(cls, v):
         if v is not None and v <= 0:
             raise ValueError(f"Value '{v}' in Settings portion must be a positive integer.")
 
         return v
 
+
 class CustomGenerationValuesConfig(BaseModel):
     custom_lists: Optional[Dict[str, List[Any]]] = None
     custom_providers: Optional[List[Any]] = None
 
     # pylint: disable = no-self-argument
-    @field_validator('custom_lists')
+    @field_validator("custom_lists")
     def validate_custom_lists(cls, v):
         if v is not None:
             for key, value in v.items():
@@ -87,6 +87,7 @@ class CustomGenerationValuesConfig(BaseModel):
                 if not isinstance(value, list):
                     raise ValueError(f"Value for key '{key}' must be a list.")
         return v
+
 
 class GeneratorParams(BaseModel):
     # Integer / Long Params
@@ -122,57 +123,59 @@ class GeneratorParams(BaseModel):
     token_id_step: Optional[int] = None
 
     class Config:
-        extra = 'forbid'
+        extra = "forbid"
+
 
 class FieldOverride(BaseModel):
     generator: str
     params: GeneratorParams
 
     # pylint: disable = no-self-argument
-    @field_validator('generator')
+    @field_validator("generator")
     def validate_generator_name(cls, v):
         valid_generators = [
-            'generate_text',
-            'generate_keyword',
-            'generate_integer',
-            'generate_long',
-            'generate_short',
-            'generate_byte',
-            'generate_float',
-            'generate_double',
-            'generate_boolean',
-            'generate_date',
-            'generate_ip',
-            'generate_geo_point',
-            'generate_object',
-            'generate_nested',
-            'generate_knn_vector',
-            'generate_sparse_vector'
+            "generate_text",
+            "generate_keyword",
+            "generate_integer",
+            "generate_long",
+            "generate_short",
+            "generate_byte",
+            "generate_float",
+            "generate_double",
+            "generate_boolean",
+            "generate_date",
+            "generate_ip",
+            "generate_geo_point",
+            "generate_object",
+            "generate_nested",
+            "generate_knn_vector",
+            "generate_sparse_vector",
         ]
 
         if v not in valid_generators:
             raise ValueError(f"Generator '{v}' mentioned in FieldOverrides not among valid generators: {valid_generators}")
         return v
 
+
 class MappingGenerationValuesConfig(BaseModel):
     generator_overrides: Optional[Dict[str, GeneratorParams]] = None
     field_overrides: Optional[Dict[str, FieldOverride]] = None
 
     # pylint: disable = no-self-argument
-    @field_validator('generator_overrides')
+    @field_validator("generator_overrides")
     def validate_generator_types(cls, v):
         # Based on this documentation from OpenSearch: https://docs.opensearch.org/latest/mappings/supported-field-types/index/
         # TODO: Add more support for
         if v is not None:
             supported_mapping_field_types = {
-                'core-field-types': ['boolean'],
-                'string-based-field-types': ['text', 'keyword'],
-                'numeric-field-types': ['byte', 'short', 'integer', 'long', 'float', 'double'],
-                'date-time-field-types': ['date'],
-                'ip-field-types': ['ip'],
-                'geographic-field-types': ['geo_point'],
-                'object-field-types': ['object', 'nested'],
-                'vector-field-types': ['knn_vector', 'sparse_vector']
+                "core-field-types": ["boolean"],
+                "string-based-field-types": ["text", "keyword"],
+                "numeric-field-types": ["byte", "short", "integer", "long", "float", "double"],
+                "date-time-field-types": ["date"],
+                "ip-field-types": ["ip"],
+                "geographic-field-types": ["geo_point"],
+                "object-field-types": ["object", "nested"],
+                "vector-field-types": ["knn_vector", "sparse_vector"],
             }
             valid_generator_types = []
 
@@ -186,14 +189,15 @@ class MappingGenerationValuesConfig(BaseModel):
         return v
 
     # pylint: disable = no-self-argument
-    @field_validator('field_overrides')
+    @field_validator("field_overrides")
     def validate_field_names(cls, v):
         if v is not None:
             for field_name in v.keys():
-                if not re.match(r'^[a-zA-Z][a-zA-Z0-9_.]*$', field_name):
+                if not re.match(r"^[a-zA-Z][a-zA-Z0-9_.]*$", field_name):
                     raise ValueError(f"Invalid Field Name '{field_name}' in FieldOverrides. Only alphanumeric characters, underscores and periods are allowed.")
 
         return v
+
 
 class SyntheticDataGeneratorMetadata(BaseModel):
     index_name: Optional[str] = None
@@ -204,7 +208,8 @@ class SyntheticDataGeneratorMetadata(BaseModel):
     total_size_gb: Optional[int] = None
 
     class Config:
-        extra = 'forbid'
+        extra = "forbid"
+
 
 class SDGConfig(BaseModel):
     # If user does not provide YAML fil or provides YAML without all settings fields, it will use default generation settings.
@@ -213,4 +218,4 @@ class SDGConfig(BaseModel):
     MappingGenerationValues: Optional[MappingGenerationValuesConfig] = None
 
     class Config:
-        extra = 'forbid'
+        extra = "forbid"

@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -32,7 +32,8 @@ from solrorbit import exceptions
 from solrorbit.utils import io, process
 
 MIN_REQUIRED_MAJOR_VERSION = 2
-VERSION_REGEX = r'.* ([0-9]+)\.([0-9]+)\..*'
+VERSION_REGEX = r".* ([0-9]+)\.([0-9]+)\..*"
+
 
 def probed(f):
     def probe(src, *args, **kwargs):
@@ -44,9 +45,9 @@ def probed(f):
             raise exceptions.SystemSetupError("Error invoking 'git', please install (or re-install).")
         match = re.search(VERSION_REGEX, out)
         if not match or int(match.group(1)) < MIN_REQUIRED_MAJOR_VERSION:
-            raise exceptions.SystemSetupError("solr-orbit requires at least version 2 of git.  "
-                                              f"You have {out}.  Please update git.")
+            raise exceptions.SystemSetupError(f"solr-orbit requires at least version 2 of git.  You have {out}.  Please update git.")
         return f(src, *args, **kwargs)
+
     return probe
 
 
@@ -96,8 +97,7 @@ def pull(src_dir, remote="origin", branch="main"):
 def pull_ts(src_dir, ts):
     fetch(src_dir)
     clean_src = io.escape_path(src_dir)
-    revision = process.run_subprocess_with_output(
-        "git -C {0} rev-list -n 1 --before=\"{1}\" --date=iso8601 origin/main".format(clean_src, ts))[0].strip()
+    revision = process.run_subprocess_with_output('git -C {0} rev-list -n 1 --before="{1}" --date=iso8601 origin/main'.format(clean_src, ts))[0].strip()
     if process.run_subprocess_with_logging("git -C {0} checkout {1}".format(clean_src, revision)):
         raise exceptions.SupplyError("Could not checkout source tree for timestamped revision [%s]" % ts)
 
@@ -111,14 +111,12 @@ def pull_revision(src_dir, revision):
 
 @probed
 def head_revision(src_dir):
-    return process.run_subprocess_with_output("git -C {0} rev-parse --short HEAD".format(
-        io.escape_path(src_dir)))[0].strip()
+    return process.run_subprocess_with_output("git -C {0} rev-parse --short HEAD".format(io.escape_path(src_dir)))[0].strip()
 
 
 @probed
 def current_branch(src_dir):
-    return process.run_subprocess_with_output("git -C {0} rev-parse --abbrev-ref HEAD".format(
-        io.escape_path(src_dir)))[0].strip()
+    return process.run_subprocess_with_output("git -C {0} rev-parse --abbrev-ref HEAD".format(io.escape_path(src_dir)))[0].strip()
 
 
 @probed
@@ -126,12 +124,9 @@ def branches(src_dir, remote=True):
     clean_src = io.escape_path(src_dir)
     if remote:
         # Because compatability issues with Git 2.40.0+, updated --format='%(refname:short)' to --format='%(refname)'
-        return _cleanup_remote_branch_names(process.run_subprocess_with_output(
-                "git -C {src} for-each-ref refs/remotes/ --format='%(refname)'".format(src=clean_src)))
+        return _cleanup_remote_branch_names(process.run_subprocess_with_output("git -C {src} for-each-ref refs/remotes/ --format='%(refname)'".format(src=clean_src)))
     else:
-        return _cleanup_local_branch_names(
-                process.run_subprocess_with_output(
-                        "git -C {src} for-each-ref refs/heads/ --format='%(refname:short)'".format(src=clean_src)))
+        return _cleanup_local_branch_names(process.run_subprocess_with_output("git -C {src} for-each-ref refs/heads/ --format='%(refname:short)'".format(src=clean_src)))
 
 
 @probed
@@ -140,7 +135,7 @@ def tags(src_dir):
 
 
 def _cleanup_remote_branch_names(branch_names):
-    return [(b[b.rindex("/") + 1:]).strip() for b in branch_names if not b.endswith("/HEAD")]
+    return [(b[b.rindex("/") + 1 :]).strip() for b in branch_names if not b.endswith("/HEAD")]
 
 
 def _cleanup_local_branch_names(branch_names):

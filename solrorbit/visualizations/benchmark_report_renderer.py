@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -24,6 +24,7 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
 
 def render_results_html(test_run, cfg) -> str:
     """
@@ -49,7 +50,7 @@ def render_results_html(test_run, cfg) -> str:
                 "distribution-version": test_run.distribution_version,
                 "distribution-flavor": test_run.distribution_flavor,
                 "provision-config-revision": test_run.provision_config_revision,
-            }
+            },
         }
         if getattr(test_run, "results", None):
             # results might already be a dict or an object
@@ -59,36 +60,36 @@ def render_results_html(test_run, cfg) -> str:
                 doc["results"] = test_run.results.as_dict()
 
     # 2) Pull top-level fields
-    test_id       = doc.get("test-run-id", "<unknown>")
-    orbit_ver     = doc.get("benchmark-version", "")
-    orbit_rev     = doc.get("benchmark-revision", "")
-    environment   = doc.get("environment", "")
-    pipeline      = doc.get("pipeline", "")
-    workload      = doc.get("workload", "")
-    test_procedure= doc.get("test-procedure", "")
+    test_id = doc.get("test-run-id", "<unknown>")
+    orbit_ver = doc.get("benchmark-version", "")
+    orbit_rev = doc.get("benchmark-revision", "")
+    environment = doc.get("environment", "")
+    pipeline = doc.get("pipeline", "")
+    workload = doc.get("workload", "")
+    test_procedure = doc.get("test-procedure", "")
 
     # 3) Cluster info
-    cluster_info    = doc.get("cluster", {})
-    distro_ver      = cluster_info.get("distribution-version", "")
-    distro_flav     = cluster_info.get("distribution-flavor", "")
-    prov_conf_rev   = cluster_info.get("provision-config-revision", None)
+    cluster_info = doc.get("cluster", {})
+    distro_ver = cluster_info.get("distribution-version", "")
+    distro_flav = cluster_info.get("distribution-flavor", "")
+    prov_conf_rev = cluster_info.get("provision-config-revision", None)
 
     # 4) Config table dict
     config_dict = {
-        "Solr Orbit Version":        orbit_ver,
+        "Solr Orbit Version": orbit_ver,
         "Solr Orbit Revision (git)": orbit_rev,
-        "Environment":               environment,
-        "Pipeline":                  pipeline,
-        "Workload":                  workload,
-        "Test Procedure":            test_procedure,
-        "Distribution Version":      distro_ver,
-        "Distribution Flavor":       distro_flav,
+        "Environment": environment,
+        "Pipeline": pipeline,
+        "Workload": workload,
+        "Test Procedure": test_procedure,
+        "Distribution Version": distro_ver,
+        "Distribution Flavor": distro_flav,
         "Provision Config Revision": prov_conf_rev,
     }
 
     # 5) Extract op_metrics
     results_dict = doc.get("results", {}) or {}
-    op_metrics   = results_dict.get("op_metrics", [])
+    op_metrics = results_dict.get("op_metrics", [])
 
     # Build rows
     table_rows = []
@@ -96,15 +97,17 @@ def render_results_html(test_run, cfg) -> str:
         th = item.get("throughput", {})
         st = item.get("service_time", {})
         clients = item.get("search_clients") or item.get("clients", "") or "–"
-        table_rows.append({
-            "task":              item.get("task", ""),
-            "operation":         item.get("operation", ""),
-            "throughput_mean":   th.get("mean"),
-            "throughput_unit":   th.get("unit", ""),
-            "service_time_mean": st.get("mean"),
-            "service_time_unit": st.get("unit", ""),
-            "search_clients":    clients,
-        })
+        table_rows.append(
+            {
+                "task": item.get("task", ""),
+                "operation": item.get("operation", ""),
+                "throughput_mean": th.get("mean"),
+                "throughput_unit": th.get("unit", ""),
+                "service_time_mean": st.get("mean"),
+                "service_time_unit": st.get("unit", ""),
+                "search_clients": clients,
+            }
+        )
 
     # 6) Render helpers
     def render_config_table(cfg_d):
@@ -115,32 +118,17 @@ def render_results_html(test_run, cfg) -> str:
         return f"<table class='config-table'><tbody>{rows}</tbody></table>"
 
     def render_metrics_table(rows):
-        header = (
-            "<tr>"
-            "<th>Task</th><th>Operation</th>"
-            "<th>Throughput (mean)</th>"
-            "<th>Service Time (mean)</th>"
-            "<th>Search Clients</th>"
-            "</tr>"
-        )
+        header = "<tr><th>Task</th><th>Operation</th><th>Throughput (mean)</th><th>Service Time (mean)</th><th>Search Clients</th></tr>"
         body = ""
         for r in rows:
-            th_val = f"{r['throughput_mean']} {r['throughput_unit']}" if r['throughput_mean'] is not None else "–"
-            st_val = f"{r['service_time_mean']} {r['service_time_unit']}" if r['service_time_mean'] is not None else "–"
-            body += (
-                "<tr>"
-                f"<td>{r['task']}</td>"
-                f"<td>{r['operation']}</td>"
-                f"<td>{th_val}</td>"
-                f"<td>{st_val}</td>"
-                f"<td>{r['search_clients']}</td>"
-                "</tr>"
-            )
+            th_val = f"{r['throughput_mean']} {r['throughput_unit']}" if r["throughput_mean"] is not None else "–"
+            st_val = f"{r['service_time_mean']} {r['service_time_unit']}" if r["service_time_mean"] is not None else "–"
+            body += f"<tr><td>{r['task']}</td><td>{r['operation']}</td><td>{th_val}</td><td>{st_val}</td><td>{r['search_clients']}</td></tr>"
         return f"<table class='metrics-table'><thead>{header}</thead><tbody>{body}</tbody></table>"
 
     # 7) Put it all together
     cfg_table_html = render_config_table(config_dict)
-    metrics_html   = render_metrics_table(table_rows)
+    metrics_html = render_metrics_table(table_rows)
 
     return f"""
         <!DOCTYPE html>

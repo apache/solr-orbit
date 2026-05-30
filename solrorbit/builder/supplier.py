@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -86,24 +86,17 @@ def create(cfg, sources, cluster_config):
     if os_supplier_type == "source":
         os_src_dir = os.path.join(_src_dir(cfg), _config_value(src_config, "src.subdir"))
 
-        source_supplier = SourceSupplier(os_version,
-                                                      os_src_dir,
-                                                      remote_url=cfg.opts("source", "remote.repo.url"),
-                                                      cluster_config=cluster_config,
-                                                      builder=builder,
-                                                      template_renderer=template_renderer)
+        source_supplier = SourceSupplier(
+            os_version, os_src_dir, remote_url=cfg.opts("source", "remote.repo.url"), cluster_config=cluster_config, builder=builder, template_renderer=template_renderer
+        )
 
         if caching_enabled:
             os_file_resolver = FileNameResolver(dist_cfg, template_renderer)
-            source_supplier = CachedSourceSupplier(source_distributions_root,
-                                                   source_supplier,
-                                                   os_file_resolver)
+            source_supplier = CachedSourceSupplier(source_distributions_root, source_supplier, os_file_resolver)
 
         suppliers.append(source_supplier)
     else:
-        repo = DistributionRepository(name=cfg.opts("builder", "distribution.repository"),
-                                      distribution_config=dist_cfg,
-                                      template_renderer=template_renderer)
+        repo = DistributionRepository(name=cfg.opts("builder", "distribution.repository"), distribution_config=dist_cfg, template_renderer=template_renderer)
         suppliers.append(DistributionSupplier(repo, os_version, distributions_root))
 
     return CompositeSupplier(suppliers)
@@ -111,8 +104,7 @@ def create(cfg, sources, cluster_config):
 
 def _required_version(version):
     if not version or version.strip() == "":
-        raise exceptions.SystemSetupError("Could not determine version. Please specify the Solr distribution "
-                                          "to download with the command line parameter --distribution-version.")
+        raise exceptions.SystemSetupError("Could not determine version. Please specify the Solr distribution to download with the command line parameter --distribution-version.")
     else:
         return version
 
@@ -146,8 +138,9 @@ def _src_dir(cfg, mandatory=True):
     try:
         return cfg.opts("node", "src.root.dir", mandatory=mandatory)
     except exceptions.ConfigError:
-        raise exceptions.SystemSetupError("You cannot benchmark Solr from sources. Did you install Gradle? Please install"
-                                          " all prerequisites and reconfigure with %s configure" % PROGRAM_NAME)
+        raise exceptions.SystemSetupError(
+            "You cannot benchmark Solr from sources. Did you install Gradle? Please install all prerequisites and reconfigure with %s configure" % PROGRAM_NAME
+        )
 
 
 def _prune(root_path, max_age_days):
@@ -177,6 +170,7 @@ def _prune(root_path, max_age_days):
                 logger.exception("Could not check whether [%s] needs to be deleted from artifact cache.", artifact)
         else:
             logger.info("Skipping [%s] (not a file).", artifact)
+
 
 class TemplateRenderer:
     def __init__(self, version):
@@ -221,7 +215,7 @@ class FileNameResolver:
         # Solr distributions never include a JDK, so we always use release_url
         url_key = "release_url"
         url = self.template_renderer.render(self.cfg[url_key])
-        return url[url.rfind("/") + 1:]
+        return url[url.rfind("/") + 1 :]
 
     @property
     def artifact_key(self):
@@ -304,23 +298,22 @@ class SourceSupplier:
 
     def prepare(self):
         if self.builder:
-            self.builder.build([
-                self.template_renderer.render(self.cluster_config.mandatory_var("clean_command")),
-                self.template_renderer.render(self.cluster_config.mandatory_var("system.build_command"))
-            ])
+            self.builder.build(
+                [
+                    self.template_renderer.render(self.cluster_config.mandatory_var("clean_command")),
+                    self.template_renderer.render(self.cluster_config.mandatory_var("system.build_command")),
+                ]
+            )
 
     def add(self, binaries):
         binaries["solr"] = self.resolve_binary()
 
     def resolve_binary(self):
         try:
-            path = os.path.join(self.src_dir,
-                                self.template_renderer.render(self.cluster_config.mandatory_var("system.artifact_path_pattern")))
+            path = os.path.join(self.src_dir, self.template_renderer.render(self.cluster_config.mandatory_var("system.artifact_path_pattern")))
             return glob.glob(path)[0]
         except IndexError:
             raise SystemSetupError("Couldn't find a tar.gz distribution. Please run Solr Orbit with the pipeline 'from-sources'.")
-
-
 
 
 class DistributionSupplier:
@@ -346,8 +339,9 @@ class DistributionSupplier:
                 self.logger.info("Successfully downloaded Solr [%s].", self.version)
             except urllib.error.HTTPError:
                 self.logger.exception("Cannot download Solr distribution for version [%s] from [%s].", self.version, download_url)
-                raise exceptions.SystemSetupError("Cannot download Solr distribution from [%s]. Please check that the specified "
-                                                  "version [%s] is correct." % (download_url, self.version))
+                raise exceptions.SystemSetupError(
+                    "Cannot download Solr distribution from [%s]. Please check that the specified version [%s] is correct." % (download_url, self.version)
+                )
         else:
             self.logger.info("Skipping download for version [%s]. Found an existing binary at [%s].", self.version, distribution_path)
 
@@ -360,13 +354,11 @@ class DistributionSupplier:
         binaries["solr"] = self.distribution_path
 
 
-
 def _config_value(src_config, key):
     try:
         return src_config[key]
     except KeyError:
-        raise exceptions.SystemSetupError("Mandatory config key [%s] is undefined. Please add it in the [source] section of the "
-                                          "config file." % key)
+        raise exceptions.SystemSetupError("Mandatory config key [%s] is undefined. Please add it in the [source] section of the config file." % key)
 
 
 def _extract_revisions(revision):
@@ -374,18 +366,16 @@ def _extract_revisions(revision):
     if len(revisions) == 1:
         r = revisions[0]
         if r.startswith("solr:"):
-            r = r[len("solr:"):]
+            r = r[len("solr:") :]
         # may as well be just a single plugin
         m = re.match(REVISION_PATTERN, r)
         if m:
-            return {
-                m.group(1): m.group(2)
-            }
+            return {m.group(1): m.group(2)}
         else:
             return {
                 "solr": r,
                 # use a catch-all value
-                "all": r
+                "all": r,
             }
     else:
         results = {}
@@ -523,7 +513,7 @@ class DistributionRepository:
     @property
     def file_name(self):
         url = self.download_url
-        return url[url.rfind("/") + 1:]
+        return url[url.rfind("/") + 1 :]
 
     def plugin_download_url(self, plugin_name):
         # cluster_config repo

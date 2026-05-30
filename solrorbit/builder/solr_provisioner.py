@@ -97,9 +97,7 @@ class SolrProvisioner:
         p.clean("/tmp/solr-node")
     """
 
-    def __init__(self, cache_dir: str = None, port: int = 8983,
-                 startup_timeout: int = 120, cluster_config=None, solr_modules: str = "",
-                 telemetry_devices: list = None):
+    def __init__(self, cache_dir: str = None, port: int = 8983, startup_timeout: int = 120, cluster_config=None, solr_modules: str = "", telemetry_devices: list = None):
         self.cache_dir = cache_dir or os.path.join(os.path.expanduser("~"), ".solr-orbit", "cache")
         self.port = port
         self.startup_timeout = startup_timeout
@@ -145,10 +143,7 @@ class SolrProvisioner:
                 if os.path.exists(dest):
                     os.remove(dest)
 
-        raise SolrProvisionerError(
-            f"Could not download Solr {version} from any mirror. "
-            f"Please download manually to {dest}."
-        )
+        raise SolrProvisionerError(f"Could not download Solr {version} from any mirror. Please download manually to {dest}.")
 
     def install(self, version: str, install_dir: str) -> str:
         """
@@ -198,9 +193,7 @@ class SolrProvisioner:
         logger.info("Starting Solr with: %s", " ".join(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True, env=self._build_env())
         if result.returncode != 0:
-            raise SolrProvisionerError(
-                f"Solr failed to start: {result.stderr or result.stdout}"
-            )
+            raise SolrProvisionerError(f"Solr failed to start: {result.stderr or result.stdout}")
 
         self._wait_for_ready()
 
@@ -266,17 +259,14 @@ class SolrProvisioner:
     def _bin_solr(self, solr_root: str) -> str:
         script = os.path.join(solr_root, "bin", "solr")
         if not os.path.isfile(script):
-            raise SolrProvisionerError(
-                f"bin/solr not found in {solr_root}. "
-                "Ensure install() was called first."
-            )
+            raise SolrProvisionerError(f"bin/solr not found in {solr_root}. Ensure install() was called first.")
         return script
 
     def _detect_version(self, solr_root: str) -> str:
         """Read version from the Solr installation directory name."""
         name = Path(solr_root).name  # e.g. "solr-9.7.0"
         if name.startswith("solr-"):
-            return name[len("solr-"):]
+            return name[len("solr-") :]
         return ""
 
     def _wait_for_ready(self) -> None:
@@ -292,15 +282,13 @@ class SolrProvisioner:
             except Exception as exc:
                 last_exc = exc
             time.sleep(2)
-        raise SolrProvisionerError(
-            f"Solr did not become ready within {self.startup_timeout}s. "
-            f"Last error: {last_exc}"
-        )
+        raise SolrProvisionerError(f"Solr did not become ready within {self.startup_timeout}s. Last error: {last_exc}")
 
 
 # ---------------------------------------------------------------------------
 # Docker launcher (T019)
 # ---------------------------------------------------------------------------
+
 
 class SolrDockerLauncher:
     """
@@ -321,9 +309,7 @@ class SolrDockerLauncher:
 
     DEFAULT_CONTAINER_NAME = "solr-orbit"
 
-    def __init__(self, port: int = 8983, startup_timeout: int = 60,
-                 container_name: str = None, cluster_config=None, solr_modules: str = "",
-                 telemetry_devices: list = None):
+    def __init__(self, port: int = 8983, startup_timeout: int = 60, container_name: str = None, cluster_config=None, solr_modules: str = "", telemetry_devices: list = None):
         self.port = port
         self.startup_timeout = startup_timeout
         self.container_name = container_name or self.DEFAULT_CONTAINER_NAME
@@ -356,10 +342,13 @@ class SolrDockerLauncher:
 
         # Build the docker run command
         cmd = [
-            "docker", "run",
+            "docker",
+            "run",
             "--rm",
-            "--name", self.container_name,
-            "-p", f"{self.port}:8983",
+            "--name",
+            self.container_name,
+            "-p",
+            f"{self.port}:8983",
             "-d",
         ]
         cmd += self._cluster_config_env_flags()
@@ -377,9 +366,7 @@ class SolrDockerLauncher:
         logger.info("Starting Solr Docker container: %s", " ".join(cmd))
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            raise SolrProvisionerError(
-                f"Failed to start Solr Docker container: {result.stderr or result.stdout}"
-            )
+            raise SolrProvisionerError(f"Failed to start Solr Docker container: {result.stderr or result.stdout}")
 
         self._wait_for_ready()
 
@@ -387,7 +374,9 @@ class SolrDockerLauncher:
         try:
             pid_result = subprocess.run(
                 ["docker", "inspect", self.container_name, "--format={{.State.Pid}}"],
-                capture_output=True, text=True, check=True,
+                capture_output=True,
+                text=True,
+                check=True,
             )
             self.pid = int(pid_result.stdout.strip())
             logger.info("Solr container PID = %d", self.pid)
@@ -449,7 +438,4 @@ class SolrDockerLauncher:
             except Exception as exc:
                 last_exc = exc
             time.sleep(2)
-        raise SolrProvisionerError(
-            f"Solr container did not become ready within {self.startup_timeout}s. "
-            f"Last error: {last_exc}"
-        )
+        raise SolrProvisionerError(f"Solr container did not become ready within {self.startup_timeout}s. Last error: {last_exc}")

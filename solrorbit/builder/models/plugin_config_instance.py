@@ -43,5 +43,4 @@ class PluginConfigInstance:
         return hash(self.name) ^ hash(self.config_names) ^ hash(self.is_core_plugin)
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and \
-               (self.name, self.config_names, self.is_core_plugin) == (other.name, other.config_names, other.is_core_plugin)
+        return isinstance(other, type(self)) and (self.name, self.config_names, self.is_core_plugin) == (other.name, other.config_names, other.is_core_plugin)

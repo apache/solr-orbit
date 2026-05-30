@@ -18,11 +18,9 @@ class DockerLauncherTests(TestCase):
         self.launcher.waiter = Mock()
 
         self.host = None
-        self.node_config = NodeConfiguration(build_type="docker",
-                                        cluster_config_runtime_jdks="12,11",
-                                        ip="127.0.0.1", node_name="testnode",
-                                        node_root_path="/tmp", binary_path="/bin",
-                                        data_paths="/tmp")
+        self.node_config = NodeConfiguration(
+            build_type="docker", cluster_config_runtime_jdks="12,11", ip="127.0.0.1", node_name="testnode", node_root_path="/tmp", binary_path="/bin", data_paths="/tmp"
+        )
 
     def test_starts_container_successfully(self):
         # [Start container (from docker-compose up), Docker container id (from docker-compose ps),
@@ -39,10 +37,12 @@ class DockerLauncherTests(TestCase):
         self.assertEqual("testnode", node.node_name)
         self.assertIsNotNone(node.telemetry)
 
-        self.shell_executor.execute.assert_has_calls([
-            mock.call(self.host, "docker-compose -f /bin/docker-compose.yml up -d"),
-            mock.call(self.host, "docker-compose -f /bin/docker-compose.yml ps -q", output=True),
-        ])
+        self.shell_executor.execute.assert_has_calls(
+            [
+                mock.call(self.host, "docker-compose -f /bin/docker-compose.yml up -d"),
+                mock.call(self.host, "docker-compose -f /bin/docker-compose.yml ps -q", output=True),
+            ]
+        )
 
     def test_container_not_started(self):
         # [Start container (from docker-compose up), Docker container id (from docker-compose ps),
@@ -75,15 +75,15 @@ class DockerLauncherTests(TestCase):
         output = self.launcher._is_container_healthy(self.host, "de604d0d")
 
         self.assertEqual(output, False)
-        self.shell_executor.execute.assert_has_calls([
-            mock.call(self.host, 'docker ps -a --filter "id=de604d0d" --filter "status=running" --filter "health=healthy" -q', output=True)
-        ])
+        self.shell_executor.execute.assert_has_calls(
+            [mock.call(self.host, 'docker ps -a --filter "id=de604d0d" --filter "status=running" --filter "health=healthy" -q', output=True)]
+        )
 
     def test_container_healthy(self):
         self.shell_executor.execute.return_value = ["We have a container"]
         output = self.launcher._is_container_healthy(self.host, "de604d0d")
 
         self.assertEqual(output, True)
-        self.shell_executor.execute.assert_has_calls([
-            mock.call(self.host, 'docker ps -a --filter "id=de604d0d" --filter "status=running" --filter "health=healthy" -q', output=True)
-        ])
+        self.shell_executor.execute.assert_has_calls(
+            [mock.call(self.host, 'docker ps -a --filter "id=de604d0d" --filter "status=running" --filter "health=healthy" -q', output=True)]
+        )

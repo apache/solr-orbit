@@ -16,6 +16,7 @@ from solrorbit.workload_generator.helpers import QueryProcessor, CustomWorkloadW
 from solrorbit.workload_generator.extractors import IndexExtractor, SequentialCorpusExtractor
 from solrorbit.utils import io, opts, console
 
+
 def create_workload(cfg):
     logger = logging.getLogger(__name__)
 
@@ -36,8 +37,7 @@ def create_workload(cfg):
     validate_index_documents_map(indices, number_of_docs)
     validate_sample_frequency_mapping(indices, sample_frequency_mapping)
 
-    client = ClientFactory(hosts=target_hosts.all_hosts[opts.TargetHosts.DEFAULT],
-                             client_options=client_options.all_client_options[opts.TargetHosts.DEFAULT]).create()
+    client = ClientFactory(hosts=target_hosts.all_hosts[opts.TargetHosts.DEFAULT], client_options=client_options.all_client_options[opts.TargetHosts.DEFAULT]).create()
     info = client.info()
     console.info(f"Connected to Solr cluster [{info['name']}] version [{info['version']['number']}].\n", logger=logger)
 
@@ -84,7 +84,7 @@ def create_workload(cfg):
         "workload_name": custom_workload.workload_name,
         "indices": custom_workload.extracted_indices,
         "corpora": custom_workload.corpora,
-        "custom_queries": custom_workload.queries
+        "custom_queries": custom_workload.queries,
     }
     logger.info("Template vars [%s]", template_vars)
 

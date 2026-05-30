@@ -44,8 +44,7 @@ class DistributionDownloader(Downloader):
         is_cache_enabled = self.distribution_repository_provider.is_cache_enabled()
 
         if is_binary_present and is_cache_enabled:
-            self.logger.info("Skipping download for version [%s]. Found existing binary at [%s].", version,
-                             distribution_path)
+            self.logger.info("Skipping download for version [%s]. Found existing binary at [%s].", version, distribution_path)
         else:
             self._download(host, distribution_path, download_url, version)
 
@@ -72,8 +71,7 @@ class DistributionDownloader(Downloader):
         try:
             self.executor.execute(host, f"curl -o {distribution_path} {download_url}")
         except ExecutorError as e:
-            self.logger.exception("Exception downloading distribution for version [%s] from [%s].",
-                                  version, download_url)
+            self.logger.exception("Exception downloading distribution for version [%s] from [%s].", version, download_url)
             raise e
 
         self.logger.info("Successfully downloaded distribution [%s].", version)

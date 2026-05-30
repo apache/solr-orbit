@@ -30,63 +30,59 @@ class DockerProvisionerTests(TestCase):
             variables={
                 "cluster_name": self.cluster_name,
                 "test_run_root": self.test_run_root,
-                "node": {
-                    "port": self.port
-                },
-                "origin": {
-                    "distribution": {
-                        "version": "1.1.0"
-                    },
-                    "docker": {
-                        "docker_image": "solr"
-                    }
-                }
-            }
+                "node": {"port": self.port},
+                "origin": {"distribution": {"version": "1.1.0"}, "docker": {"docker_image": "solr"}},
+            },
         )
 
         self.installer = DockerInstaller(self.cluster_config, self.executor)
 
     maxDiff = None
+
     @mock.patch("uuid.uuid4")
     @mock.patch("solrorbit.paths.benchmark_root")
     def test_provisioning_with_defaults(self, benchmark_root, uuid4):
         uuid4.return_value = self.node_name
-        benchmark_root.return_value = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                                    os.pardir, os.pardir, os.pardir, "solrorbit"))
+        benchmark_root.return_value = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, os.pardir, "solrorbit"))
 
         node = self.installer._create_node()
 
-        self.assertDictEqual({
-            "cluster_name": self.cluster_name,
-            "node_name": self.node_name,
-            "install_root_path": "/var/solr",
-            "data_paths": ["/var/solr/data"],
-            "log_path": "/var/solr/logs",
-            "heap_dump_path": "/var/solr/heapdump",
-            "discovery_type": "single-node",
-            "network_host": "0.0.0.0",
-            "http_port": self.port,
-            "zookeeper_port": str(int(self.port) + 1000),
-            "cluster_settings": {
+        self.assertDictEqual(
+            {
+                "cluster_name": self.cluster_name,
+                "node_name": self.node_name,
+                "install_root_path": "/var/solr",
+                "data_paths": ["/var/solr/data"],
+                "log_path": "/var/solr/logs",
+                "heap_dump_path": "/var/solr/heapdump",
+                "discovery_type": "single-node",
+                "network_host": "0.0.0.0",
+                "http_port": self.port,
+                "zookeeper_port": str(int(self.port) + 1000),
+                "cluster_settings": {},
+                "docker_image": "solr",
             },
-            "docker_image": "solr"
-        }, self.installer._get_config_vars(node))
+            self.installer._get_config_vars(node),
+        )
 
         docker_vars = self.installer._get_docker_vars(node, mounts={})
-        self.assertDictEqual({
-            "solr_data_dir": self.node_data_dir,
-            "solr_log_dir": self.node_log_dir,
-            "solr_heap_dump_dir": self.node_heap_dump_dir,
-            "solr_version": "1.1.0",
-            "docker_image": "solr",
-            "http_port": 38983,
-            "mounts": {}
-        }, docker_vars)
+        self.assertDictEqual(
+            {
+                "solr_data_dir": self.node_data_dir,
+                "solr_log_dir": self.node_log_dir,
+                "solr_heap_dump_dir": self.node_heap_dump_dir,
+                "solr_version": "1.1.0",
+                "docker_image": "solr",
+                "http_port": 38983,
+                "mounts": {},
+            },
+            docker_vars,
+        )
 
         docker_cfg = self.installer._render_template_from_docker_file(docker_vars)
 
         self.assertEqual(
-"""version: '3'
+            """version: '3'
 services:
   solr-node1:
     image: solr:1.1.0
@@ -117,14 +113,16 @@ volumes:
   solr-data1:
 networks:
   solr-net:
-""" % (self.node_data_dir, self.node_log_dir, self.node_heap_dump_dir), docker_cfg)
+"""
+            % (self.node_data_dir, self.node_log_dir, self.node_heap_dump_dir),
+            docker_cfg,
+        )
 
     @mock.patch("uuid.uuid4")
     @mock.patch("solrorbit.paths.benchmark_root")
     def test_provisioning_with_variables(self, benchmark_root, uuid4):
         uuid4.return_value = self.node_name
-        benchmark_root.return_value = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                                    os.pardir, os.pardir, os.pardir, "solrorbit"))
+        benchmark_root.return_value = os.path.normpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.pardir, os.pardir, os.pardir, "solrorbit"))
 
         self.cluster_config.variables["origin"]["docker"]["docker_mem_limit"] = "256m"
         self.cluster_config.variables["origin"]["docker"]["docker_cpu_count"] = 2
@@ -135,7 +133,7 @@ networks:
         docker_cfg = self.installer._render_template_from_docker_file(docker_vars)
 
         self.assertEqual(
-"""version: '3'
+            """version: '3'
 services:
   solr-node1:
     image: solr:1.1.0
@@ -168,4 +166,7 @@ volumes:
   solr-data1:
 networks:
   solr-net:
-""" % (self.node_data_dir, self.node_log_dir, self.node_heap_dump_dir), docker_cfg)
+"""
+            % (self.node_data_dir, self.node_log_dir, self.node_heap_dump_dir),
+            docker_cfg,
+        )

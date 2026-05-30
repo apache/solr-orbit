@@ -30,9 +30,7 @@ class ConfigPathResolver:
             cluster_config_repositories = self.cfg.opts("builder", "cluster_config.repository.dir")
             cluster_configs_dir = os.path.join(root, cluster_config_repositories)
 
-            current_cluster_config_repo = BenchmarkRepository(
-                default_directory, cluster_configs_dir,
-                repo_name, "cluster_configs", offline)
+            current_cluster_config_repo = BenchmarkRepository(default_directory, cluster_configs_dir, repo_name, "cluster_configs", offline)
 
             current_cluster_config_repo.set_cluster_configs_dir(repo_revision, distribution_version, self.cfg)
             return current_cluster_config_repo.repo_dir

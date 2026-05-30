@@ -11,8 +11,8 @@ from typing import Optional, Callable
 
 from dask.distributed import Client
 
-class DataGenerationStrategy(ABC):
 
+class DataGenerationStrategy(ABC):
     @abstractmethod
     def generate_data_chunks_across_workers(self, dask_client: Client, docs_per_chunk: int, seeds: list, timeseries_enabled: dict, timeseries_windows: list) -> list:
         """
@@ -22,8 +22,9 @@ class DataGenerationStrategy(ABC):
         """
 
     @abstractmethod
-    def generate_data_chunk_from_worker(self, generate_synthetic_document: Callable, docs_per_chunk: int,
-                                        seed: Optional[int], timeseries_enabled: dict = None, timeseries_window: set = None) -> list:
+    def generate_data_chunk_from_worker(
+        self, generate_synthetic_document: Callable, docs_per_chunk: int, seed: Optional[int], timeseries_enabled: dict = None, timeseries_window: set = None
+    ) -> list:
         """
         Generate chunk of docs with data generation logic for Dask worker
 

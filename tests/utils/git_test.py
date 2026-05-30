@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -45,8 +45,7 @@ class GitTests(TestCase):
         run_subprocess_with_out_and_err.return_value = ("git version 1.4.0", None, 0)
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             git.head_revision("/src")
-        self.assertEqual("solr-orbit requires at least version 2 of git.  You have git version 1.4.0.  Please update git.",
-                         ctx.exception.args[0])
+        self.assertEqual("solr-orbit requires at least version 2 of git.  You have git version 1.4.0.  Please update git.", ctx.exception.args[0])
         run_subprocess_with_out_and_err.assert_called_with("git --version")
 
     @mock.patch("solrorbit.utils.io.ensure_dir")
@@ -121,10 +120,7 @@ class GitTests(TestCase):
         run_subprocess_with_out_and_err.return_value = ("git version 2.4.0", None, 0)
         run_subprocess_with_logging.return_value = 0
         git.rebase("/src", remote="my-origin", branch="feature-branch")
-        calls = [
-            mock.call("git -C /src checkout feature-branch"),
-            mock.call("git -C /src rebase my-origin/feature-branch")
-        ]
+        calls = [mock.call("git -C /src checkout feature-branch"), mock.call("git -C /src rebase my-origin/feature-branch")]
         run_subprocess_with_logging.assert_has_calls(calls)
 
     @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
@@ -133,33 +129,31 @@ class GitTests(TestCase):
         run_subprocess_with_out_and_err.return_value = ("git version 2.4.0", None, 0)
         run_subprocess_with_logging.return_value = 0
         git.pull("/src", remote="my-origin", branch="feature-branch")
-        run_subprocess_with_out_and_err.assert_has_calls([
-            # pull, fetch, rebase, checkout
-            mock.call("git --version")
-            ] * 4)
+        run_subprocess_with_out_and_err.assert_has_calls(
+            [
+                # pull, fetch, rebase, checkout
+                mock.call("git --version")
+            ]
+            * 4
+        )
         calls = [
             mock.call("git -C /src fetch --prune --tags my-origin"),
             mock.call("git -C /src checkout feature-branch"),
-            mock.call("git -C /src rebase my-origin/feature-branch")
+            mock.call("git -C /src rebase my-origin/feature-branch"),
         ]
         run_subprocess_with_logging.assert_has_calls(calls)
 
     @mock.patch("solrorbit.utils.process.run_subprocess_with_output")
     @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
     @mock.patch("solrorbit.utils.process.run_subprocess_with_out_and_err")
-    def test_pull_ts(self, run_subprocess_with_out_and_err, run_subprocess_with_logging,
-                     run_subprocess_with_output):
+    def test_pull_ts(self, run_subprocess_with_out_and_err, run_subprocess_with_logging, run_subprocess_with_output):
         run_subprocess_with_out_and_err.return_value = ("git version 2.4.0", None, 0)
         run_subprocess_with_logging.return_value = 0
         run_subprocess_with_output.return_value = ["3694a07"]
         git.pull_ts("/src", "20160101T110000Z")
 
-        run_subprocess_with_output.assert_called_with(
-            "git -C /src rev-list -n 1 --before=\"20160101T110000Z\" --date=iso8601 origin/main")
-        run_subprocess_with_logging.assert_has_calls([
-            mock.call("git -C /src fetch --prune --tags origin"),
-            mock.call("git -C /src checkout 3694a07")
-        ])
+        run_subprocess_with_output.assert_called_with('git -C /src rev-list -n 1 --before="20160101T110000Z" --date=iso8601 origin/main')
+        run_subprocess_with_logging.assert_has_calls([mock.call("git -C /src fetch --prune --tags origin"), mock.call("git -C /src checkout 3694a07")])
 
     @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
     @mock.patch("solrorbit.utils.process.run_subprocess_with_out_and_err")
@@ -167,10 +161,12 @@ class GitTests(TestCase):
         run_subprocess_with_out_and_err.return_value = ("git version 2.4.0", None, 0)
         run_subprocess_with_logging.return_value = 0
         git.pull_revision("/src", "3694a07")
-        run_subprocess_with_logging.assert_has_calls([
-            mock.call("git -C /src fetch --prune --tags origin"),
-            mock.call("git -C /src checkout 3694a07"),
-        ])
+        run_subprocess_with_logging.assert_has_calls(
+            [
+                mock.call("git -C /src fetch --prune --tags origin"),
+                mock.call("git -C /src checkout 3694a07"),
+            ]
+        )
 
     @mock.patch("solrorbit.utils.process.run_subprocess_with_output")
     @mock.patch("solrorbit.utils.process.run_subprocess_with_out_and_err")
@@ -184,10 +180,7 @@ class GitTests(TestCase):
     @mock.patch("solrorbit.utils.process.run_subprocess_with_out_and_err")
     def test_list_remote_branches(self, run_subprocess_with_out_and_err, run_subprocess):
         run_subprocess_with_out_and_err.return_value = ("git version 2.4.0", None, 0)
-        run_subprocess.return_value = ["  origin/HEAD",
-                                       "  origin/main",
-                                       "  origin/5.0.0-alpha1",
-                                       "  origin/5"]
+        run_subprocess.return_value = ["  origin/HEAD", "  origin/main", "  origin/5.0.0-alpha1", "  origin/5"]
         self.assertEqual(["main", "5.0.0-alpha1", "5"], git.branches("/src", remote=True))
         run_subprocess.assert_called_with("git -C /src for-each-ref refs/remotes/ --format='%(refname)'")
 
@@ -195,10 +188,7 @@ class GitTests(TestCase):
     @mock.patch("solrorbit.utils.process.run_subprocess_with_out_and_err")
     def test_list_local_branches(self, run_subprocess_with_out_and_err, run_subprocess):
         run_subprocess_with_out_and_err.return_value = ("git version 2.4.0", None, 0)
-        run_subprocess.return_value = ["  HEAD",
-                                       "  main",
-                                       "  5.0.0-alpha1",
-                                       "  5"]
+        run_subprocess.return_value = ["  HEAD", "  main", "  5.0.0-alpha1", "  5"]
         self.assertEqual(["main", "5.0.0-alpha1", "5"], git.branches("/src", remote=False))
         run_subprocess.assert_called_with("git -C /src for-each-ref refs/heads/ --format='%(refname:short)'")
 
@@ -206,8 +196,7 @@ class GitTests(TestCase):
     @mock.patch("solrorbit.utils.process.run_subprocess_with_out_and_err")
     def test_list_tags_with_tags_present(self, run_subprocess_with_out_and_err, run_subprocess):
         run_subprocess_with_out_and_err.return_value = ("git version 2.4.0", None, 0)
-        run_subprocess.return_value = ["  v1",
-                                       "  v2"]
+        run_subprocess.return_value = ["  v1", "  v2"]
         self.assertEqual(["v1", "v2"], git.tags("/src"))
         run_subprocess.assert_called_with("git -C /src tag")
 

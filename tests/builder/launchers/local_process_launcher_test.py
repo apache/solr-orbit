@@ -18,45 +18,35 @@ class LocalProcessLauncherTests(TestCase):
         self.shell_executor = Mock()
         self.metrics_store = Mock()
 
-        self.variables = {
-            "system": {
-                "runtime": {
-                    "jdk": None
-                },
-                "env": {
-                    "passenv": "PATH"
-                }
-            },
-            "telemetry": {
-                "devices": [],
-                "params": None
-            }
-        }
-        self.cluster_config = ClusterConfigInstance("fake_cluster_config", "/path/to/root",
-                                                                 ["/path/to/config"], variables=self.variables)
+        self.variables = {"system": {"runtime": {"jdk": None}, "env": {"passenv": "PATH"}}, "telemetry": {"devices": [], "params": None}}
+        self.cluster_config = ClusterConfigInstance("fake_cluster_config", "/path/to/root", ["/path/to/config"], variables=self.variables)
 
         self.launcher = LocalProcessLauncher(self.cluster_config, self.shell_executor, self.metrics_store)
         self.launcher.waiter = Mock()
         self.host = None
         self.path = "fake"
 
-    @mock.patch('solrorbit.builder.java_resolver.java_home', return_value=(12, "/java_home/"))
-    @mock.patch('solrorbit.utils.jvm.supports_option', return_value=True)
-    @mock.patch('solrorbit.utils.io.get_size')
-    @mock.patch('solrorbit.telemetry')
-    @mock.patch('psutil.Process')
+    @mock.patch("solrorbit.builder.java_resolver.java_home", return_value=(12, "/java_home/"))
+    @mock.patch("solrorbit.utils.jvm.supports_option", return_value=True)
+    @mock.patch("solrorbit.utils.io.get_size")
+    @mock.patch("solrorbit.telemetry")
+    @mock.patch("psutil.Process")
     def test_daemon_start_stop(self, process, telemetry, get_size, supports, java_home):
         mo = mock_open(read_data="1234")
 
         node_configs = []
         for node in range(2):
-            node_configs.append(NodeConfiguration(build_type="tar",
-                                                  cluster_config_runtime_jdks="12,11",
-                                                  ip="127.0.0.1",
-                                                  node_name=f"testnode-{node}",
-                                                  node_root_path="/tmp",
-                                                  binary_path="/tmp",
-                                                  data_paths="/tmp"))
+            node_configs.append(
+                NodeConfiguration(
+                    build_type="tar",
+                    cluster_config_runtime_jdks="12,11",
+                    ip="127.0.0.1",
+                    node_name=f"testnode-{node}",
+                    node_root_path="/tmp",
+                    binary_path="/tmp",
+                    data_paths="/tmp",
+                )
+            )
 
         with mock.patch("builtins.open", mo):
             nodes = self.launcher.start(self.host, node_configs)
@@ -68,17 +58,11 @@ class LocalProcessLauncherTests(TestCase):
         # all nodes should be stopped
         self.assertEqual(nodes, stopped_nodes)
 
-    @mock.patch('psutil.Process')
+    @mock.patch("psutil.Process")
     def test_daemon_stop_with_already_terminated_process(self, process):
         process.side_effect = NoSuchProcess(123)
 
-        nodes = [
-            cluster.Node(pid=-1,
-                         binary_path="/bin",
-                         host_name="localhost",
-                         node_name="benchmark-0",
-                         telemetry=telemetry.Telemetry())
-        ]
+        nodes = [cluster.Node(pid=-1, binary_path="/bin", host_name="localhost", node_name="benchmark-0", telemetry=telemetry.Telemetry())]
 
         stopped_nodes = self.launcher.stop(self.host, nodes)
         # no nodes should have been stopped (they were already stopped)
@@ -87,16 +71,16 @@ class LocalProcessLauncherTests(TestCase):
     # flight recorder shows a warning for several seconds before continuing
     @mock.patch("solrorbit.time.sleep")
     def test_env_options_order(self, sleep):
-        node_telemetry = [
-            telemetry.FlightRecorder(telemetry_params={}, log_root="/tmp/telemetry", java_major_version=8)
-        ]
+        node_telemetry = [telemetry.FlightRecorder(telemetry_params={}, log_root="/tmp/telemetry", java_major_version=8)]
         telem = telemetry.Telemetry(["jfr"], devices=node_telemetry)
         env = self.launcher._prepare_env(node_name="node0", java_home="/java_home", telemetry=telem)
 
         self.assertEqual("/java_home/bin" + os.pathsep + os.environ["PATH"], env["PATH"])
-        self.assertEqual("-XX:+ExitOnOutOfMemoryError -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints "
-                         "-XX:StartFlightRecording=maxsize=0,maxage=0s,disk=true,dumponexit=true,filename=/tmp/telemetry/profile.jfr",
-                         env["SOLR_JAVA_OPTS"])
+        self.assertEqual(
+            "-XX:+ExitOnOutOfMemoryError -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints "
+            "-XX:StartFlightRecording=maxsize=0,maxage=0s,disk=true,dumponexit=true,filename=/tmp/telemetry/profile.jfr",
+            env["SOLR_JAVA_OPTS"],
+        )
 
     def test_bundled_jdk_not_in_path(self):
         os.environ["JAVA_HOME"] = "/path/to/java"

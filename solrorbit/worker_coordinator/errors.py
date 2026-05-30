@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -27,23 +27,24 @@
 
 import re
 
+
 def parse_error(error_metadata):
-    error = error_metadata['error']
+    error = error_metadata["error"]
     status_code = None
     description = "error occured, check logs for details"
     operation = UnknownOperationError(description, None)
 
-    if 'status' in error_metadata:
+    if "status" in error_metadata:
         status_code = error_metadata["status"]
 
-    if 'reason' in error:
-        description = error['reason']
-        matches = re.findall(r'\[([^]]*)\]', description)
+    if "reason" in error:
+        description = error["reason"]
+        matches = re.findall(r"\[([^]]*)\]", description)
         for match in matches:
             if match == "indices:admin/create":
                 operation = IndexOperationError(description, "index-create", status_code)
             elif match == "indices:admin/delete":
-                operation =  IndexOperationError(description, "index-delete", status_code)
+                operation = IndexOperationError(description, "index-delete", status_code)
             elif match == "indices:data/write/bulk":
                 operation = IndexOperationError(description, "index-append", status_code)
             elif match == "indices:admin/refresh":
@@ -51,16 +52,17 @@ def parse_error(error_metadata):
             elif match == "indices:admin/forcemerge":
                 operation = IndexOperationError(description, "force-merge", status_code)
             elif match == "indices:data/read/search":
-                operation =  SearchOperationError(description, "search", status_code)
+                operation = SearchOperationError(description, "search", status_code)
 
     return operation
 
 
-class BenchmarkOperationError():
+class BenchmarkOperationError:
     def __init__(self, description, operation=None, status_code=None):
         self.description = description
         self.operation = operation
         self.status_code = status_code
+
 
 class UnknownOperationError(BenchmarkOperationError):
     def get_error_message(self):
@@ -75,6 +77,7 @@ class IndexOperationError(BenchmarkOperationError):
             return f"internal server error for {self.operation}. check logs for details"
         else:
             return self.description
+
 
 class SearchOperationError(BenchmarkOperationError):
     def get_error_message(self):

@@ -51,15 +51,17 @@ class SolrPreparer(Preparer):
         node_log_dir = os.path.join(node_root_dir, "logs", "server")
         node_heap_dump_dir = os.path.join(node_root_dir, "heapdump")
 
-        return Node(name=node_name,
-                    port=node_port,
-                    pid=None,
-                    root_dir=node_root_dir,
-                    binary_path=node_binary_path,
-                    log_path=node_log_dir,
-                    heap_dump_path=node_heap_dump_dir,
-                    data_paths=None,
-                    telemetry=None)
+        return Node(
+            name=node_name,
+            port=node_port,
+            pid=None,
+            root_dir=node_root_dir,
+            binary_path=node_binary_path,
+            log_path=node_log_dir,
+            heap_dump_path=node_heap_dump_dir,
+            data_paths=None,
+            telemetry=None,
+        )
 
     def _prepare_node(self, host, node, binary):
         self._prepare_directories(host, node)
@@ -102,10 +104,10 @@ class SolrPreparer(Preparer):
             "network_host": host.address,
             "http_port": str(node.port),
             "zookeeper_port": str(node.port + 1000),
-            "all_node_ips": "[\"%s\"]" % "\",\"".join(all_node_ips),
+            "all_node_ips": '["%s"]' % '","'.join(all_node_ips),
             # at the moment we are strict and enforce that all nodes are master eligible nodes
             "minimum_master_nodes": len(all_node_ips),
-            "install_root_path": node.binary_path
+            "install_root_path": node.binary_path,
         }
         config_vars = {}
         config_vars.update(self.cluster_config.variables)

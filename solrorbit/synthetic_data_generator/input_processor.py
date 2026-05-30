@@ -13,6 +13,7 @@ from solrorbit.exceptions import ConfigError
 
 logger = logging.getLogger(__name__)
 
+
 def create_sdg_metadata_from_args(cfg) -> SyntheticDataGeneratorMetadata:
     """
     Creates a Synthetic Data Generator Config based on the user's inputs
@@ -27,16 +28,17 @@ def create_sdg_metadata_from_args(cfg) -> SyntheticDataGeneratorMetadata:
         custom_config_path = cfg.opts("synthetic_data_generator", "custom_config")
 
         return SyntheticDataGeneratorMetadata(
-            index_name = cfg.opts("synthetic_data_generator", "index_name"),
-            index_mappings_path = index_mappings_path,
-            custom_module_path = custom_module_path,
-            custom_config_path = custom_config_path,
-            output_path = cfg.opts("synthetic_data_generator", "output_path"),
-            total_size_gb= cfg.opts("synthetic_data_generator", "total_size"),
+            index_name=cfg.opts("synthetic_data_generator", "index_name"),
+            index_mappings_path=index_mappings_path,
+            custom_module_path=custom_module_path,
+            custom_config_path=custom_config_path,
+            output_path=cfg.opts("synthetic_data_generator", "output_path"),
+            total_size_gb=cfg.opts("synthetic_data_generator", "total_size"),
         )
 
     except ConfigError as e:
         raise ConfigError("Config error when building SyntheticDataGeneratorMetadata: ", e)
+
 
 def use_custom_synthetic_data_generator(sdg_metadata: SyntheticDataGeneratorMetadata) -> bool:
     if sdg_metadata.custom_module_path and not sdg_metadata.index_mappings_path:
@@ -44,6 +46,7 @@ def use_custom_synthetic_data_generator(sdg_metadata: SyntheticDataGeneratorMeta
         return True
 
     return False
+
 
 def use_mappings_synthetic_data_generator(sdg_metadata: SyntheticDataGeneratorMetadata) -> bool:
     if sdg_metadata.index_mappings_path and not sdg_metadata.custom_module_path:

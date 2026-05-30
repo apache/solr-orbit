@@ -21,6 +21,7 @@ class Context(Enum):
     """DataSet context enum. Can be used to add additional context for how a
     data-set should be interpreted.
     """
+
     INDEX = 1
     QUERY = 2
     NEIGHBORS = 3
@@ -39,6 +40,7 @@ class DataSet(ABC):
         size: Gets the number of items in the data-set
         reset: Resets internal state of data-set to beginning
     """
+
     __metaclass__ = ABCMeta
 
     BEGINNING = 0
@@ -86,7 +88,7 @@ def get_data_set(data_set_format: str, path: str, context: Context):
 
 
 class HDF5DataSet(DataSet):
-    """ Data-set format corresponding to `ANN Benchmarks
+    """Data-set format corresponding to `ANN Benchmarks
     <https://github.com/erikbern/ann-benchmarks#data-sets>`_
     """
 
@@ -113,7 +115,7 @@ class HDF5DataSet(DataSet):
         if end_offset > self.size():
             end_offset = self.size()
 
-        vectors = cast(np.ndarray, self.data[self.current:end_offset])
+        vectors = cast(np.ndarray, self.data[self.current : end_offset])
         self.current = end_offset
         return vectors
 
@@ -147,7 +149,7 @@ class HDF5DataSet(DataSet):
             return "test"
 
         if context == Context.PARENTS:
-            return "parents" # used in nested benchmarks to get the parent document id associated with each vector.
+            return "parents"  # used in nested benchmarks to get the parent document id associated with each vector.
         if context == Context.MAX_DISTANCE_NEIGHBORS:
             return "max_distance_neighbors"
 
@@ -161,7 +163,6 @@ class HDF5DataSet(DataSet):
 
 
 class BigANNDataSet(DataSet):
-
     DATA_SET_HEADER_LENGTH = 8
     FORMAT_NAME = "bigann"
 
@@ -175,12 +176,11 @@ class BigANNDataSet(DataSet):
         self.row_length = 0
 
     def _init_internal_params(self):
-        self.file = open(self.dataset_path, 'rb')
+        self.file = open(self.dataset_path, "rb")
         self.file.seek(DataSet.BEGINNING, os.SEEK_END)
         self.num_bytes = self.file.tell()
         if self.num_bytes < BigANNDataSet.DATA_SET_HEADER_LENGTH:
-            raise Exception("Invalid file: file size cannot be less than {} bytes".format(
-                BigANNDataSet.DATA_SET_HEADER_LENGTH))
+            raise Exception("Invalid file: file size cannot be less than {} bytes".format(BigANNDataSet.DATA_SET_HEADER_LENGTH))
         self.file.seek(BigANNDataSet.BEGINNING)
         self.rows = int.from_bytes(self.file.read(4), "little")
         self.row_length = int.from_bytes(self.file.read(4), "little")
@@ -202,9 +202,7 @@ class BigANNDataSet(DataSet):
         if end_offset > self.size():
             end_offset = self.size()
 
-        vectors = np.asarray(
-            [self._read_vector() for _ in range(end_offset - self.current)]
-        )
+        vectors = np.asarray([self._read_vector() for _ in range(end_offset - self.current)])
         self.current = end_offset
         return vectors
 
@@ -247,12 +245,10 @@ class BigANNDataSet(DataSet):
         """Return list of supported extension by this dataset"""
 
     def _get_extension(self):
-        ext = self.dataset_path.split('.')[-1]
+        ext = self.dataset_path.split(".")[-1]
         supported_extension = self._get_supported_extension()
         if ext not in supported_extension:
-            raise InvalidExtensionException(
-                "Unknown extension :{}, supported extensions are: {}".format(
-                    ext, str(supported_extension)))
+            raise InvalidExtensionException("Unknown extension :{}, supported extensions are: {}".format(ext, str(supported_extension)))
         return ext
 
     @abstractmethod
@@ -274,25 +270,21 @@ class BigANNDataSet(DataSet):
 
 
 class BigANNVectorDataSet(BigANNDataSet):
-    """ Data-set format for vector data-sets for `Big ANN Benchmarks
+    """Data-set format for vector data-sets for `Big ANN Benchmarks
     <https://big-ann-benchmarks.com/index.html#bench-datasets>`
     """
 
     U8BIN_EXTENSION = "u8bin"
     FBIN_EXTENSION = "fbin"
-    SUPPORTED_EXTENSION = [
-        FBIN_EXTENSION, U8BIN_EXTENSION
-    ]
+    SUPPORTED_EXTENSION = [FBIN_EXTENSION, U8BIN_EXTENSION]
 
     BYTES_PER_U8INT = 1
     BYTES_PER_FLOAT = 4
 
     def _init_internal_params(self):
         super()._init_internal_params()
-        if (self.num_bytes - BigANNDataSet.DATA_SET_HEADER_LENGTH) != (
-                self.rows * self.row_length * self.bytes_per_num):
-            raise Exception("Invalid file. File size is not matching with expected estimated "
-                            "value based on number of points, dimension and bytes per point")
+        if (self.num_bytes - BigANNDataSet.DATA_SET_HEADER_LENGTH) != (self.rows * self.row_length * self.bytes_per_num):
+            raise Exception("Invalid file. File size is not matching with expected estimated value based on number of points, dimension and bytes per point")
 
     def _get_supported_extension(self):
         return BigANNVectorDataSet.SUPPORTED_EXTENSION
@@ -311,13 +303,13 @@ class BigANNVectorDataSet(BigANNDataSet):
             return lambda file: float(int.from_bytes(file.read(BigANNVectorDataSet.BYTES_PER_U8INT), "little"))
 
         if extension == BigANNVectorDataSet.FBIN_EXTENSION:
-            return lambda file: struct.unpack('<f', file.read(BigANNVectorDataSet.BYTES_PER_FLOAT))
+            return lambda file: struct.unpack("<f", file.read(BigANNVectorDataSet.BYTES_PER_FLOAT))
 
         return None
 
 
 class BigANNGroundTruthDataSet(BigANNDataSet):
-    """ Data-set format for neighbor data-sets for `Big ANN Benchmarks
+    """Data-set format for neighbor data-sets for `Big ANN Benchmarks
     <https://big-ann-benchmarks.com/index.html#bench-datasets>`"""
 
     BIN_EXTENSION = "bin"
@@ -331,10 +323,8 @@ class BigANNGroundTruthDataSet(BigANNDataSet):
         # num_queries(uint32_t) K-NN(uint32) followed by num_queries X K x sizeof(uint32_t) bytes of data
         # representing the IDs of the K-nearest neighbors of the queries, followed by num_queries X K x sizeof(float)
         # bytes of data representing the distances to the corresponding points.
-        if (self.num_bytes - BigANNDataSet.DATA_SET_HEADER_LENGTH) != 2 * (
-                self.rows * self.row_length * self.bytes_per_num):
-            raise Exception("Invalid file. File size is not matching with expected estimated "
-                            "value based on number of queries, k and bytes per query")
+        if (self.num_bytes - BigANNDataSet.DATA_SET_HEADER_LENGTH) != 2 * (self.rows * self.row_length * self.bytes_per_num):
+            raise Exception("Invalid file. File size is not matching with expected estimated value based on number of queries, k and bytes per query")
 
     def _get_supported_extension(self):
         return BigANNGroundTruthDataSet.SUPPORTED_EXTENSION
@@ -343,14 +333,13 @@ class BigANNGroundTruthDataSet(BigANNDataSet):
         return BigANNGroundTruthDataSet.BYTES_PER_UNSIGNED_INT32
 
     def _get_value_reader(self, extension):
-        return lambda file: int.from_bytes(
-            file.read(BigANNGroundTruthDataSet.BYTES_PER_UNSIGNED_INT32), "little")
+        return lambda file: int.from_bytes(file.read(BigANNGroundTruthDataSet.BYTES_PER_UNSIGNED_INT32), "little")
 
 
 def create_big_ann_dataset(file_path: str):
     if not file_path:
         raise Exception("Invalid file path")
-    extension = file_path.split('.')[-1]
+    extension = file_path.split(".")[-1]
     if extension in BigANNGroundTruthDataSet.SUPPORTED_EXTENSION:
         return BigANNGroundTruthDataSet(file_path)
     if extension in BigANNVectorDataSet.SUPPORTED_EXTENSION:

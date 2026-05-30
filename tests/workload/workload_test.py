@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -36,60 +36,60 @@ class WorkloadTests(TestCase):
         default_test_procedure = workload.TestProcedure("default", description="default test_procedure", default=True)
         another_test_procedure = workload.TestProcedure("other", description="non-default test_procedure", default=False)
 
-        self.assertEqual(default_test_procedure,
-                         workload.Workload(name="unittest",
-                                     description="unittest workload",
-                                     test_procedures=[another_test_procedure, default_test_procedure])
-                         .default_test_procedure)
+        self.assertEqual(
+            default_test_procedure,
+            workload.Workload(name="unittest", description="unittest workload", test_procedures=[another_test_procedure, default_test_procedure]).default_test_procedure,
+        )
 
     def test_default_test_procedure_none_if_no_test_procedures(self):
-        self.assertIsNone(workload.Workload(name="unittest",
-                                      description="unittest workload",
-                                      test_procedures=[])
-                          .default_test_procedure)
+        self.assertIsNone(workload.Workload(name="unittest", description="unittest workload", test_procedures=[]).default_test_procedure)
 
     def test_finds_test_procedure_by_name(self):
         default_test_procedure = workload.TestProcedure("default", description="default test_procedure", default=True)
         another_test_procedure = workload.TestProcedure("other", description="non-default test_procedure", default=False)
 
-        self.assertEqual(another_test_procedure,
-                         workload.Workload(name="unittest",
-                                     description="unittest workload",
-                                     test_procedures=[another_test_procedure, default_test_procedure])
-                         .find_test_procedure_or_default("other"))
+        self.assertEqual(
+            another_test_procedure,
+            workload.Workload(name="unittest", description="unittest workload", test_procedures=[another_test_procedure, default_test_procedure]).find_test_procedure_or_default(
+                "other"
+            ),
+        )
 
     def test_uses_default_test_procedure_if_no_name_given(self):
         default_test_procedure = workload.TestProcedure("default", description="default test_procedure", default=True)
         another_test_procedure = workload.TestProcedure("other", description="non-default test_procedure", default=False)
 
-        self.assertEqual(default_test_procedure,
-                         workload.Workload(name="unittest",
-                                     description="unittest workload",
-                                     test_procedures=[another_test_procedure, default_test_procedure])
-                         .find_test_procedure_or_default(""))
+        self.assertEqual(
+            default_test_procedure,
+            workload.Workload(name="unittest", description="unittest workload", test_procedures=[another_test_procedure, default_test_procedure]).find_test_procedure_or_default(
+                ""
+            ),
+        )
 
     def test_does_not_find_unknown_test_procedure(self):
         default_test_procedure = workload.TestProcedure("default", description="default test_procedure", default=True)
         another_test_procedure = workload.TestProcedure("other", description="non-default test_procedure", default=False)
 
         with self.assertRaises(exceptions.InvalidName) as ctx:
-            workload.Workload(name="unittest",
-                        description="unittest workload",
-                        test_procedures=[another_test_procedure, default_test_procedure]).find_test_procedure_or_default("unknown-name")
+            workload.Workload(name="unittest", description="unittest workload", test_procedures=[another_test_procedure, default_test_procedure]).find_test_procedure_or_default(
+                "unknown-name"
+            )
 
         self.assertEqual("Unknown test_procedure [unknown-name] for workload [unittest]", ctx.exception.args[0])
 
 
 class DocumentCorpusTests(TestCase):
     def test_do_not_filter(self):
-        corpus = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
-            workload.Documents(source_format="other", number_of_documents=6, target_collection="logs-02"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
-            workload.Documents(source_format=None, number_of_documents=8, target_collection=None)
-        ], meta_data={
-            "average-document-size-in-bytes": 12
-        })
+        corpus = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
+                workload.Documents(source_format="other", number_of_documents=6, target_collection="logs-02"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
+                workload.Documents(source_format=None, number_of_documents=8, target_collection=None),
+            ],
+            meta_data={"average-document-size-in-bytes": 12},
+        )
 
         filtered_corpus = corpus.filter()
 
@@ -98,12 +98,15 @@ class DocumentCorpusTests(TestCase):
         self.assertDictEqual(corpus.meta_data, filtered_corpus.meta_data)
 
     def test_filter_documents_by_format(self):
-        corpus = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
-            workload.Documents(source_format="other", number_of_documents=6, target_collection="logs-02"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
-            workload.Documents(source_format=None, number_of_documents=8, target_collection=None)
-        ])
+        corpus = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
+                workload.Documents(source_format="other", number_of_documents=6, target_collection="logs-02"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
+                workload.Documents(source_format=None, number_of_documents=8, target_collection=None),
+            ],
+        )
 
         filtered_corpus = corpus.filter(source_format=workload.Documents.SOURCE_FORMAT_BULK)
 
@@ -113,12 +116,15 @@ class DocumentCorpusTests(TestCase):
         self.assertEqual("logs-03", filtered_corpus.documents[1].target_collection)
 
     def test_filter_documents_by_indices(self):
-        corpus = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
-            workload.Documents(source_format="other", number_of_documents=6, target_collection="logs-02"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
-            workload.Documents(source_format=None, number_of_documents=8, target_collection=None)
-        ])
+        corpus = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
+                workload.Documents(source_format="other", number_of_documents=6, target_collection="logs-02"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
+                workload.Documents(source_format=None, number_of_documents=8, target_collection=None),
+            ],
+        )
 
         filtered_corpus = corpus.filter(target_collections=["logs-02"])
 
@@ -127,12 +133,15 @@ class DocumentCorpusTests(TestCase):
         self.assertEqual("logs-02", filtered_corpus.documents[0].target_collection)
 
     def test_filter_documents_by_format_and_indices(self):
-        corpus = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=6, target_collection="logs-02"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=8, target_collection=None)
-        ])
+        corpus = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=6, target_collection="logs-02"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=8, target_collection=None),
+            ],
+        )
 
         filtered_corpus = corpus.filter(source_format=workload.Documents.SOURCE_FORMAT_BULK, target_collections=["logs-01", "logs-02"])
 
@@ -142,50 +151,68 @@ class DocumentCorpusTests(TestCase):
         self.assertEqual("logs-02", filtered_corpus.documents[1].target_collection)
 
     def test_union_document_corpus_is_reflexive(self):
-        corpus = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=6, target_collection="logs-02"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=8, target_collection=None)
-        ])
+        corpus = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=6, target_collection="logs-02"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=7, target_collection="logs-03"),
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=8, target_collection=None),
+            ],
+        )
         self.assertTrue(corpus.union(corpus) is corpus)
 
     def test_union_document_corpora_is_symmetric(self):
-        a = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
-        ])
-        b = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-02"),
-        ])
+        a = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
+            ],
+        )
+        b = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-02"),
+            ],
+        )
         self.assertEqual(b.union(a), a.union(b))
         self.assertEqual(2, len(a.union(b).documents))
 
     def test_cannot_union_mixed_document_corpora_by_name(self):
-        a = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
-        ])
-        b = workload.DocumentCorpus("other", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-02"),
-        ])
+        a = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
+            ],
+        )
+        b = workload.DocumentCorpus(
+            "other",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-02"),
+            ],
+        )
         with self.assertRaises(exceptions.BenchmarkAssertionError) as ae:
             a.union(b)
         self.assertEqual(ae.exception.message, "Corpora names differ: [test] and [other].")
 
     def test_cannot_union_mixed_document_corpora_by_meta_data(self):
-        a = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
-        ], meta_data={
-            "with-metadata": False
-        })
-        b = workload.DocumentCorpus("test", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-02"),
-        ], meta_data={
-            "with-metadata": True
-        })
+        a = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-01"),
+            ],
+            meta_data={"with-metadata": False},
+        )
+        b = workload.DocumentCorpus(
+            "test",
+            documents=[
+                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-02"),
+            ],
+            meta_data={"with-metadata": True},
+        )
         with self.assertRaises(exceptions.BenchmarkAssertionError) as ae:
             a.union(b)
-        self.assertEqual(ae.exception.message,
-                         "Corpora meta-data differ: [{'with-metadata': False}] and [{'with-metadata': True}].")
+        self.assertEqual(ae.exception.message, "Corpora meta-data differ: [{'with-metadata': False}] and [{'with-metadata': True}].")
 
 
 class OperationTypeTests(TestCase):
@@ -203,16 +230,12 @@ class OperationTypeTests(TestCase):
 
 class TaskFilterTests(TestCase):
     def create_index_task(self):
-        return workload.Task("create-index-task",
-                          workload.Operation("create-index-op",
-                                          operation_type=workload.OperationType.CreateBackup.to_hyphenated_string()),
-                          tags=["write-op", "admin-op"])
+        return workload.Task(
+            "create-index-task", workload.Operation("create-index-op", operation_type=workload.OperationType.CreateBackup.to_hyphenated_string()), tags=["write-op", "admin-op"]
+        )
 
     def search_task(self):
-        return workload.Task("search-task",
-                          workload.Operation("search-op",
-                                          operation_type=workload.OperationType.Search.to_hyphenated_string()),
-                          tags="read-op")
+        return workload.Task("search-task", workload.Operation("search-op", operation_type=workload.OperationType.Search.to_hyphenated_string()), tags="read-op")
 
     def test_task_name_filter(self):
         f = workload.TaskNameFilter("create-index-task")
@@ -277,16 +300,14 @@ class TaskTests(TestCase):
         with self.assertRaises(exceptions.InvalidSyntax) as e:
             # pylint: disable=pointless-statement
             task.target_throughput
-        self.assertEqual("Task [test] specifies target-interval [1] and target-throughput [1] but only one "
-                         "of them is allowed.", e.exception.args[0])
+        self.assertEqual("Task [test] specifies target-interval [1] and target-throughput [1] but only one of them is allowed.", e.exception.args[0])
 
     def test_invalid_ignore_response_error_level_is_rejected(self):
         task = self.task(ignore_response_error_level="invalid-value")
         with self.assertRaises(exceptions.InvalidSyntax) as e:
             # pylint: disable=pointless-statement
             task.ignore_response_error_level
-        self.assertEqual("Task [test] specifies ignore-response-error-level to [invalid-value] but "
-                         "the only allowed values are [non-fatal].", e.exception.args[0])
+        self.assertEqual("Task [test] specifies ignore-response-error-level to [invalid-value] but the only allowed values are [non-fatal].", e.exception.args[0])
 
     def test_task_continues_with_global_continue(self):
         task = self.task()

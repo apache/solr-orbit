@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -56,9 +56,7 @@ def list_cluster_configs(cfg):
     # idiomatic way according to https://docs.python.org/3/howto/sorting.html#sort-stability-and-complex-sorts
     cluster_configs = sorted(sorted(cluster_configs, key=lambda c: c.name), key=lambda c: c.type)
     console.println("Available cluster-configs:\n")
-    console.println(tabulate.tabulate(
-        [[c.name, c.type, c.description] for c in cluster_configs],
-        headers=["Name", "Type", "Description"]))
+    console.println(tabulate.tabulate([[c.name, c.type, c.description] for c in cluster_configs], headers=["Name", "Type", "Description"]))
 
 
 def load_cluster_config(repo, name, cluster_config_params=None):
@@ -85,8 +83,7 @@ def load_cluster_config(repo, name, cluster_config_params=None):
                     root_path = p
                 # multiple cluster_configs are based on the same hook
                 elif root_path != p:
-                    raise exceptions.SystemSetupError(
-                        "Invalid cluster_config: {}. Multiple bootstrap hooks are forbidden.".format(name))
+                    raise exceptions.SystemSetupError("Invalid cluster_config: {}. Multiple bootstrap hooks are forbidden.".format(name))
         all_config_base_vars.update(descriptor.config_base_variables)
         all_cluster_config_vars.update(descriptor.variables)
 
@@ -136,9 +133,7 @@ def cluster_config_path(cfg):
         cluster_config_repositories = cfg.opts("builder", "cluster_config.repository.dir")
         cluster_configs_dir = os.path.join(root, cluster_config_repositories)
 
-        current_cluster_config_repo = repo.BenchmarkRepository(
-            default_directory, cluster_configs_dir,
-            repo_name, "cluster_configs", offline)
+        current_cluster_config_repo = repo.BenchmarkRepository(default_directory, cluster_configs_dir, repo_name, "cluster_configs", offline)
 
         current_cluster_config_repo.set_cluster_configs_dir(repo_revision, distribution_version, cfg)
         return current_cluster_config_repo.repo_dir
@@ -157,9 +152,8 @@ class ClusterConfigInstanceLoader:
         def __is_cluster_config(path):
             _, extension = io.splitext(path)
             return extension == ".ini"
-        return map(__cluster_config_name, filter(
-            __is_cluster_config,
-            os.listdir(self.cluster_configs_dir)))
+
+        return map(__cluster_config_name, filter(__is_cluster_config, os.listdir(self.cluster_configs_dir)))
 
     def _cluster_config_file(self, name):
         return os.path.join(self.cluster_configs_dir, "{}.ini".format(name))
@@ -167,9 +161,7 @@ class ClusterConfigInstanceLoader:
     def load_cluster_config(self, name, cluster_config_params=None):
         cluster_config_config_file = self._cluster_config_file(name)
         if not io.exists(cluster_config_config_file):
-            raise exceptions.SystemSetupError(
-                "Unknown cluster-config [{}]. List the available "
-                "cluster-configs with {} list cluster-configs.".format(name, PROGRAM_NAME))
+            raise exceptions.SystemSetupError("Unknown cluster-config [{}]. List the available cluster-configs with {} list cluster-configs.".format(name, PROGRAM_NAME))
         config = self._config_loader(cluster_config_config_file)
         root_paths = []
         config_paths = []
@@ -195,9 +187,7 @@ class ClusterConfigInstanceLoader:
         if cluster_config_params:
             variables.update(cluster_config_params)
 
-        return ClusterConfigInstanceDescriptor(
-            name, description, cluster_config_type,
-            root_paths, config_paths, config_base_vars, variables)
+        return ClusterConfigInstanceDescriptor(name, description, cluster_config_type, root_paths, config_paths, config_base_vars, variables)
 
     def _config_loader(self, file_name):
         config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
@@ -244,8 +234,7 @@ class ClusterConfigInstance:
     # name of the initial Python file to load for cluster_configs.
     entry_point = "config"
 
-    def __init__(self, names, root_path, config_paths, provider=ClusterInfraProvider.LOCAL,
-                 flavor=ClusterFlavor.SELF_MANAGED, variables=None):
+    def __init__(self, names, root_path, config_paths, provider=ClusterInfraProvider.LOCAL, flavor=ClusterFlavor.SELF_MANAGED, variables=None):
         """
         Creates new settings for a benchmark candidate.
 
@@ -272,7 +261,7 @@ class ClusterConfigInstance:
         try:
             return self.variables[name]
         except KeyError:
-            raise exceptions.SystemSetupError("ClusterConfigInstance \"{}\" requires config key \"{}\"".format(self.name, name))
+            raise exceptions.SystemSetupError('ClusterConfigInstance "{}" requires config key "{}"'.format(self.name, name))
 
     @property
     def name(self):
@@ -359,18 +348,17 @@ class PluginLoader:
         if not config_names:
             # maybe we only have a config folder but nothing else (e.g. if there is only an install hook)
             if io.exists(root_path):
-                return PluginDescriptor(name=name,
-                                        core_plugin=core_plugin is not None,
-                                        config=config_names,
-                                        root_path=root_path,
-                                        variables=plugin_params)
+                return PluginDescriptor(name=name, core_plugin=core_plugin is not None, config=config_names, root_path=root_path, variables=plugin_params)
             else:
                 if core_plugin:
                     return core_plugin
                 # If we just have a plugin name then we assume that this is a community plugin and the user has specified a download URL
                 else:
-                    self.logger.info("The plugin [%s] is neither a configured nor an official plugin. Assuming that this is a community "
-                                     "plugin not requiring any configuration and you have set a proper download URL.", name)
+                    self.logger.info(
+                        "The plugin [%s] is neither a configured nor an official plugin. Assuming that this is a community "
+                        "plugin not requiring any configuration and you have set a proper download URL.",
+                        name,
+                    )
                     return PluginDescriptor(name, variables=plugin_params)
         else:
             variables = {}
@@ -383,12 +371,15 @@ class PluginLoader:
                 # Do we have an explicit configuration for this plugin?
                 if not io.exists(config_file):
                     if core_plugin:
-                        raise exceptions.SystemSetupError("Plugin [%s] does not provide configuration [%s]. List the available plugins "
-                                                          "and configurations with %s list cluster-configs "
-                                                          "--distribution-version=VERSION." % (name, config_name, PROGRAM_NAME))
+                        raise exceptions.SystemSetupError(
+                            "Plugin [%s] does not provide configuration [%s]. List the available plugins "
+                            "and configurations with %s list cluster-configs "
+                            "--distribution-version=VERSION." % (name, config_name, PROGRAM_NAME)
+                        )
                     else:
-                        raise exceptions.SystemSetupError("Unknown plugin [%s]. List the available plugins with %s list "
-                                                          "cluster-configs --distribution-version=VERSION." % (name, PROGRAM_NAME))
+                        raise exceptions.SystemSetupError(
+                            "Unknown plugin [%s]. List the available plugins with %s list cluster-configs --distribution-version=VERSION." % (name, PROGRAM_NAME)
+                        )
 
                 config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
                 # Do not modify the case of option keys but read them as is
@@ -411,8 +402,7 @@ class PluginLoader:
             # maybe one of the configs is really just for providing variables. However, we still require one config base overall.
             if len(config_paths) == 0:
                 raise exceptions.SystemSetupError("At least one config base is required for plugin [%s]" % name)
-            return PluginDescriptor(name=name, core_plugin=core_plugin is not None, config=config_names, root_path=root_path,
-                                    config_paths=config_paths, variables=variables)
+            return PluginDescriptor(name=name, core_plugin=core_plugin is not None, config=config_names, root_path=root_path, config_paths=config_paths, variables=variables)
 
 
 class PluginDescriptor:
@@ -466,6 +456,7 @@ class BootstrapHookHandler:
     """
     Responsible for loading and executing component-specific intitialization code.
     """
+
     def __init__(self, component, loader_class=modules.ComponentLoader):
         """
         Creates a new BootstrapHookHandler.
@@ -512,5 +503,4 @@ class BootstrapHookHandler:
                 # hooks should only take keyword arguments to be forwards compatible with OSB!
                 hook(config_names=self.component.config, **kwargs)
         else:
-            self.logger.debug("Component [%s] in config [%s] has no hook registered for phase [%s].",
-                         self.component.name, self.component.config, phase)
+            self.logger.debug("Component [%s] in config [%s] has no hook registered for phase [%s].", self.component.name, self.component.config, phase)

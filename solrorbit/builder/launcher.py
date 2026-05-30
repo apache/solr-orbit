@@ -17,7 +17,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -130,6 +130,7 @@ class ProcessLauncher:
     """
     Launcher is responsible for starting and stopping the benchmark candidate.
     """
+
     PROCESS_WAIT_TIMEOUT_SECONDS = 90.0
 
     def __init__(self, cfg, clock=time.Clock):
@@ -149,8 +150,7 @@ class ProcessLauncher:
         data_paths = node_configuration.data_paths
         node_telemetry_dir = os.path.join(node_configuration.node_root_path, "telemetry")
 
-        java_major_version, java_home = java_resolver.java_home(node_configuration.cluster_config_runtime_jdks,
-                                                                self.cfg.opts("builder", "runtime.jdk"))
+        java_major_version, java_home = java_resolver.java_home(node_configuration.cluster_config_runtime_jdks, self.cfg.opts("builder", "runtime.jdk"))
         self.logger.info("Java major version: %s", java_major_version)
         self.logger.info("Java home: %s", java_home)
 
@@ -199,7 +199,7 @@ class ProcessLauncher:
         self.logger.debug("env for [%s]: %s", node_name, str(env))
         return env
 
-    def _set_env(self, env, k, v, separator=' ', prepend=False):
+    def _set_env(self, env, k, v, separator=" ", prepend=False):
         if v is not None:
             if k not in env:
                 env[k] = v
@@ -212,11 +212,7 @@ class ProcessLauncher:
     def _run_subprocess(command_line, env):
         command_line_args = shlex.split(command_line)
 
-        with subprocess.Popen(command_line_args,
-                              stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL,
-                              env=env,
-                              start_new_session=True) as command_line_process:
+        with subprocess.Popen(command_line_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, start_new_session=True) as command_line_process:
             # wait for it to finish
             command_line_process.wait()
 
@@ -251,8 +247,7 @@ class ProcessLauncher:
                         logging.info("Solr %s uses embedded cloud mode by default", distribution_version)
                 except (ValueError, IndexError):
                     # If we can't parse version, assume newer Solr (no flag)
-                    logging.warning("Could not parse Solr version from '%s', assuming 10.x+ (no --cloud flag)",
-                                  distribution_version)
+                    logging.warning("Could not parse Solr version from '%s', assuming 10.x+ (no --cloud flag)", distribution_version)
 
         ret = ProcessLauncher._run_subprocess(command_line=" ".join(cmd), env=env)
         if ret != 0:

@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -35,9 +35,10 @@ class JavaResolverTests(TestCase):
     @mock.patch("solrorbit.utils.jvm.resolve_path")
     def test_resolves_java_home_for_default_runtime_jdk(self, resolve_jvm_path):
         resolve_jvm_path.return_value = (12, "/opt/jdk12")
-        major, java_home = java_resolver.java_home("12,11,10,9,8",
-                                                   specified_runtime_jdk=None,
-                                                   )
+        major, java_home = java_resolver.java_home(
+            "12,11,10,9,8",
+            specified_runtime_jdk=None,
+        )
 
         self.assertEqual(major, 12)
         self.assertEqual(java_home, "/opt/jdk12")
@@ -45,9 +46,10 @@ class JavaResolverTests(TestCase):
     @mock.patch("solrorbit.utils.jvm.resolve_path")
     def test_resolves_java_home_for_specific_runtime_jdk(self, resolve_jvm_path):
         resolve_jvm_path.return_value = (8, "/opt/jdk8")
-        major, java_home = java_resolver.java_home("12,11,10,9,8",
-                                                   specified_runtime_jdk=8,
-                                                   )
+        major, java_home = java_resolver.java_home(
+            "12,11,10,9,8",
+            specified_runtime_jdk=8,
+        )
 
         self.assertEqual(major, 8)
         self.assertEqual(java_home, "/opt/jdk8")

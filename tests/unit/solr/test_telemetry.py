@@ -37,19 +37,19 @@ from solrorbit.telemetry import (
 # Helper: captured metrics store
 # ---------------------------------------------------------------------------
 
+
 def _make_metrics_store():
     """Return a MagicMock metrics store and a dict that captures stored values."""
     stored = {}
     store = MagicMock()
-    store.put_value_cluster_level = MagicMock(
-        side_effect=lambda name, value, **kw: stored.update({name: value})
-    )
+    store.put_value_cluster_level = MagicMock(side_effect=lambda name, value, **kw: stored.update({name: value}))
     return store, stored
 
 
 # ---------------------------------------------------------------------------
 # _parse_prometheus_text
 # ---------------------------------------------------------------------------
+
 
 class TestParsePrometheusText(unittest.TestCase):
     def test_basic_metric(self):
@@ -70,10 +70,7 @@ class TestParsePrometheusText(unittest.TestCase):
         self.assertAlmostEqual(42.0, result["http_requests_total"])
 
     def test_labels_accumulated(self):
-        text = (
-            'requests_total{status="200"} 100\n'
-            'requests_total{status="404"} 10\n'
-        )
+        text = 'requests_total{status="200"} 100\nrequests_total{status="404"} 10\n'
         result = _parse_prometheus_text(text)
         self.assertAlmostEqual(110.0, result["requests_total"])
 
@@ -97,6 +94,7 @@ class TestParsePrometheusText(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # SolrTelemetryDevice base class helpers
 # ---------------------------------------------------------------------------
+
 
 class TestBaseClassHelpers(unittest.TestCase):
     def _make_device(self, raw_metrics):
@@ -150,6 +148,7 @@ class TestBaseClassHelpers(unittest.TestCase):
 # SolrJvmStats
 # ---------------------------------------------------------------------------
 
+
 class TestSolrJvmStatsJson(unittest.TestCase):
     def _device(self, json_data):
         store, stored = _make_metrics_store()
@@ -158,36 +157,48 @@ class TestSolrJvmStatsJson(unittest.TestCase):
         return SolrJvmStats(client, store), stored
 
     def test_heap_metrics_extracted(self):
-        data = {"metrics": {"solr.jvm": {
-            "memory.heap.used": 512_000_000,
-            "memory.heap.max": 2_000_000_000,
-        }}}
+        data = {
+            "metrics": {
+                "solr.jvm": {
+                    "memory.heap.used": 512_000_000,
+                    "memory.heap.max": 2_000_000_000,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
         self.assertEqual(512_000_000, stored["jvm_heap_used_bytes"])
         self.assertEqual(2_000_000_000, stored["jvm_heap_max_bytes"])
 
     def test_gc_metrics_summed(self):
-        data = {"metrics": {"solr.jvm": {
-            "memory.heap.used": 1,
-            "memory.heap.max": 2,
-            "gc.G1-Young-Generation.count": 10,
-            "gc.G1-Old-Generation.count": 2,
-            "gc.G1-Young-Generation.time": 150,
-            "gc.G1-Old-Generation.time": 30,
-        }}}
+        data = {
+            "metrics": {
+                "solr.jvm": {
+                    "memory.heap.used": 1,
+                    "memory.heap.max": 2,
+                    "gc.G1-Young-Generation.count": 10,
+                    "gc.G1-Old-Generation.count": 2,
+                    "gc.G1-Young-Generation.time": 150,
+                    "gc.G1-Old-Generation.time": 30,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
         self.assertEqual(12, stored["jvm_gc_count"])
         self.assertEqual(180, stored["jvm_gc_time_ms"])
 
     def test_gc_young_old_split(self):
-        data = {"metrics": {"solr.jvm": {
-            "gc.G1 Young Generation.count": 10,
-            "gc.G1 Young Generation.time": 100,
-            "gc.G1 Old Generation.count": 2,
-            "gc.G1 Old Generation.time": 50,
-        }}}
+        data = {
+            "metrics": {
+                "solr.jvm": {
+                    "gc.G1 Young Generation.count": 10,
+                    "gc.G1 Young Generation.time": 100,
+                    "gc.G1 Old Generation.count": 2,
+                    "gc.G1 Old Generation.time": 50,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
         self.assertEqual(10, stored.get("jvm_gc_young_count"))
@@ -196,20 +207,28 @@ class TestSolrJvmStatsJson(unittest.TestCase):
         self.assertEqual(50, stored.get("jvm_gc_old_time_ms"))
 
     def test_thread_metrics_extracted(self):
-        data = {"metrics": {"solr.jvm": {
-            "threads.count": 42,
-            "threads.peak.count": 50,
-        }}}
+        data = {
+            "metrics": {
+                "solr.jvm": {
+                    "threads.count": 42,
+                    "threads.peak.count": 50,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
         self.assertEqual(42, stored["jvm_thread_count"])
         self.assertEqual(50, stored["jvm_thread_peak_count"])
 
     def test_buffer_pool_metrics_extracted(self):
-        data = {"metrics": {"solr.jvm": {
-            "buffers.direct.MemoryUsed": 1_048_576,
-            "buffers.mapped.MemoryUsed": 0,
-        }}}
+        data = {
+            "metrics": {
+                "solr.jvm": {
+                    "buffers.direct.MemoryUsed": 1_048_576,
+                    "buffers.mapped.MemoryUsed": 0,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
         self.assertEqual(1_048_576, stored["jvm_buffer_pool_direct_bytes"])
@@ -247,6 +266,7 @@ class TestSolrJvmStatsPrometheus(unittest.TestCase):
 # SolrNodeStats
 # ---------------------------------------------------------------------------
 
+
 class TestSolrNodeStats(unittest.TestCase):
     def _make_client(self, system_data=None, metrics_raw=None):
         client = MagicMock()
@@ -269,10 +289,7 @@ class TestSolrNodeStats(unittest.TestCase):
 
     def test_cpu_extracted_from_system(self):
         store, stored = _make_metrics_store()
-        client = self._make_client(
-            system_data={"processCpuLoad": 0.45, "freePhysicalMemorySize": 4_000_000_000},
-            metrics_raw={}
-        )
+        client = self._make_client(system_data={"processCpuLoad": 0.45, "freePhysicalMemorySize": 4_000_000_000}, metrics_raw={})
         device = SolrNodeStats(client, store)
         device._collect()
 
@@ -281,10 +298,7 @@ class TestSolrNodeStats(unittest.TestCase):
 
     def test_file_descriptors_extracted(self):
         store, stored = _make_metrics_store()
-        client = self._make_client(
-            system_data={"openFileDescriptorCount": 128, "maxFileDescriptorCount": 65536},
-            metrics_raw={}
-        )
+        client = self._make_client(system_data={"openFileDescriptorCount": 128, "maxFileDescriptorCount": 65536}, metrics_raw={})
         device = SolrNodeStats(client, store)
         device._collect()
 
@@ -293,13 +307,18 @@ class TestSolrNodeStats(unittest.TestCase):
 
     def test_query_handler_avg_latency_json(self):
         store, stored = _make_metrics_store()
-        metrics_data = {"metrics": {"solr.core": {
-            "QUERY./select.requests": 500,
-            "QUERY./select.errors": 3,
-            "QUERY./select.requestTimes.mean": 12.5,
-        }, "solr.jetty": {
-            "org.eclipse.jetty.server.handler.StatisticsHandler.requests": 1000,
-        }}}
+        metrics_data = {
+            "metrics": {
+                "solr.core": {
+                    "QUERY./select.requests": 500,
+                    "QUERY./select.errors": 3,
+                    "QUERY./select.requestTimes.mean": 12.5,
+                },
+                "solr.jetty": {
+                    "org.eclipse.jetty.server.handler.StatisticsHandler.requests": 1000,
+                },
+            }
+        }
         client = self._make_client(system_data={}, metrics_raw=metrics_data)
         device = SolrNodeStats(client, store)
         device._collect()
@@ -311,10 +330,7 @@ class TestSolrNodeStats(unittest.TestCase):
 
     def test_prometheus_format_node_stats(self):
         store, stored = _make_metrics_store()
-        prom_text = (
-            "solr_metrics_core_query_requests_total 200\n"
-            "solr_metrics_core_query_errors_total 1\n"
-        )
+        prom_text = "solr_metrics_core_query_requests_total 200\nsolr_metrics_core_query_errors_total 1\n"
         client = self._make_client(system_data={}, metrics_raw=prom_text)
         client.get_node_metrics.return_value = prom_text
         device = SolrNodeStats(client, store)
@@ -327,22 +343,17 @@ class TestSolrNodeStats(unittest.TestCase):
 # SolrCollectionStats
 # ---------------------------------------------------------------------------
 
+
 class TestSolrCollectionStats(unittest.TestCase):
     def test_num_docs_extracted_from_properties(self):
         store, stored = _make_metrics_store()
 
         props_resp = MagicMock()
         props_resp.ok = True
-        props_resp.json.return_value = {
-            "core-properties": {
-                "my-coll_shard1_replica1": {"numDocs": 5000}
-            }
-        }
+        props_resp.json.return_value = {"core-properties": {"my-coll_shard1_replica1": {"numDocs": 5000}}}
         luke_resp = MagicMock()
         luke_resp.ok = True
-        luke_resp.json.return_value = {
-            "index": {"numDocs": 5000, "deletedDocs": 50, "segmentCount": 3}
-        }
+        luke_resp.json.return_value = {"index": {"numDocs": 5000, "deletedDocs": 50, "segmentCount": 3}}
 
         def _get_side(path):
             if "luke" in path:
@@ -367,9 +378,7 @@ class TestSolrCollectionStats(unittest.TestCase):
 
         luke_resp = MagicMock()
         luke_resp.ok = True
-        luke_resp.json.return_value = {
-            "index": {"numDocs": 100, "deletedDocs": 10, "segmentCount": 2}
-        }
+        luke_resp.json.return_value = {"index": {"numDocs": 100, "deletedDocs": 10, "segmentCount": 2}}
 
         def _get_side(path):
             if "luke" in path:
@@ -399,6 +408,7 @@ class TestSolrCollectionStats(unittest.TestCase):
 # SolrQueryStats
 # ---------------------------------------------------------------------------
 
+
 class TestSolrQueryStats(unittest.TestCase):
     def _device(self, raw_metrics):
         store, stored = _make_metrics_store()
@@ -407,14 +417,18 @@ class TestSolrQueryStats(unittest.TestCase):
         return SolrQueryStats(client, store), stored
 
     def test_latency_percentiles_json(self):
-        data = {"metrics": {"solr.core": {
-            "QUERY./select.requestTimes.p_50": 8.0,
-            "QUERY./select.requestTimes.p_99": 45.0,
-            "QUERY./select.requestTimes.p_99_9": 120.0,
-            "QUERY./select.requests": 1000,
-            "QUERY./select.errors": 5,
-            "CACHE.searcher.filterCache.hitratio": 0.94,
-        }}}
+        data = {
+            "metrics": {
+                "solr.core": {
+                    "QUERY./select.requestTimes.p_50": 8.0,
+                    "QUERY./select.requestTimes.p_99": 45.0,
+                    "QUERY./select.requestTimes.p_99_9": 120.0,
+                    "QUERY./select.requests": 1000,
+                    "QUERY./select.errors": 5,
+                    "CACHE.searcher.filterCache.hitratio": 0.94,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
 
@@ -426,19 +440,19 @@ class TestSolrQueryStats(unittest.TestCase):
         self.assertAlmostEqual(0.94, stored["query_cache_hit_ratio"])
 
     def test_alternate_p999_key(self):
-        data = {"metrics": {"solr.core": {
-            "QUERY./select.requestTimes.p_999": 200.0,
-        }}}
+        data = {
+            "metrics": {
+                "solr.core": {
+                    "QUERY./select.requestTimes.p_999": 200.0,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
         self.assertAlmostEqual(200.0, stored["query_latency_p999_ms"])
 
     def test_prometheus_latency(self):
-        prom_text = (
-            "solr_metrics_core_query_request_times_p50_ms 10.0\n"
-            "solr_metrics_core_query_request_times_p99_ms 55.0\n"
-            "solr_metrics_core_query_requests_total 2000\n"
-        )
+        prom_text = "solr_metrics_core_query_request_times_p50_ms 10.0\nsolr_metrics_core_query_request_times_p99_ms 55.0\nsolr_metrics_core_query_requests_total 2000\n"
         device, stored = self._device(prom_text)
         device._collect()
 
@@ -456,6 +470,7 @@ class TestSolrQueryStats(unittest.TestCase):
 # SolrIndexingStats
 # ---------------------------------------------------------------------------
 
+
 class TestSolrIndexingStats(unittest.TestCase):
     def _device(self, raw_metrics):
         store, stored = _make_metrics_store()
@@ -464,13 +479,17 @@ class TestSolrIndexingStats(unittest.TestCase):
         return SolrIndexingStats(client, store), stored
 
     def test_indexing_stats_json(self):
-        data = {"metrics": {"solr.core": {
-            "UPDATE./update.requests": 500,
-            "UPDATE./update.errors": 2,
-            "UPDATE./update.requestTimes.mean": 3.5,
-            "INDEX.merge.major.running": 0,
-            "INDEX.merge.minor.running": 1,
-        }}}
+        data = {
+            "metrics": {
+                "solr.core": {
+                    "UPDATE./update.requests": 500,
+                    "UPDATE./update.errors": 2,
+                    "UPDATE./update.requestTimes.mean": 3.5,
+                    "INDEX.merge.major.running": 0,
+                    "INDEX.merge.minor.running": 1,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
 
@@ -481,11 +500,7 @@ class TestSolrIndexingStats(unittest.TestCase):
         self.assertEqual(1, stored["index_merge_minor_running"])
 
     def test_prometheus_indexing_stats(self):
-        prom_text = (
-            "solr_metrics_core_update_requests_total 300\n"
-            "solr_metrics_core_update_errors_total 0\n"
-            "solr_metrics_core_index_merge_major_running 2\n"
-        )
+        prom_text = "solr_metrics_core_update_requests_total 300\nsolr_metrics_core_update_errors_total 0\nsolr_metrics_core_index_merge_major_running 2\n"
         device, stored = self._device(prom_text)
         device._collect()
 
@@ -503,6 +518,7 @@ class TestSolrIndexingStats(unittest.TestCase):
 # SolrCacheStats
 # ---------------------------------------------------------------------------
 
+
 class TestSolrCacheStats(unittest.TestCase):
     def _device(self, raw_metrics):
         store = MagicMock()
@@ -518,18 +534,22 @@ class TestSolrCacheStats(unittest.TestCase):
         return SolrCacheStats(client, store), stored
 
     def test_cache_stats_json(self):
-        data = {"metrics": {"solr.core": {
-            "CACHE.searcher.queryResultCache.hits": 8000,
-            "CACHE.searcher.queryResultCache.inserts": 500,
-            "CACHE.searcher.queryResultCache.evictions": 100,
-            "CACHE.searcher.queryResultCache.ramBytesUsed": 1_000_000,
-            "CACHE.searcher.queryResultCache.hitratio": 0.94,
-            "CACHE.searcher.filterCache.hits": 5000,
-            "CACHE.searcher.filterCache.inserts": 200,
-            "CACHE.searcher.filterCache.evictions": 10,
-            "CACHE.searcher.filterCache.ramBytesUsed": 500_000,
-            "CACHE.searcher.filterCache.hitratio": 0.96,
-        }}}
+        data = {
+            "metrics": {
+                "solr.core": {
+                    "CACHE.searcher.queryResultCache.hits": 8000,
+                    "CACHE.searcher.queryResultCache.inserts": 500,
+                    "CACHE.searcher.queryResultCache.evictions": 100,
+                    "CACHE.searcher.queryResultCache.ramBytesUsed": 1_000_000,
+                    "CACHE.searcher.queryResultCache.hitratio": 0.94,
+                    "CACHE.searcher.filterCache.hits": 5000,
+                    "CACHE.searcher.filterCache.inserts": 200,
+                    "CACHE.searcher.filterCache.evictions": 10,
+                    "CACHE.searcher.filterCache.ramBytesUsed": 500_000,
+                    "CACHE.searcher.filterCache.hitratio": 0.96,
+                }
+            }
+        }
         device, stored = self._device(data)
         device._collect()
 
@@ -542,10 +562,7 @@ class TestSolrCacheStats(unittest.TestCase):
         self.assertAlmostEqual(0.96, stored["cache_hit_ratio:filterCache"])
 
     def test_prometheus_cache_stats(self):
-        prom_text = (
-            "solr_metrics_core_cache_hits_total 13000\n"
-            "solr_metrics_core_cache_evictions_total 110\n"
-        )
+        prom_text = "solr_metrics_core_cache_hits_total 13000\nsolr_metrics_core_cache_evictions_total 110\n"
         device, stored = self._device(prom_text)
         device._collect()
 
@@ -562,6 +579,7 @@ class TestSolrCacheStats(unittest.TestCase):
 # Polling thread lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestTelemetryPollingThread(unittest.TestCase):
     def test_start_and_stop(self):
         """Verify that the polling thread starts and stops cleanly."""
@@ -571,9 +589,7 @@ class TestTelemetryPollingThread(unittest.TestCase):
 
         collected = []
         metrics_store = MagicMock()
-        metrics_store.put_value_cluster_level = MagicMock(
-            side_effect=lambda **kw: collected.append(kw)
-        )
+        metrics_store.put_value_cluster_level = MagicMock(side_effect=lambda **kw: collected.append(kw))
 
         device = SolrJvmStats(client, metrics_store, sample_interval_s=0.05)
         device.on_benchmark_start()

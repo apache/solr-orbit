@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -51,6 +51,7 @@ __STANDARD_VALUE_SOURCES = {}
 __STANDARD_VALUES = {}
 __QUERY_RANDOMIZATION_INFOS = {}
 
+
 def param_source_for_operation(op_type, workload, params, task_name):
     try:
         # we know that this can only be a Solr Orbit core parameter source
@@ -71,13 +72,14 @@ def param_source_for_name(name, workload, params):
     else:
         return param_source(workload, params)
 
+
 def get_standard_value_source(op_name, field_name):
     try:
         return __STANDARD_VALUE_SOURCES[op_name][field_name]
     except KeyError:
         raise exceptions.SystemSetupError(
-            "Could not find standard value source for operation {}, field {}! Make sure this is registered in workload.py"
-            .format(op_name, field_name))
+            "Could not find standard value source for operation {}, field {}! Make sure this is registered in workload.py".format(op_name, field_name)
+        )
 
 
 def ensure_valid_param_source(param_source):
@@ -94,12 +96,14 @@ def register_param_source_for_name(name, param_source_class):
     ensure_valid_param_source(param_source_class)
     __PARAM_SOURCES_BY_NAME[name] = param_source_class
 
+
 def register_standard_value_source(op_name, field_name, standard_value_source):
     if op_name in __STANDARD_VALUE_SOURCES:
         __STANDARD_VALUE_SOURCES[op_name][field_name] = standard_value_source
         # We have to allow re-registration for the same op/field, since plugins are loaded many times when a workload is run
     else:
-        __STANDARD_VALUE_SOURCES[op_name] = {field_name:standard_value_source}
+        __STANDARD_VALUE_SOURCES[op_name] = {field_name: standard_value_source}
+
 
 def generate_standard_values_if_absent(op_name, field_name, n):
     if op_name not in __STANDARD_VALUES:
@@ -109,11 +113,10 @@ def generate_standard_values_if_absent(op_name, field_name, n):
         try:
             standard_value_source = __STANDARD_VALUE_SOURCES[op_name][field_name]
         except KeyError:
-            raise exceptions.SystemSetupError(
-                "Cannot generate standard values for operation {}, field {}. Standard value source is missing"
-                .format(op_name, field_name))
+            raise exceptions.SystemSetupError("Cannot generate standard values for operation {}, field {}. Standard value source is missing".format(op_name, field_name))
         for _i in range(n):
             __STANDARD_VALUES[op_name][field_name].append(standard_value_source())
+
 
 def get_standard_value(op_name, field_name, i):
     try:
@@ -122,22 +125,22 @@ def get_standard_value(op_name, field_name, i):
         raise exceptions.SystemSetupError("No standard values generated for operation {}, field {}".format(op_name, field_name))
     except IndexError:
         raise exceptions.SystemSetupError(
-            "Standard value index {} out of range for operation {}, field name {} ({} values total)"
-            .format(i, op_name, field_name, len(__STANDARD_VALUES[op_name][field_name])))
+            "Standard value index {} out of range for operation {}, field name {} ({} values total)".format(i, op_name, field_name, len(__STANDARD_VALUES[op_name][field_name]))
+        )
+
 
 def register_query_randomization_info(op_name, query_name, parameter_name_options_list, optional_parameters):
     # query_randomization_info is registered at the operation level
-    query_randomization_info = loader.QueryRandomizerWorkloadProcessor.QueryRandomizationInfo(query_name,
-                                                                                              parameter_name_options_list,
-                                                                                              optional_parameters
-                                                                                              )
+    query_randomization_info = loader.QueryRandomizerWorkloadProcessor.QueryRandomizationInfo(query_name, parameter_name_options_list, optional_parameters)
     __QUERY_RANDOMIZATION_INFOS[op_name] = query_randomization_info
+
 
 def get_query_randomization_info(op_name):
     try:
-        return  __QUERY_RANDOMIZATION_INFOS[op_name]
+        return __QUERY_RANDOMIZATION_INFOS[op_name]
     except KeyError:
-        return loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO # If nothing is registered, return the default.
+        return loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO  # If nothing is registered, return the default.
+
 
 # only intended for tests
 def _unregister_param_source_for_name(name):
@@ -145,13 +148,16 @@ def _unregister_param_source_for_name(name):
     # something is fishy with the test and we'd rather know early.
     __PARAM_SOURCES_BY_NAME.pop(name)
 
+
 # only intended for tests
 def _clear_standard_values():
     __STANDARD_VALUES = {}
     __STANDARD_VALUE_SOURCES = {}
 
+
 def _clear_query_randomization_infos():
     __QUERY_RANDOMIZATION_INFOS = {}
+
 
 # Default
 class ParamSource:
@@ -222,11 +228,7 @@ class ParamSource:
 
         :return: all applicable parameters that are global to Solr Orbit and apply to the cluster client
         """
-        return {
-            "request-timeout": self._params.get("request-timeout"),
-            "headers": self._params.get("headers"),
-            "opaque-id": self._params.get("opaque-id")
-        }
+        return {"request-timeout": self._params.get("request-timeout"), "headers": self._params.get("headers"), "opaque-id": self._params.get("opaque-id")}
 
 
 class DelegatingParamSource(ParamSource):
@@ -348,8 +350,7 @@ class SearchParamSource(ParamSource):
         target_name = get_target(workload, params)
         type_name = params.get("type")
         if params.get("data-stream") and type_name:
-            raise exceptions.InvalidSyntax(
-                f"'type' not supported with 'data-stream' for operation '{kwargs.get('operation_name')}'")
+            raise exceptions.InvalidSyntax(f"'type' not supported with 'data-stream' for operation '{kwargs.get('operation_name')}'")
         request_cache = params.get("cache", None)
         detailed_results = params.get("detailed-results", False)
         calculate_recall = params.get("calculate-recall", True)
@@ -370,12 +371,11 @@ class SearchParamSource(ParamSource):
             "calculate-recall": calculate_recall,
             "request-params": request_params,
             "response-compression-enabled": response_compression_enabled,
-            "body": query_body
+            "body": query_body,
         }
 
         if not target_name:
-            raise exceptions.InvalidSyntax(
-                f"'index' or 'data-stream' is mandatory and is missing for operation '{kwargs.get('operation_name')}'")
+            raise exceptions.InvalidSyntax(f"'index' or 'data-stream' is mandatory and is missing for operation '{kwargs.get('operation_name')}'")
 
         if pages:
             self.query_params["pages"] = pages
@@ -411,6 +411,7 @@ class IndexIdConflict(Enum):
 
     Note that this assumes that each document in the benchmark corpus has an id between [1, size_of(corpus)]
     """
+
     NoConflicts = 0
     SequentialConflicts = 1
     RandomConflicts = 2
@@ -433,8 +434,7 @@ class BulkIndexParamSource(ParamSource):
             raise exceptions.InvalidSyntax("'conflicts' cannot be used with 'data-streams'")
 
         if self.id_conflicts != IndexIdConflict.NoConflicts:
-            self.conflict_probability = self.float_param(params, name="conflict-probability", default_value=25, min_value=0, max_value=100,
-                                                         min_operator=operator.lt)
+            self.conflict_probability = self.float_param(params, name="conflict-probability", default_value=25, min_value=0, max_value=100, min_operator=operator.lt)
             self.on_conflict = params.get("on-conflict", "index")
             if self.on_conflict not in ["index", "update"]:
                 raise exceptions.InvalidSyntax("Unknown 'on-conflict' setting [{}]".format(self.on_conflict))
@@ -448,16 +448,18 @@ class BulkIndexParamSource(ParamSource):
         self.corpora = self.used_corpora(workload, params)
 
         if len(self.corpora) == 0:
-            raise exceptions.InvalidSyntax(f"There is no document corpus definition for workload {workload}. You must add at "
-                                           f"least one before making bulk requests to the target cluster.")
+            raise exceptions.InvalidSyntax(
+                f"There is no document corpus definition for workload {workload}. You must add at least one before making bulk requests to the target cluster."
+            )
 
         for corpus in self.corpora:
             for document_set in corpus.documents:
                 if document_set.includes_action_and_meta_data and self.id_conflicts != IndexIdConflict.NoConflicts:
                     file_name = document_set.document_archive if document_set.has_compressed_corpus() else document_set.document_file
 
-                    raise exceptions.InvalidSyntax("Cannot generate id conflicts [%s] as [%s] in document corpus [%s] already contains an "
-                                                   "action and meta-data line." % (id_conflicts, file_name, corpus))
+                    raise exceptions.InvalidSyntax(
+                        "Cannot generate id conflicts [%s] as [%s] in document corpus [%s] already contains an action and meta-data line." % (id_conflicts, file_name, corpus)
+                    )
 
         self.pipeline = params.get("pipeline", None)
         try:
@@ -482,18 +484,26 @@ class BulkIndexParamSource(ParamSource):
 
         self.ingest_percentage = self.float_param(params, name="ingest-percentage", default_value=100, min_value=0, max_value=100)
         self.looped = params.get("looped", False)
-        self.param_source = PartitionBulkIndexParamSource(self.corpora, self.batch_size, self.bulk_size,
-                                                          self.ingest_percentage, self.id_conflicts,
-                                                          self.conflict_probability, self.on_conflict,
-                                                          self.recency, self.pipeline, self.looped, self._params)
+        self.param_source = PartitionBulkIndexParamSource(
+            self.corpora,
+            self.batch_size,
+            self.bulk_size,
+            self.ingest_percentage,
+            self.id_conflicts,
+            self.conflict_probability,
+            self.on_conflict,
+            self.recency,
+            self.pipeline,
+            self.looped,
+            self._params,
+        )
 
     def float_param(self, params, name, default_value, min_value, max_value, min_operator=operator.le):
         try:
             value = float(params.get(name, default_value))
             if min_operator(value, min_value) or value > max_value:
                 interval_min = "(" if min_operator is operator.le else "["
-                raise exceptions.InvalidSyntax(
-                    "'{}' must be in the range {}{:.1f}, {:.1f}] but was {:.1f}".format(name, interval_min, min_value, max_value, value))
+                raise exceptions.InvalidSyntax("'{}' must be in the range {}{:.1f}, {:.1f}] but was {:.1f}".format(name, interval_min, min_value, max_value, value))
             return value
         except ValueError:
             raise exceptions.InvalidSyntax("'{}' must be numeric".format(name))
@@ -507,16 +517,13 @@ class BulkIndexParamSource(ParamSource):
 
         for corpus in t.corpora:
             if corpus.name in corpora_names:
-                filtered_corpus = corpus.filter(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                                target_collections=params.get("indices"))
-                if filtered_corpus.streaming_ingestion or \
-                   filtered_corpus.number_of_documents(source_format=workload.Documents.SOURCE_FORMAT_BULK) > 0:
+                filtered_corpus = corpus.filter(source_format=workload.Documents.SOURCE_FORMAT_BULK, target_collections=params.get("indices"))
+                if filtered_corpus.streaming_ingestion or filtered_corpus.number_of_documents(source_format=workload.Documents.SOURCE_FORMAT_BULK) > 0:
                     corpora.append(filtered_corpus)
 
         # the workload has corpora but none of them match
         if t.corpora and not corpora:
-            raise exceptions.BenchmarkAssertionError("The provided corpus %s does not match any of the corpora %s." %
-                                                 (corpora_names, workload_corpora_names))
+            raise exceptions.BenchmarkAssertionError("The provided corpus %s does not match any of the corpora %s." % (corpora_names, workload_corpora_names))
 
         return corpora
 
@@ -530,8 +537,9 @@ class BulkIndexParamSource(ParamSource):
 
 
 class PartitionBulkIndexParamSource:
-    def __init__(self, corpora, batch_size, bulk_size, ingest_percentage, id_conflicts, conflict_probability,
-                 on_conflict, recency, pipeline=None, looped = False,  original_params=None):
+    def __init__(
+        self, corpora, batch_size, bulk_size, ingest_percentage, id_conflicts, conflict_probability, on_conflict, recency, pipeline=None, looped=False, original_params=None
+    ):
         """
 
         :param corpora: Specification of affected document corpora.
@@ -572,8 +580,7 @@ class PartitionBulkIndexParamSource:
         if self.total_partitions is None:
             self.total_partitions = total_partitions
         elif self.total_partitions != total_partitions:
-            raise exceptions.BenchmarkAssertionError(
-                f"Total partitions is expected to be [{self.total_partitions}] but was [{total_partitions}]")
+            raise exceptions.BenchmarkAssertionError(f"Total partitions is expected to be [{self.total_partitions}] but was [{total_partitions}]")
         self.partitions.append(partition_index)
 
     def params(self):
@@ -596,10 +603,21 @@ class PartitionBulkIndexParamSource:
         start_index = self.partitions[0]
         end_index = self.partitions[-1]
 
-        self.internal_params = bulk_data_based(self.total_partitions, start_index, end_index, self.corpora,
-                                               self.batch_size, self.bulk_size, self.id_conflicts,
-                                               self.conflict_probability, self.on_conflict, self.recency,
-                                               self.pipeline, self.original_params, self.create_reader)
+        self.internal_params = bulk_data_based(
+            self.total_partitions,
+            start_index,
+            end_index,
+            self.corpora,
+            self.batch_size,
+            self.bulk_size,
+            self.id_conflicts,
+            self.conflict_probability,
+            self.on_conflict,
+            self.recency,
+            self.pipeline,
+            self.original_params,
+            self.create_reader,
+        )
 
         if not self.streaming_ingestion:
             all_bulks = number_of_bulks(self.corpora, start_index, end_index, self.total_partitions, self.bulk_size)
@@ -607,8 +625,7 @@ class PartitionBulkIndexParamSource:
 
     @property
     def task_progress(self):
-        return (IngestionManager.rd_index.value * IngestionManager.chunk_size/1000, 'GB') if self.streaming_ingestion else (self.current_bulk / self.total_bulks, '%')
-
+        return (IngestionManager.rd_index.value * IngestionManager.chunk_size / 1000, "GB") if self.streaming_ingestion else (self.current_bulk / self.total_bulks, "%")
 
 
 def get_target(workload, params):
@@ -621,6 +638,7 @@ def get_target(workload, params):
         target_name = params.get("data-stream", default_target)
     return target_name
 
+
 def number_of_bulks(corpora, start_partition_index, end_partition_index, total_partitions, bulk_size):
     """
     :return: The number of bulk operations that the given client will issue.
@@ -628,8 +646,7 @@ def number_of_bulks(corpora, start_partition_index, end_partition_index, total_p
     bulks = 0
     for corpus in corpora:
         for docs in corpus.documents:
-            _, num_docs, _ = bounds(docs.number_of_documents, start_partition_index, end_partition_index,
-                                    total_partitions, docs.includes_action_and_meta_data)
+            _, num_docs, _ = bounds(docs.number_of_documents, start_partition_index, end_partition_index, total_partitions, docs.includes_action_and_meta_data)
             complete_bulks, rest = (num_docs // bulk_size, num_docs % bulk_size)
             bulks += complete_bulks
             if rest > 0:
@@ -663,8 +680,7 @@ def chain(*iterables):
                 yield element
 
 
-def create_default_reader(corpus, docs, offset, num_lines, num_docs, batch_size, bulk_size, id_conflicts, conflict_probability,
-                          on_conflict, recency):
+def create_default_reader(corpus, docs, offset, num_lines, num_docs, batch_size, bulk_size, id_conflicts, conflict_probability, on_conflict, recency):
     source = Slice(io.MmapSource, offset, num_lines, corpus, docs)
     target = None
     use_create = False
@@ -674,35 +690,36 @@ def create_default_reader(corpus, docs, offset, num_lines, num_docs, batch_size,
     if docs.includes_action_and_meta_data:
         return SourceOnlyIndexDataReader(docs.document_file, batch_size, bulk_size, source, target, docs.target_type)
     else:
-        am_handler = GenerateActionMetaData(target, docs.target_type,
-                                            build_conflicting_ids(id_conflicts, num_docs, offset), conflict_probability,
-                                            on_conflict, recency, use_create=use_create)
+        am_handler = GenerateActionMetaData(
+            target, docs.target_type, build_conflicting_ids(id_conflicts, num_docs, offset), conflict_probability, on_conflict, recency, use_create=use_create
+        )
         return MetadataIndexDataReader(docs.document_file, batch_size, bulk_size, source, am_handler, target, docs.target_type)
 
 
-def create_readers(num_clients, start_client_index, end_client_index, corpora, batch_size, bulk_size, id_conflicts,
-                   conflict_probability, on_conflict, recency, create_reader):
+def create_readers(num_clients, start_client_index, end_client_index, corpora, batch_size, bulk_size, id_conflicts, conflict_probability, on_conflict, recency, create_reader):
     logger = logging.getLogger(__name__)
     readers = []
     for corpus in corpora:
         for docs in corpus.documents:
             if corpus.streaming_ingestion:
                 offset = num_lines = num_docs = 0
-                readers.append(create_reader(corpus, docs, offset, num_lines, num_docs, batch_size, bulk_size, id_conflicts,
-                                             conflict_probability, on_conflict, recency))
+                readers.append(create_reader(corpus, docs, offset, num_lines, num_docs, batch_size, bulk_size, id_conflicts, conflict_probability, on_conflict, recency))
             else:
-                offset, num_docs, num_lines = bounds(docs.number_of_documents, start_client_index, end_client_index,
-                                                     num_clients, docs.includes_action_and_meta_data)
+                offset, num_docs, num_lines = bounds(docs.number_of_documents, start_client_index, end_client_index, num_clients, docs.includes_action_and_meta_data)
                 if num_docs > 0:
                     target = f"{docs.target_collection}/{docs.target_type}" if docs.target_collection else "/"
-                    logger.info("Task-relative clients at index [%d-%d] will bulk index [%d] docs starting from line offset [%d] for [%s] "
-                                "from corpus [%s].", start_client_index, end_client_index, num_docs, offset,
-                                target, corpus.name)
-                    readers.append(create_reader(corpus, docs, offset, num_lines, num_docs, batch_size, bulk_size, id_conflicts,
-                                                 conflict_probability, on_conflict, recency))
+                    logger.info(
+                        "Task-relative clients at index [%d-%d] will bulk index [%d] docs starting from line offset [%d] for [%s] from corpus [%s].",
+                        start_client_index,
+                        end_client_index,
+                        num_docs,
+                        offset,
+                        target,
+                        corpus.name,
+                    )
+                    readers.append(create_reader(corpus, docs, offset, num_lines, num_docs, batch_size, bulk_size, id_conflicts, conflict_probability, on_conflict, recency))
                 else:
-                    logger.info("Task-relative clients at index [%d-%d] skip [%s] (no documents to read).",
-                                start_client_index, end_client_index, corpus.name)
+                    logger.info("Task-relative clients at index [%d-%d] skip [%s] (no documents to read).", start_client_index, end_client_index, corpus.name)
     return readers
 
 
@@ -748,7 +765,7 @@ def bulk_generator(readers, pipeline, original_params):
                 "body": bulk,
                 # This is not always equal to the bulk_size we get as parameter. The last bulk may be less than the bulk size.
                 "bulk-size": docs_in_bulk,
-                "unit": "docs"
+                "unit": "docs",
             }
             if pipeline:
                 bulk_params["pipeline"] = pipeline
@@ -758,8 +775,21 @@ def bulk_generator(readers, pipeline, original_params):
             yield params
 
 
-def bulk_data_based(num_clients, start_client_index, end_client_index, corpora, batch_size, bulk_size, id_conflicts,
-                    conflict_probability, on_conflict, recency, pipeline, original_params, create_reader=create_default_reader):
+def bulk_data_based(
+    num_clients,
+    start_client_index,
+    end_client_index,
+    corpora,
+    batch_size,
+    bulk_size,
+    id_conflicts,
+    conflict_probability,
+    on_conflict,
+    recency,
+    pipeline,
+    original_params,
+    create_reader=create_default_reader,
+):
     """
     Calculates the necessary schedule for bulk operations.
 
@@ -782,21 +812,31 @@ def bulk_data_based(num_clients, start_client_index, end_client_index, corpora, 
                       intended for testing only.
     :return: A generator for the bulk operations of the given client.
     """
-    readers = create_readers(num_clients, start_client_index, end_client_index, corpora, batch_size, bulk_size,
-                             id_conflicts, conflict_probability, on_conflict, recency, create_reader)
+    readers = create_readers(
+        num_clients, start_client_index, end_client_index, corpora, batch_size, bulk_size, id_conflicts, conflict_probability, on_conflict, recency, create_reader
+    )
     return bulk_generator(chain(*readers), pipeline, original_params)
 
 
 class GenerateActionMetaData:
     RECENCY_SLOPE = 30
 
-    def __init__(self, index_name, type_name, conflicting_ids=None, conflict_probability=None, on_conflict=None, recency=None,
-                 rand=random.random, randint=random.randint, randexp=random.expovariate, use_create=False):
+    def __init__(
+        self,
+        index_name,
+        type_name,
+        conflicting_ids=None,
+        conflict_probability=None,
+        on_conflict=None,
+        recency=None,
+        rand=random.random,
+        randint=random.randint,
+        randexp=random.expovariate,
+        use_create=False,
+    ):
         if type_name:
-            self.meta_data_index_with_id = '{"index": {"_index": "%s", "_type": "%s", "_id": "%s"}}\n' % \
-                                           (index_name, type_name, "%s")
-            self.meta_data_update_with_id = '{"update": {"_index": "%s", "_type": "%s", "_id": "%s"}}\n' % \
-                                            (index_name, type_name, "%s")
+            self.meta_data_index_with_id = '{"index": {"_index": "%s", "_type": "%s", "_id": "%s"}}\n' % (index_name, type_name, "%s")
+            self.meta_data_update_with_id = '{"update": {"_index": "%s", "_type": "%s", "_id": "%s"}}\n' % (index_name, type_name, "%s")
             self.meta_data_index_no_id = '{"index": {"_index": "%s", "_type": "%s"}}\n' % (index_name, type_name)
         else:
             self.meta_data_index_with_id = '{"index": {"_index": "%s", "_id": "%s"}}\n' % (index_name, "%s")
@@ -892,7 +932,8 @@ class Slice:
         client_options = getattr(client_options_obj, "all_client_options", {})
         # pylint: disable = import-outside-toplevel
         from solrorbit.utils.s3_data_producer import S3DataProducer
-        bucket = re.sub('^s3://', "", Slice.base_url)
+
+        bucket = re.sub("^s3://", "", Slice.base_url)
         keys = Slice.document_file
         producer = S3DataProducer(bucket, keys, client_options, Slice.data_dir)
         p = multiprocessing.Process(target=producer.generate_chunked_data)
@@ -908,8 +949,7 @@ class Slice:
                 self._open_next()
         else:
             self.source = self.source_class(file_name, mode).open()
-            self.logger.info("Will read [%d] lines from [%s] starting from line [%d] with bulk size [%d].",
-                             self.number_of_lines, file_name, self.offset, self.bulk_size)
+            self.logger.info("Will read [%d] lines from [%s] starting from line [%d] with bulk size [%d].", self.number_of_lines, file_name, self.offset, self.bulk_size)
             start = time.perf_counter()
             io.skip_lines(file_name, self.source, self.offset)
             end = time.perf_counter()
@@ -1073,7 +1113,7 @@ class MetadataIndexDataReader(IndexDataReader):
                 if action_type == "update":
                     # remove the trailing "\n" as the doc needs to fit on one line
                     doc = doc.strip()
-                    current_bulk.append(b"{\"doc\":%s}\n" % doc)
+                    current_bulk.append(b'{"doc":%s}\n' % doc)
                 else:
                     current_bulk.append(doc)
             else:
@@ -1109,6 +1149,7 @@ __PARAM_SOURCES_BY_OP["delete-collection"] = DeleteCollectionParamSource
 # Solr-specific param sources
 # ---------------------------------------------------------------------------
 
+
 class SolrSearchParamSource(ParamSource):
     """
     Param source for Solr search operations.
@@ -1132,9 +1173,7 @@ class SolrSearchParamSource(ParamSource):
         super().__init__(workload, params, **kwargs)
         collection = params.get("collection") or get_target(workload, params)
         if not collection:
-            raise exceptions.InvalidSyntax(
-                f"'collection' is mandatory and is missing for operation '{kwargs.get('operation_name')}'"
-            )
+            raise exceptions.InvalidSyntax(f"'collection' is mandatory and is missing for operation '{kwargs.get('operation_name')}'")
 
         self.query_params = {
             "collection": collection,

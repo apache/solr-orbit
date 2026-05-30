@@ -54,10 +54,10 @@ logger = logging.getLogger(__name__)
 #  2. Entire if/else/endif conditional block (may span many lines)
 #  3. Any remaining Jinja2 block tag or expression
 _JINJA_RE = re.compile(
-    r'"(\{\{[^}]*?\}\})"'            # group 1: already-quoted {{expr}}
-    r'|\{%-?\s*if\b.*?\{%-?\s*endif\s*-?%\}'  # full if/else/endif block
-    r'|\{%.*?%\}'                    # any other block tag
-    r'|\{\{.*?\}\}',                 # bare {{expr}}
+    r'"(\{\{[^}]*?\}\})"'  # group 1: already-quoted {{expr}}
+    r"|\{%-?\s*if\b.*?\{%-?\s*endif\s*-?%\}"  # full if/else/endif block
+    r"|\{%.*?%\}"  # any other block tag
+    r"|\{\{.*?\}\}",  # bare {{expr}}
     re.DOTALL,
 )
 
@@ -165,12 +165,12 @@ def _load_workload_json(workload_path: str) -> dict:
     # Template path: render Jinja2 then parse JSON
     try:
         from solrorbit.workload.loader import render_template_from_file
+
         rendered = render_template_from_file(workload_path, template_vars={})
         return json.loads(rendered)
     except Exception as exc:
-        raise ValueError(
-            f"Cannot parse workload file '{workload_path}' as JSON or Jinja2 template: {exc}"
-        ) from exc
+        raise ValueError(f"Cannot parse workload file '{workload_path}' as JSON or Jinja2 template: {exc}") from exc
+
 
 # Sentinel filename written to the output directory after successful conversion
 CONVERTED_MARKER = "CONVERTED.md"
@@ -304,11 +304,7 @@ def convert_opensearch_workload(source_dir: str, output_dir: str) -> dict:
 
     # --- Copy auxiliary files (Python param sources, templates, etc.) ---
     # Skip index body files (e.g. index.json) — replaced by generated configsets
-    index_body_files = {
-        index.get("body")
-        for index in rendered_workload.get("indices", [])
-        if index.get("body")
-    }
+    index_body_files = {index.get("body") for index in rendered_workload.get("indices", []) if index.get("body")}
     _copy_auxiliary_files(source_dir, output_dir, skip_files=index_body_files)
 
     # --- Follow external benchmark.collect() refs and make the workload self-contained ---
@@ -319,7 +315,11 @@ def convert_opensearch_workload(source_dir: str, output_dir: str) -> dict:
 
     logger.info(
         "Workload conversion complete: %s → %s (%d ops, %d skipped, %d issues)",
-        source_dir, output_dir, 0, len(skipped), len(issues),
+        source_dir,
+        output_dir,
+        0,
+        len(skipped),
+        len(issues),
     )
 
     return {
@@ -332,6 +332,7 @@ def convert_opensearch_workload(source_dir: str, output_dir: str) -> dict:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _generate_configsets_from_indices(rendered_workload: dict, source_dir: str, output_dir: str, issues: list):
     """Generate Solr configsets from the rendered workload's indices section."""
@@ -353,9 +354,7 @@ def _generate_configsets_from_indices(rendered_workload: dict, source_dir: str, 
             issues.append(f"Could not generate schema for collection '{collection_name}': {exc}")
 
 
-def _write_converted_workload_json(
-    workload_path: str, rendered_workload: dict, output_dir: str, issues: list, skipped: list
-):
+def _write_converted_workload_json(workload_path: str, rendered_workload: dict, output_dir: str, issues: list, skipped: list):
     """
     Write the converted workload.json to *output_dir*, preserving Jinja2 template syntax.
 
@@ -411,10 +410,7 @@ def _apply_inline_conversions(text: str, rendered_workload: dict, issues: list, 
             parsed["collections"] = parsed.pop("indices")
 
         # Convert operations (filter out those skipped by _convert_operation)
-        parsed["operations"] = [
-            op for op in parsed.get("operations", [])
-            if not isinstance(op, dict) or _convert_operation(op, issues, skipped, "", "")
-        ]
+        parsed["operations"] = [op for op in parsed.get("operations", []) if not isinstance(op, dict) or _convert_operation(op, issues, skipped, "", "")]
 
         # Convert challenge schedules
         for challenge in parsed.get("challenges", []):
@@ -460,10 +456,7 @@ def _process_collected_files(source_dir: str, output_dir: str, issues: list, ski
 
             # Convert each operation in the fragment; filter out skipped ones
             if subdir == "operations":
-                ops_list = [
-                    op for op in ops_list
-                    if not isinstance(op, dict) or _convert_operation(op, issues, skipped, source_dir, output_dir)
-                ]
+                ops_list = [op for op in ops_list if not isinstance(op, dict) or _convert_operation(op, issues, skipped, source_dir, output_dir)]
 
             converted_text = _serialise_jinja_fragment(ops_list, tokens, wrap_array=True)
 
@@ -572,8 +565,7 @@ def _convert_operation(op, issues, skipped, source_dir, output_dir):
             aggs = body.get("aggs") or body.get("aggregations") or {}
             if _has_auto_date_histogram(aggs):
                 logger.warning(
-                    "Skipping operation '%s': auto_date_histogram is not supported in Solr "
-                    "(Solr requires explicit gap/start/end for range facets).",
+                    "Skipping operation '%s': auto_date_histogram is not supported in Solr (Solr requires explicit gap/start/end for range facets).",
                     op_name,
                 )
                 skipped.append(f"{op_name} (auto_date_histogram not supported in Solr)")
@@ -757,7 +749,7 @@ def _process_external_collected_files(source_dir: str, output_dir: str, issues: 
                 if old_op != new_op:
                     result = re.sub(
                         rf'(:\s*"){re.escape(old_op)}(")',
-                        rf'\1{new_op}\2',
+                        rf"\1{new_op}\2",
                         result,
                     )
             return result

@@ -33,7 +33,7 @@ class DistributionRepositoryProvider:
         return self.repository_url_provider.render_url_for_key(host, self.cluster_config.variables, url_key)
 
     def get_file_name_from_download_url(self, download_url):
-        return download_url[download_url.rfind("/") + 1:]
+        return download_url[download_url.rfind("/") + 1 :]
 
     def is_cache_enabled(self):
         distribution_repository = self.cluster_config.variables["distribution"]["repository"]

@@ -21,8 +21,9 @@ from solrorbit import exceptions
 from solrorbit.synthetic_data_generator.strategies.strategy import DataGenerationStrategy
 from solrorbit.synthetic_data_generator.models import SyntheticDataGeneratorMetadata, SDGConfig, GB_TO_BYTES
 
+
 def load_user_module(file_path):
-    allowed_extensions = ['.py']
+    allowed_extensions = [".py"]
     extension = os.path.splitext(file_path)[1]
     if extension not in allowed_extensions:
         raise exceptions.SystemSetupError(f"User provided module with file extension [{extension}]. Python modules must have {allowed_extensions} extension.")
@@ -31,6 +32,7 @@ def load_user_module(file_path):
     user_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(user_module)
     return user_module
+
 
 def load_mapping(mapping_file_path):
     """
@@ -47,18 +49,23 @@ def load_mapping(mapping_file_path):
 
     return mapping_dict
 
+
 def check_for_existing_files(output_path: str, index_name: str):
-    VALID_OPTIONS = ['y', 'yes', 'n', 'no']
-    ALTERNATIVES_FOR_YES = ['y', 'yes']
+    VALID_OPTIONS = ["y", "yes", "n", "no"]
+    ALTERNATIVES_FOR_YES = ["y", "yes"]
 
     logger = logging.getLogger(__name__)
     existing_files_found = existing_files_found_in_output_dir(output_path, index_name)
     if existing_files_found:
-        user_decision = input(f"Files with the same expected names were found in the output directory {output_path}. " + \
-                                "Would you like to remove them (so that SDG does not append to them)? (y/n): ")
+        user_decision = input(
+            f"Files with the same expected names were found in the output directory {output_path}. "
+            + "Would you like to remove them (so that SDG does not append to them)? (y/n): "
+        )
         while user_decision.lower() not in VALID_OPTIONS:
-            user_decision = input(f"Invalid response. Files with the same expected names were found in the output directory {output_path}. " + \
-                                "Would you like to remove them (so that SDG does not append to them)? (y/n): ")
+            user_decision = input(
+                f"Invalid response. Files with the same expected names were found in the output directory {output_path}. "
+                + "Would you like to remove them (so that SDG does not append to them)? (y/n): "
+            )
 
         if user_decision.lower() in ALTERNATIVES_FOR_YES:
             remove_existing_files(existing_files_found)
@@ -68,14 +75,16 @@ def check_for_existing_files(output_path: str, index_name: str):
             logger.info("Keeping files at: %s", output_path)
             console.println(f"Keeping files at: {output_path}\n")
 
+
 def existing_files_found_in_output_dir(output_path: str, index_name: str) -> bool:
     existing_files = []
 
     for file in os.listdir(output_path):
-        if (file.startswith(index_name) and file.endswith(".json")) or (file.startswith(index_name) and file.endswith('_record.json')):
+        if (file.startswith(index_name) and file.endswith(".json")) or (file.startswith(index_name) and file.endswith("_record.json")):
             existing_files.append(os.path.join(output_path, file))
 
     return existing_files
+
 
 def remove_existing_files(existing_files_found: list):
     try:
@@ -83,6 +92,7 @@ def remove_existing_files(existing_files_found: list):
             os.remove(file)
     except OSError as e:
         raise exceptions.ExecutorError("Solr Orbit could not remove existing files for SDG: ", e)
+
 
 def host_has_available_disk_storage(sdg_metadata: SyntheticDataGeneratorMetadata) -> bool:
     logger = logging.getLogger(__name__)
@@ -98,15 +108,16 @@ def host_has_available_disk_storage(sdg_metadata: SyntheticDataGeneratorMetadata
         logger.error("Error checking disk space.")
         return False
 
+
 def load_config(config_path: str) -> SDGConfig:
     try:
-        allowed_extensions = ['.yml', '.yaml']
+        allowed_extensions = [".yml", ".yaml"]
 
         extension = os.path.splitext(config_path)[1]
         if extension not in allowed_extensions:
             raise exceptions.ConfigError(f"User provided config with extension [{extension}]. Config must have a {allowed_extensions} extension.")
         else:
-            with open(config_path, 'r') as file:
+            with open(config_path, "r") as file:
                 config_details = yaml.safe_load(file)
 
         return SDGConfig(**config_details) if config_details else SDGConfig()
@@ -116,13 +127,15 @@ def load_config(config_path: str) -> SDGConfig:
     except TypeError:
         raise exceptions.SystemSetupError("Error when loading config. Please ensure that the proper config was provided")
 
+
 def write_chunk(data, file_path):
     written_bytes = 0
-    with open(file_path, 'a') as f:
+    with open(file_path, "a") as f:
         for item in data:
-            f.write(json.dumps(item) + '\n')
+            f.write(json.dumps(item) + "\n")
             written_bytes += len(pickle.dumps(item))
     return len(data), written_bytes
+
 
 def calculate_avg_doc_size(strategy: DataGenerationStrategy):
     # Didn't do pickle because this seems to be more accurate
@@ -135,12 +148,14 @@ def calculate_avg_doc_size(strategy: DataGenerationStrategy):
 
     return size
 
+
 def format_size(bytes):
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+    for unit in ["B", "KB", "MB", "GB", "TB"]:
         if bytes < 1024:
             return f"{bytes:.2f} {unit}"
         bytes /= 1024
     return f"{bytes:.2f} PB"
+
 
 def format_time(seconds):
     if seconds < 60:
@@ -153,11 +168,13 @@ def format_time(seconds):
         minutes, seconds = divmod(remainder, 60)
         return f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
 
+
 def setup_custom_tqdm_formatting(progress_bar):
-    progress_bar.format_dict['n_fmt'] = lambda n: format_size(n) # pylint: disable=unnecessary-lambda
-    progress_bar.format_dict['total_fmt'] = lambda t: format_size(t) # pylint: disable=unnecessary-lambda
-    progress_bar.format_dict['elapsed'] = lambda e: format_time(e) # pylint: disable=unnecessary-lambda
-    progress_bar.format_dict['remaining'] = lambda r: format_time(r) # pylint: disable=unnecessary-lambda
+    progress_bar.format_dict["n_fmt"] = lambda n: format_size(n)  # pylint: disable=unnecessary-lambda
+    progress_bar.format_dict["total_fmt"] = lambda t: format_size(t)  # pylint: disable=unnecessary-lambda
+    progress_bar.format_dict["elapsed"] = lambda e: format_time(e)  # pylint: disable=unnecessary-lambda
+    progress_bar.format_dict["remaining"] = lambda r: format_time(r)  # pylint: disable=unnecessary-lambda
+
 
 def build_record(sdg_metadata: SyntheticDataGeneratorMetadata, total_time_to_generate_dataset: int, generated_dataset_details: dict) -> dict:
     total_docs_written = 0
@@ -172,15 +189,17 @@ def build_record(sdg_metadata: SyntheticDataGeneratorMetadata, total_time_to_gen
         "total-docs-written": total_docs_written,
         "total-dataset-size": total_dataset_size_in_bytes,
         "total-time-to-generate-dataset": total_time_to_generate_dataset,
-        "files": generated_dataset_details
+        "files": generated_dataset_details,
     }
 
     return record
 
+
 def write_record(sdg_metadata: SyntheticDataGeneratorMetadata, record):
     path = os.path.join(sdg_metadata.output_path, f"{sdg_metadata.index_name}_record.json")
-    with open(path, 'w') as file:
+    with open(path, "w") as file:
         json.dump(record, file, indent=2)
+
 
 def write_record_and_publish_summary_to_console(sdg_metadata: SyntheticDataGeneratorMetadata, total_time_to_generate_dataset: int, generated_dataset_details: dict):
     logger = logging.getLogger(__name__)
@@ -188,7 +207,7 @@ def write_record_and_publish_summary_to_console(sdg_metadata: SyntheticDataGener
     record = build_record(sdg_metadata, total_time_to_generate_dataset, generated_dataset_details)
     write_record(sdg_metadata, record)
 
-    summary = f"Generated {record['total-docs-written']} docs in {total_time_to_generate_dataset} seconds. Total dataset size is {record['total-dataset-size'] / (1000 ** 3)}GB."
+    summary = f"Generated {record['total-docs-written']} docs in {total_time_to_generate_dataset} seconds. Total dataset size is {record['total-dataset-size'] / (1000**3)}GB."
     console.println("")
     console.println(summary)
 

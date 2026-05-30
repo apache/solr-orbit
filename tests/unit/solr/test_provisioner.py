@@ -66,11 +66,13 @@ class TestSolrProvisionerBuildEnv(unittest.TestCase):
 
     def test_multiple_variables_all_applied(self):
         """All known variables should be applied in a single call."""
-        cc = _make_cluster_config({
-            "heap_size": "8g",
-            "gc_tune": "-XX:+UseParallelGC",
-            "solr_opts": "-verbose:gc",
-        })
+        cc = _make_cluster_config(
+            {
+                "heap_size": "8g",
+                "gc_tune": "-XX:+UseParallelGC",
+                "solr_opts": "-verbose:gc",
+            }
+        )
         provisioner = SolrProvisioner(cluster_config=cc)
         env = provisioner._build_env()
         self.assertEqual("8g", env["SOLR_HEAP"])

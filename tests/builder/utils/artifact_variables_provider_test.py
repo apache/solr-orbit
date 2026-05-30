@@ -15,28 +15,16 @@ class ArtifactVariablesProviderTest(TestCase):
         self.executor.execute.side_effect = [["Linux"], ["x86_64"]]
         variables = self.artifact_variables_provider.get_artifact_variables(self.host)
 
-        self.assertEqual(variables, {
-            "VERSION": None,
-            "OSNAME": "linux",
-            "ARCH": "x64"
-        })
+        self.assertEqual(variables, {"VERSION": None, "OSNAME": "linux", "ARCH": "x64"})
 
     def test_arm(self):
         self.executor.execute.side_effect = [["Linux"], ["aarch64"]]
         variables = self.artifact_variables_provider.get_artifact_variables(self.host)
 
-        self.assertEqual(variables, {
-            "VERSION": None,
-            "OSNAME": "linux",
-            "ARCH": "arm64"
-        })
+        self.assertEqual(variables, {"VERSION": None, "OSNAME": "linux", "ARCH": "arm64"})
 
     def test_version_supplied(self):
         self.executor.execute.side_effect = [["Linux"], ["aarch64"]]
         variables = self.artifact_variables_provider.get_artifact_variables(self.host, "1.23")
 
-        self.assertEqual(variables, {
-            "VERSION": "1.23",
-            "OSNAME": "linux",
-            "ARCH": "arm64"
-        })
+        self.assertEqual(variables, {"VERSION": "1.23", "OSNAME": "linux", "ARCH": "arm64"})

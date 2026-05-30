@@ -13,7 +13,7 @@ class ConfigPathResolverTest(TestCase):
         self.cfg = Mock()
         self.config_path_resolver = ConfigPathResolver(self.cfg)
 
-    @mock.patch('os.path.exists')
+    @mock.patch("os.path.exists")
     def test_cluster_config_path_defined(self, path_exists):
         path_exists.return_value = True
         # opts("builder", "cluster_config.path")
@@ -22,10 +22,10 @@ class ConfigPathResolverTest(TestCase):
         config_path = self.config_path_resolver.resolve_config_path(self.config_type, self.config_format_version)
         self.assertEqual(config_path, "/path/to/configs/red/v36")
 
-    @mock.patch('solrorbit.utils.git.fetch')
-    @mock.patch('solrorbit.utils.repo.BenchmarkRepository')
-    @mock.patch('solrorbit.utils.repo.BenchmarkRepository.set_cluster_configs_dir')
-    @mock.patch('os.path.exists')
+    @mock.patch("solrorbit.utils.git.fetch")
+    @mock.patch("solrorbit.utils.repo.BenchmarkRepository")
+    @mock.patch("solrorbit.utils.repo.BenchmarkRepository.set_cluster_configs_dir")
+    @mock.patch("os.path.exists")
     def test_cluster_config_path_not_defined(self, path_exists, set_repo, benchmark_repo, git_fetch):
         path_exists.return_value = True
 
@@ -37,7 +37,7 @@ class ConfigPathResolverTest(TestCase):
         config_path = self.config_path_resolver.resolve_config_path(self.config_type, self.config_format_version)
         self.assertEqual(config_path, "/root_dir/repo_dir/fake-repo/red/v36")
 
-    @mock.patch('os.path.exists')
+    @mock.patch("os.path.exists")
     def test_cluster_config_path_does_not_exist(self, path_exists):
         path_exists.return_value = False
         # opts("builder", "cluster_config.path")

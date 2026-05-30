@@ -53,6 +53,8 @@ from solrorbit.worker_coordinator import runner, scheduler
 from solrorbit.workload import WorkloadProcessorRegistry, load_workload, load_workload_plugins, ingestion_manager
 from solrorbit.utils import convert, console, net
 from solrorbit.worker_coordinator.errors import parse_error
+
+
 ##################################
 #
 # Messages sent between worker_coordinators
@@ -81,6 +83,7 @@ class PrepareWorkload:
     Initiates preparation of a workload.
 
     """
+
     def __init__(self, cfg, workload):
         """
         :param cfg: Solr Orbit internal configuration object.
@@ -111,6 +114,7 @@ class WorkerTask:
     """
     Unit of work that should be completed by the low-level TaskExecutionActor
     """
+
     func: Callable
     params: dict
 
@@ -210,10 +214,11 @@ class TaskFinished:
         self.metrics = metrics
         self.next_task_scheduled_in = next_task_scheduled_in
 
+
 def load_redline_config():
     config = configparser.ConfigParser()
-    benchmark_home = os.environ.get('BENCHMARK_HOME') or os.environ['HOME']
-    benchmark_ini = benchmark_home + '/.benchmark/benchmark.ini'
+    benchmark_home = os.environ.get("BENCHMARK_HOME") or os.environ["HOME"]
+    benchmark_ini = benchmark_home + "/.benchmark/benchmark.ini"
     if not os.path.isfile(benchmark_ini):
         console.println(f"WARNING: redline config file {benchmark_ini} not found. Proceeding with default values.")
         return {}
@@ -223,19 +228,12 @@ def load_redline_config():
 
     if "redline" in config:
         redline = config["redline"]
-        for key in [
-            "scale_step",
-            "scaledown_percentage",
-            "post_scaledown_sleep",
-            "max_cpu_usage",
-            "cpu_window_seconds",
-            "cpu_check_interval",
-            "max_clients"
-        ]:
+        for key in ["scale_step", "scaledown_percentage", "post_scaledown_sleep", "max_cpu_usage", "cpu_window_seconds", "cpu_check_interval", "max_clients"]:
             if key in redline:
                 config_object[key] = redline[key]
 
     return config_object
+
 
 class ConfigureFeedbackScaling:
     DEFAULT_SLEEP_SECONDS = 30
@@ -244,8 +242,19 @@ class ConfigureFeedbackScaling:
     DEFAULT_CPU_WINDOW_SECONDS = 30
     DEFAULT_CPU_CHECK_INTERVAL = 30
 
-    def __init__(self, scale_step=None, scale_down_pct=None, sleep_seconds=None, max_clients=None, cpu_max=None,
-                cpu_window_seconds=None, cpu_check_interval=None, metrics_index=None, test_run_id=None, cfg=None):
+    def __init__(
+        self,
+        scale_step=None,
+        scale_down_pct=None,
+        sleep_seconds=None,
+        max_clients=None,
+        cpu_max=None,
+        cpu_window_seconds=None,
+        cpu_check_interval=None,
+        metrics_index=None,
+        test_run_id=None,
+        cfg=None,
+    ):
 
         config_object = load_redline_config()
 
@@ -256,30 +265,36 @@ class ConfigureFeedbackScaling:
         self.cpu_window_seconds = int(cpu_window_seconds if cpu_window_seconds is not None else config_object.get("cpu_window_seconds", self.DEFAULT_CPU_WINDOW_SECONDS))
         self.cpu_check_interval = int(cpu_check_interval if cpu_check_interval is not None else config_object.get("cpu_check_interval", self.DEFAULT_CPU_CHECK_INTERVAL))
         self.max_clients = max_clients
-        self.cpu_max=cpu_max
-        self.cfg=cfg
-        self.metrics_index=metrics_index
-        self.test_run_id=test_run_id
+        self.cpu_max = cpu_max
+        self.cfg = cfg
+        self.metrics_index = metrics_index
+        self.test_run_id = test_run_id
+
 
 class EnableFeedbackScaling:
     pass
 
+
 class DisableFeedbackScaling:
     pass
 
+
 class FeedbackState(Enum):
     """Various states for the FeedbackActor"""
+
     NEUTRAL = "neutral"
     SCALING_DOWN = "scaling_down"
     SLEEP = "sleep"
     SCALING_UP = "scaling_up"
     DISABLED = "disabled"
 
+
 class StartFeedbackActor:
     def __init__(self, error_queue=None, queue_lock=None, shared_states=None):
         self.shared_states = shared_states
         self.error_queue = error_queue
         self.queue_lock = queue_lock
+
 
 # pylint: disable=too-many-public-methods
 class FeedbackActor(actor.BenchmarkActor):
@@ -299,7 +314,7 @@ class FeedbackActor(actor.BenchmarkActor):
         self.sleep_start_time = time.perf_counter()
         self.last_error_time = time.perf_counter() - FeedbackActor.POST_SCALEDOWN_SECONDS
         self.last_scaleup_time = time.perf_counter() - FeedbackActor.POST_SCALEDOWN_SECONDS
-        self.max_stable_clients = 0 # the value we want to return at the end of the test
+        self.max_stable_clients = 0  # the value we want to return at the end of the test
         # These will be passed in via StartFeedbackActor:
         self.error_queue = None
         self.queue_lock = None
@@ -314,7 +329,7 @@ class FeedbackActor(actor.BenchmarkActor):
         self.cpu_window_seconds = None
         self.cpu_check_interval = None
         self.metrics_index = None
-        self.test_run_id=None
+        self.test_run_id = None
 
     def receiveMsg_StartFeedbackActor(self, msg, sender) -> None:
         """
@@ -351,25 +366,28 @@ class FeedbackActor(actor.BenchmarkActor):
         # CPU feedback related items
         self.cpu_window_seconds = msg.cpu_window_seconds
         self.cpu_check_interval = msg.cpu_check_interval
-        self.test_run_id=msg.test_run_id
-        self.cfg=msg.cfg
+        self.test_run_id = msg.test_run_id
+        self.cfg = msg.cfg
         self.metrics_index = msg.metrics_index
         if msg.cpu_max:
             self.max_cpu_threshold = msg.cpu_max
         self.logger.info(
-        "Feedback actor has received the following configuration: Max clients = %s, scale step = %d, scale down percentage = %f, sleep time = %d",
-        self.total_client_count, self.num_clients_to_scale_up, self.percentage_clients_to_scale_down, self.POST_SCALEDOWN_SECONDS
+            "Feedback actor has received the following configuration: Max clients = %s, scale step = %d, scale down percentage = %f, sleep time = %d",
+            self.total_client_count,
+            self.num_clients_to_scale_up,
+            self.percentage_clients_to_scale_down,
+            self.POST_SCALEDOWN_SECONDS,
         )
 
     def receiveMsg_ActorExitRequest(self, msg, sender):
         console.info("Redline test finished. Maximum stable client number reached: %d" % self.total_active_client_count)
         self.logger.info("FeedbackActor received ActorExitRequest and will shutdown")
-        if hasattr(self, 'shared_client_states'):
+        if hasattr(self, "shared_client_states"):
             self.shared_client_states.clear()
 
     def receiveMsg_ResetErrorThreshold(self, msg, sender):
         """Reset the max error threshold to allow scaling up again."""
-        self.max_error_threshold = float('inf')
+        self.max_error_threshold = float("inf")
         self.logger.info("Error threshold has been reset, allowing full scale-up")
 
     def check_for_errors(self) -> List[Dict[str, Any]]:
@@ -394,16 +412,16 @@ class FeedbackActor(actor.BenchmarkActor):
     def handle_state(self) -> None:
         current_time = time.perf_counter()
         # check CPU usage every N seconds
-        if (self.max_cpu_threshold and current_time - self.last_cpu_check >= self.cpu_check_interval):
+        if self.max_cpu_threshold and current_time - self.last_cpu_check >= self.cpu_check_interval:
             self._check_cpu_usage()
             self.last_cpu_check = current_time
         errors = self.check_for_errors()
 
-        sys.stdout.write("\x1b[s")               # Save cursor position
-        sys.stdout.write("\x1b[1B")              # Move cursor down 1 line
-        sys.stdout.write("\r\x1b[2K")            # Clear the line
+        sys.stdout.write("\x1b[s")  # Save cursor position
+        sys.stdout.write("\x1b[1B")  # Move cursor down 1 line
+        sys.stdout.write("\r\x1b[2K")  # Clear the line
         sys.stdout.write(f"[Redline] Active clients: {self.total_active_client_count}")
-        sys.stdout.write("\x1b[u")               # Restore cursor position
+        sys.stdout.write("\x1b[u")  # Restore cursor position
         sys.stdout.flush()
 
         if self.state == FeedbackState.DISABLED:
@@ -425,9 +443,8 @@ class FeedbackActor(actor.BenchmarkActor):
             return
 
         if self.state == FeedbackState.NEUTRAL:
-            self.max_stable_clients = max(self.max_stable_clients, self.total_active_client_count) # update the max number of stable clients
-            if (current_time - self.last_error_time >= self.POST_SCALEDOWN_SECONDS and
-                current_time - self.last_scaleup_time >= self.WAKEUP_INTERVAL):
+            self.max_stable_clients = max(self.max_stable_clients, self.total_active_client_count)  # update the max number of stable clients
+            if current_time - self.last_error_time >= self.POST_SCALEDOWN_SECONDS and current_time - self.last_scaleup_time >= self.WAKEUP_INTERVAL:
                 self.logger.info("No errors in the last %d seconds, scaling up", self.POST_SCALEDOWN_SECONDS)
                 self.state = FeedbackState.SCALING_UP
             return
@@ -497,10 +514,7 @@ class FeedbackActor(actor.BenchmarkActor):
 
             clients_activated = 0
             inactive_clients = [
-                (worker_id, client_id)
-                for worker_id, client_states in self.shared_client_states.items()
-                for client_id, active in client_states.items()
-                if not active
+                (worker_id, client_id) for worker_id, client_states in self.shared_client_states.items() for client_id, active in client_states.items() if not active
             ]
 
             random.shuffle(inactive_clients)
@@ -526,6 +540,7 @@ class FeedbackActor(actor.BenchmarkActor):
             "which is not supported in Solr Orbit. "
             "Disable redline testing or remove 'redline.max_cpu_usage' from your config."
         )
+
 
 class WorkerCoordinatorActor(actor.BenchmarkActor):
     RESET_RELATIVE_TIME_MARKER = "reset_relative_time"
@@ -602,8 +617,7 @@ class WorkerCoordinatorActor(actor.BenchmarkActor):
 
     @actor.no_retry("worker_coordinator")  # pylint: disable=no-value-for-parameter
     def receiveMsg_WorkloadPrepared(self, msg, sender):
-        self.transition_when_all_children_responded(sender, msg,
-                                                    expected_status=None, new_status=None, transition=self._after_workload_prepared)
+        self.transition_when_all_children_responded(sender, msg, expected_status=None, new_status=None, transition=self._after_workload_prepared)
 
     @actor.no_retry("worker_coordinator")  # pylint: disable=no-value-for-parameter
     def receiveMsg_JoinPointReached(self, msg, sender):
@@ -633,14 +647,7 @@ class WorkerCoordinatorActor(actor.BenchmarkActor):
         self.send(worker_coordinator, StartWorker(worker_id, cfg, workload, allocations, self.feedback_actor, error_queue, queue_lock, shared_states))
 
     def start_feedbackActor(self, shared_states):
-        self.send(
-            self.feedback_actor,
-            StartFeedbackActor(
-                shared_states=shared_states,
-                error_queue=self.coordinator.error_queue,
-                queue_lock=self.coordinator.queue_lock
-                )
-            )
+        self.send(self.feedback_actor, StartFeedbackActor(shared_states=shared_states, error_queue=self.coordinator.error_queue, queue_lock=self.coordinator.queue_lock))
 
     def drive_at(self, worker_coordinator, client_start_timestamp):
         self.send(worker_coordinator, Drive(client_start_timestamp))
@@ -679,25 +686,33 @@ class WorkerCoordinatorActor(actor.BenchmarkActor):
         for child in self.children:
             self.send(child, thespian.actors.ActorExitRequest())
         self.children = []
-        self.send(self.start_sender, PreparationComplete(
-            # older versions (pre 6.3.0) don't expose build_flavor because the only (implicit) flavor was "oss"
-            cluster_version.get("build_flavor", "oss"),
-            cluster_version.get("number"),
-            cluster_version.get("build_hash")
-        ))
+        self.send(
+            self.start_sender,
+            PreparationComplete(
+                # older versions (pre 6.3.0) don't expose build_flavor because the only (implicit) flavor was "oss"
+                cluster_version.get("build_flavor", "oss"),
+                cluster_version.get("number"),
+                cluster_version.get("build_hash"),
+            ),
+        )
 
     def on_benchmark_complete(self, metrics):
         self.send(self.start_sender, BenchmarkComplete(metrics))
 
 
 def load_local_config(coordinator_config):
-    cfg = config.auto_load_local_config(coordinator_config, additional_sections=[
-        # only copy the relevant bits
-        "workload", "worker_coordinator", "client",
-        # due to distribution version...
-        "builder",
-        "telemetry"
-    ])
+    cfg = config.auto_load_local_config(
+        coordinator_config,
+        additional_sections=[
+            # only copy the relevant bits
+            "workload",
+            "worker_coordinator",
+            "client",
+            # due to distribution version...
+            "builder",
+            "telemetry",
+        ],
+    )
     # set root path (normally done by the main entry point)
     cfg.add(config.Scope.application, "node", "benchmark.root", paths.benchmark_root())
     return cfg
@@ -707,6 +722,7 @@ class TaskExecutionActor(actor.BenchmarkActor):
     """
     This class should be used for long-running tasks, as it ensures they do not block the actor's messaging system
     """
+
     def __init__(self):
         super().__init__()
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -731,8 +747,7 @@ class TaskExecutionActor(actor.BenchmarkActor):
     def receiveMsg_DoTask(self, msg, sender):
         # actor can arbitrarily execute code based on these messages. if anyone besides our parent sends a task, ignore
         if sender != self.parent:
-            msg = f"TaskExecutionActor expected message from [{self.parent}] but the received the following from " \
-                  f"[{sender}]: {vars(msg)}"
+            msg = f"TaskExecutionActor expected message from [{self.parent}] but the received the following from [{sender}]: {vars(msg)}"
             raise exceptions.BenchmarkError(msg)
         task = msg.task
         if self.executor_future is not None:
@@ -764,6 +779,7 @@ class TaskExecutionActor(actor.BenchmarkActor):
     def receiveMsg_BenchmarkFailure(self, msg, sender):
         # sent by our no_retry infrastructure; forward to master
         self.send(self.parent, msg)
+
 
 class WorkloadPreparationActor(actor.BenchmarkActor):
     class Status(Enum):
@@ -811,27 +827,23 @@ class WorkloadPreparationActor(actor.BenchmarkActor):
         # the workload might have been loaded on a different machine (the coordinator machine) so we force a workload
         # update to ensure we use the latest version of plugins.
         load_workload(self.cfg)
-        load_workload_plugins(self.cfg, self.workload.name, register_workload_processor=tpr.register_workload_processor,
-                           force_update=True)
+        load_workload_plugins(self.cfg, self.workload.name, register_workload_processor=tpr.register_workload_processor, force_update=True)
         # we expect on_prepare_workload can take a long time. seed a queue of tasks and delegate to child workers
         self.children = [self._create_task_executor() for _ in range(num_cores(self.cfg))]
         for processor in tpr.processors:
             self.processors.put(processor)
         self._seed_tasks(self.processors.get())
-        self.send_to_children_and_transition(self, StartTaskLoop(self.workload.name, self.cfg), self.Status.INITIALIZING,
-                                             self.Status.PROCESSOR_RUNNING)
+        self.send_to_children_and_transition(self, StartTaskLoop(self.workload.name, self.cfg), self.Status.INITIALIZING, self.Status.PROCESSOR_RUNNING)
 
     def resume(self):
         if not self.processors.empty():
             self._seed_tasks(self.processors.get())
-            self.send_to_children_and_transition(self, StartTaskLoop(self.workload.name, self.cfg), self.Status.PROCESSOR_COMPLETE,
-                                                 self.Status.PROCESSOR_RUNNING)
+            self.send_to_children_and_transition(self, StartTaskLoop(self.workload.name, self.cfg), self.Status.PROCESSOR_COMPLETE, self.Status.PROCESSOR_RUNNING)
         else:
             self.send(self.original_sender, WorkloadPrepared())
 
     def _seed_tasks(self, processor):
-        self.tasks = list(WorkerTask(func, params) for func, params in
-                          processor.on_prepare_workload(self.workload, self.data_root_dir))
+        self.tasks = list(WorkerTask(func, params) for func, params in processor.on_prepare_workload(self.workload, self.data_root_dir))
 
     def _create_task_executor(self):
         return self.createActor(TaskExecutionActor)
@@ -848,13 +860,11 @@ class WorkloadPreparationActor(actor.BenchmarkActor):
 
     @actor.no_retry("workload preparator")  # pylint: disable=no-value-for-parameter
     def receiveMsg_WorkerIdle(self, msg, sender):
-        self.transition_when_all_children_responded(sender, msg, self.Status.PROCESSOR_RUNNING,
-                                                    self.Status.PROCESSOR_COMPLETE, self.resume)
+        self.transition_when_all_children_responded(sender, msg, self.Status.PROCESSOR_RUNNING, self.Status.PROCESSOR_COMPLETE, self.resume)
 
 
 def num_cores(cfg):
-    return int(cfg.opts("system", "available.cores", mandatory=False,
-                         default_value=multiprocessing.cpu_count()))
+    return int(cfg.opts("system", "available.cores", mandatory=False, default_value=multiprocessing.cpu_count()))
 
 
 class WorkerCoordinator:
@@ -954,18 +964,10 @@ class WorkerCoordinator:
         self.workload = t
         self.test_procedure = select_test_procedure(self.config, self.workload)
         self.quiet = self.config.opts("system", "quiet.mode", mandatory=False, default_value=False)
-        downsample_factor = int(self.config.opts(
-            "reporting", "metrics.request.downsample.factor",
-            mandatory=False, default_value=1))
-        self.metrics_store = metrics.metrics_store(cfg=self.config,
-                                                   workload=self.workload.name,
-                                                   test_procedure=self.test_procedure.name,
-                                                   read_only=False)
+        downsample_factor = int(self.config.opts("reporting", "metrics.request.downsample.factor", mandatory=False, default_value=1))
+        self.metrics_store = metrics.metrics_store(cfg=self.config, workload=self.workload.name, test_procedure=self.test_procedure.name, read_only=False)
 
-        self.sample_post_processor = DefaultSamplePostprocessor(self.metrics_store,
-                                                         downsample_factor,
-                                                         self.workload.meta_data,
-                                                         self.test_procedure.meta_data)
+        self.sample_post_processor = DefaultSamplePostprocessor(self.metrics_store, downsample_factor, self.workload.meta_data, self.test_procedure.meta_data)
 
         clients = self.create_clients()
 
@@ -1044,8 +1046,7 @@ class WorkerCoordinator:
         self.number_of_steps = len(allocator.join_points) - 1
         self.tasks_per_join_point = allocator.tasks_per_joinpoint
 
-        self.logger.info("Solr Orbit consists of [%d] steps executed by [%d] clients.",
-                         self.number_of_steps, len(self.allocations))
+        self.logger.info("Solr Orbit consists of [%d] steps executed by [%d] clients.", self.number_of_steps, len(self.allocations))
         # avoid flooding the log if there are too many clients
         if allocator.clients < 128:
             self.logger.info("Allocation matrix:\n%s", "\n".join([str(a) for a in self.allocations]))
@@ -1072,8 +1073,9 @@ class WorkerCoordinator:
                         for client_id in clients:
                             self.shared_client_dict[worker_id][client_id] = False
                         # and send it along with the start_worker message. This way, the worker can pass it down to its assigned clients
-                        self.target.start_worker(worker, worker_id, self.config, self.workload, client_allocations,
-                                                 self.error_queue, self.queue_lock, shared_states=self.shared_client_dict[worker_id])
+                        self.target.start_worker(
+                            worker, worker_id, self.config, self.workload, client_allocations, self.error_queue, self.queue_lock, shared_states=self.shared_client_dict[worker_id]
+                        )
                     else:
                         self.target.start_worker(worker, worker_id, self.config, self.workload, client_allocations)
                     self.workers.append(worker)
@@ -1093,18 +1095,21 @@ class WorkerCoordinator:
             cpu_window_seconds = self.config.opts("workload", "redline.cpu_window_seconds", default_value=0)
             cpu_check_interval = self.config.opts("workload", "redline.cpu_check_interval", default_value=0)
 
-            self.target.send(self.target.feedback_actor, ConfigureFeedbackScaling(
-            scale_step=scale_step,
-            scale_down_pct=scale_down_pct,
-            sleep_seconds=sleep_seconds,
-            max_clients=max_clients,
-            cpu_max=cpu_max,
-            cpu_window_seconds=cpu_window_seconds,
-            cpu_check_interval=cpu_check_interval,
-            cfg=self.config,
-            metrics_index=metrics_index,
-            test_run_id=test_run_id
-            ))
+            self.target.send(
+                self.target.feedback_actor,
+                ConfigureFeedbackScaling(
+                    scale_step=scale_step,
+                    scale_down_pct=scale_down_pct,
+                    sleep_seconds=sleep_seconds,
+                    max_clients=max_clients,
+                    cpu_max=cpu_max,
+                    cpu_window_seconds=cpu_window_seconds,
+                    cpu_check_interval=cpu_check_interval,
+                    cfg=self.config,
+                    metrics_index=metrics_index,
+                    test_run_id=test_run_id,
+                ),
+            )
             self.target.start_feedbackActor(self.shared_client_dict)
 
         self.update_progress_message()
@@ -1112,8 +1117,7 @@ class WorkerCoordinator:
     def joinpoint_reached(self, worker_id, worker_local_timestamp, task_allocations):
         self.currently_completed += 1
         self.workers_completed_current_step[worker_id] = (worker_local_timestamp, time.perf_counter())
-        self.logger.info("[%d/%d] workers reached join point [%d/%d].",
-                         self.currently_completed, len(self.workers), self.current_step + 1, self.number_of_steps)
+        self.logger.info("[%d/%d] workers reached join point [%d/%d].", self.currently_completed, len(self.workers), self.current_step + 1, self.number_of_steps)
         # if we're in redline test mode, disable the feedback actor and pause all clients when we're at a joinpoint
         if self.config.opts("workload", "redline.test", mandatory=False):
             self.target.send(self.target.feedback_actor, DisableFeedbackScaling())
@@ -1174,8 +1178,7 @@ class WorkerCoordinator:
         for worker_id, worker in enumerate(self.workers):
             worker_ended_task_at, master_received_msg_at = workers_curr_step[worker_id]
             worker_start_timestamp = worker_ended_task_at + (start_next_task - master_received_msg_at)
-            self.logger.info("Scheduling next task for worker id [%d] at their timestamp [%f] (master timestamp [%f])",
-                             worker_id, worker_start_timestamp, start_next_task)
+            self.logger.info("Scheduling next task for worker id [%d] at their timestamp [%f] (master timestamp [%f])", worker_id, worker_start_timestamp, start_next_task)
             self.target.drive_at(worker, worker_start_timestamp)
 
     def may_complete_current_task(self, task_allocations):
@@ -1185,9 +1188,11 @@ class WorkerCoordinator:
             # while this list could contain multiple items, it should always be the same task (but multiple
             # different clients) so any item is sufficient.
             current_join_point = joinpoints_completing_parent[0].task
-            self.logger.info("Tasks before join point [%s] are able to complete the parent structure. Checking "
-                             "if all [%d] clients have finished yet.",
-                             current_join_point, len(current_join_point.clients_executing_completing_task))
+            self.logger.info(
+                "Tasks before join point [%s] are able to complete the parent structure. Checking if all [%d] clients have finished yet.",
+                current_join_point,
+                len(current_join_point.clients_executing_completing_task),
+            )
 
             pending_client_ids = []
             for client_id in current_join_point.clients_executing_completing_task:
@@ -1240,18 +1245,17 @@ class WorkerCoordinator:
             # we only count clients which actually contribute to progress. If clients are executing tasks eternally in a parallel
             # structure, we should not count them. The reason is that progress depends entirely on the client(s) that execute the
             # task that is completing the parallel structure.
-            progress_per_client = [s.task_progress
-                                   for s in self.most_recent_sample_per_client.values() if s.task_progress is not None]
+            progress_per_client = [s.task_progress for s in self.most_recent_sample_per_client.values() if s.task_progress is not None]
 
             if not progress_per_client:
                 # No clients have reported.
-                progress_per_client = [(0.0, '%')]
+                progress_per_client = [(0.0, "%")]
             num_clients = len(progress_per_client)
             total_progress = sum([p[0] for p in progress_per_client]) / num_clients
-            units = { p[1] for p in progress_per_client }
+            units = {p[1] for p in progress_per_client}
             assert len(units) == 1, "Encountered mix of disparate units while tracking task progress"
             unit = units.pop()
-            if unit != '%':
+            if unit != "%":
                 self.progress_publisher.print("Running %s" % tasks, "[%4.1f GB]" % total_progress)
             else:
                 if task_finished:
@@ -1270,15 +1274,15 @@ class WorkerCoordinator:
         self.raw_profile_samples = []
         if len(profile_samples) > 0:
             if self.profile_metrics_post_processor is None:
-                self.profile_metrics_post_processor = ProfileMetricsSamplePostprocessor(self.metrics_store,
-                                                                                    self.workload.meta_data,
-                                                                                    self.test_procedure.meta_data)
+                self.profile_metrics_post_processor = ProfileMetricsSamplePostprocessor(self.metrics_store, self.workload.meta_data, self.test_procedure.meta_data)
             self.profile_metrics_post_processor(profile_samples)
 
-class SamplePostprocessor():
+
+class SamplePostprocessor:
     """
     Parent class used to process samples into the metrics store
     """
+
     def __init__(self, metrics_store, workload_meta_data, test_procedure_meta_data):
         self.logger = logging.getLogger(__name__)
         self.metrics_store = metrics_store
@@ -1297,6 +1301,7 @@ class DefaultSamplePostprocessor(SamplePostprocessor):
     """
     Processes operational and correctness metric samples by merging and adding to the metrics store
     """
+
     def __init__(self, metrics_store, downsample_factor, workload_meta_data, test_procedure_meta_data):
         super().__init__(metrics_store, workload_meta_data, test_procedure_meta_data)
         self.throughput_calculator = ThroughputCalculator()
@@ -1349,44 +1354,73 @@ class DefaultSamplePostprocessor(SamplePostprocessor):
 
             if idx % self.downsample_factor == 0:
                 final_sample_count += 1
-                meta_data = self.merge(
-                    self.workload_meta_data,
-                    self.test_procedure_meta_data,
-                    sample.operation_meta_data,
-                    sample.task.meta_data,
-                    sample.request_meta_data)
+                meta_data = self.merge(self.workload_meta_data, self.test_procedure_meta_data, sample.operation_meta_data, sample.task.meta_data, sample.request_meta_data)
 
-                self.metrics_store.put_value_cluster_level(name="latency", value=convert.seconds_to_ms(sample.latency),
-                                                           unit="ms", task=sample.task.name,
-                                                           operation=sample.operation_name, operation_type=sample.operation_type,
-                                                           sample_type=sample.sample_type, absolute_time=sample.absolute_time,
-                                                           relative_time=sample.relative_time, meta_data=meta_data)
+                self.metrics_store.put_value_cluster_level(
+                    name="latency",
+                    value=convert.seconds_to_ms(sample.latency),
+                    unit="ms",
+                    task=sample.task.name,
+                    operation=sample.operation_name,
+                    operation_type=sample.operation_type,
+                    sample_type=sample.sample_type,
+                    absolute_time=sample.absolute_time,
+                    relative_time=sample.relative_time,
+                    meta_data=meta_data,
+                )
 
-                self.metrics_store.put_value_cluster_level(name="service_time", value=convert.seconds_to_ms(sample.service_time),
-                                                           unit="ms", task=sample.task.name,
-                                                           operation=sample.operation_name, operation_type=sample.operation_type,
-                                                           sample_type=sample.sample_type, absolute_time=sample.absolute_time,
-                                                           relative_time=sample.relative_time, meta_data=meta_data)
+                self.metrics_store.put_value_cluster_level(
+                    name="service_time",
+                    value=convert.seconds_to_ms(sample.service_time),
+                    unit="ms",
+                    task=sample.task.name,
+                    operation=sample.operation_name,
+                    operation_type=sample.operation_type,
+                    sample_type=sample.sample_type,
+                    absolute_time=sample.absolute_time,
+                    relative_time=sample.relative_time,
+                    meta_data=meta_data,
+                )
 
-                self.metrics_store.put_value_cluster_level(name="client_processing_time",
-                                                           value=convert.seconds_to_ms(sample.client_processing_time),
-                                                           unit="ms", task=sample.task.name,
-                                                           operation=sample.operation_name, operation_type=sample.operation_type,
-                                                           sample_type=sample.sample_type, absolute_time=sample.absolute_time,
-                                                           relative_time=sample.relative_time, meta_data=meta_data)
+                self.metrics_store.put_value_cluster_level(
+                    name="client_processing_time",
+                    value=convert.seconds_to_ms(sample.client_processing_time),
+                    unit="ms",
+                    task=sample.task.name,
+                    operation=sample.operation_name,
+                    operation_type=sample.operation_type,
+                    sample_type=sample.sample_type,
+                    absolute_time=sample.absolute_time,
+                    relative_time=sample.relative_time,
+                    meta_data=meta_data,
+                )
 
-                self.metrics_store.put_value_cluster_level(name="processing_time", value=convert.seconds_to_ms(sample.processing_time),
-                                                           unit="ms", task=sample.task.name,
-                                                           operation=sample.operation_name, operation_type=sample.operation_type,
-                                                           sample_type=sample.sample_type, absolute_time=sample.absolute_time,
-                                                           relative_time=sample.relative_time, meta_data=meta_data)
+                self.metrics_store.put_value_cluster_level(
+                    name="processing_time",
+                    value=convert.seconds_to_ms(sample.processing_time),
+                    unit="ms",
+                    task=sample.task.name,
+                    operation=sample.operation_name,
+                    operation_type=sample.operation_type,
+                    sample_type=sample.sample_type,
+                    absolute_time=sample.absolute_time,
+                    relative_time=sample.relative_time,
+                    meta_data=meta_data,
+                )
 
                 for timing in sample.dependent_timings:
-                    self.metrics_store.put_value_cluster_level(name="service_time", value=convert.seconds_to_ms(timing.service_time),
-                                                               unit="ms", task=timing.task.name,
-                                                               operation=timing.operation_name, operation_type=timing.operation_type,
-                                                               sample_type=timing.sample_type, absolute_time=timing.absolute_time,
-                                                               relative_time=timing.relative_time, meta_data=meta_data)
+                    self.metrics_store.put_value_cluster_level(
+                        name="service_time",
+                        value=convert.seconds_to_ms(timing.service_time),
+                        unit="ms",
+                        task=timing.task.name,
+                        operation=timing.operation_name,
+                        operation_type=timing.operation_type,
+                        sample_type=timing.sample_type,
+                        absolute_time=timing.absolute_time,
+                        relative_time=timing.relative_time,
+                        meta_data=meta_data,
+                    )
 
         end = time.perf_counter()
         self.logger.debug("Storing latency and service time took [%f] seconds.", (end - start))
@@ -1396,17 +1430,20 @@ class DefaultSamplePostprocessor(SamplePostprocessor):
         self.logger.debug("Calculating throughput took [%f] seconds.", (end - start))
         start = end
         for task, samples in aggregates.items():
-            meta_data = self.merge(
-                self.workload_meta_data,
-                self.test_procedure_meta_data,
-                task.operation.meta_data,
-                task.meta_data
-            )
+            meta_data = self.merge(self.workload_meta_data, self.test_procedure_meta_data, task.operation.meta_data, task.meta_data)
             for absolute_time, relative_time, sample_type, throughput, throughput_unit in samples:
-                self.metrics_store.put_value_cluster_level(name="throughput", value=throughput, unit=throughput_unit, task=task.name,
-                                                           operation=task.operation.name, operation_type=task.operation.type,
-                                                           sample_type=sample_type, absolute_time=absolute_time,
-                                                           relative_time=relative_time, meta_data=meta_data)
+                self.metrics_store.put_value_cluster_level(
+                    name="throughput",
+                    value=throughput,
+                    unit=throughput_unit,
+                    task=task.name,
+                    operation=task.operation.name,
+                    operation_type=task.operation.type,
+                    sample_type=sample_type,
+                    absolute_time=absolute_time,
+                    relative_time=relative_time,
+                    meta_data=meta_data,
+                )
         end = time.perf_counter()
         self.logger.debug("Storing throughput took [%f] seconds.", (end - start))
         start = end
@@ -1419,8 +1456,7 @@ class DefaultSamplePostprocessor(SamplePostprocessor):
         self.metrics_store.flush(refresh=False)
         end = time.perf_counter()
         self.logger.debug("Flushing the metrics store took [%f] seconds.", (end - start))
-        self.logger.debug("Postprocessing [%d] raw samples (downsampled to [%d] samples) took [%f] seconds in total.",
-                          len(raw_samples), final_sample_count, (end - total_start))
+        self.logger.debug("Postprocessing [%d] raw samples (downsampled to [%d] samples) took [%f] seconds in total.", len(raw_samples), final_sample_count, (end - total_start))
 
 
 class ProfileMetricsSamplePostprocessor(SamplePostprocessor):
@@ -1482,8 +1518,7 @@ class ProfileMetricsSamplePostprocessor(SamplePostprocessor):
         self.metrics_store.flush(refresh=False)
         end = time.perf_counter()
         self.logger.debug("Flushing the metrics store took [%f] seconds.", (end - start))
-        self.logger.debug("Postprocessing [%d] raw samples (downsampled to [%d] samples) took [%f] seconds in total.",
-                          len(raw_samples), final_sample_count, (end - total_start))
+        self.logger.debug("Postprocessing [%d] raw samples (downsampled to [%d] samples) took [%f] seconds in total.", len(raw_samples), final_sample_count, (end - total_start))
 
 
 def calculate_worker_assignments(host_configs, client_count):
@@ -1541,10 +1576,7 @@ class ClientAllocations:
         self.allocations = []
 
     def add(self, client_id, tasks):
-        self.allocations.append({
-            "client_id": client_id,
-            "tasks": tasks
-        })
+        self.allocations.append({"client_id": client_id, "tasks": tasks})
 
     def is_joinpoint(self, task_index):
         return all(isinstance(t.task, JoinPoint) for t in self.tasks(task_index))
@@ -1621,8 +1653,9 @@ class Worker(actor.BenchmarkActor):
     @actor.no_retry("worker")  # pylint: disable=no-value-for-parameter
     def receiveMsg_Drive(self, msg, sender):
         sleep_time = datetime.timedelta(seconds=msg.client_start_timestamp - time.perf_counter())
-        self.logger.info("Worker[%d] is continuing its work at task index [%d] on [%f], that is in [%s].",
-                         self.worker_id, self.current_task_index, msg.client_start_timestamp, sleep_time)
+        self.logger.info(
+            "Worker[%d] is continuing its work at task index [%d] on [%f], that is in [%s].", self.worker_id, self.current_task_index, msg.client_start_timestamp, sleep_time
+        )
         self.start_driving = True
         self.wakeupAfter(sleep_time)
 
@@ -1631,11 +1664,9 @@ class Worker(actor.BenchmarkActor):
         # finish now ASAP. Remaining samples will be sent with the next WakeupMessage. We will also need to skip to the next
         # JoinPoint. But if we are already at a JoinPoint at the moment, there is nothing to do.
         if self.at_joinpoint():
-            self.logger.info("Worker[%s] has received CompleteCurrentTask but is currently at join point at index [%d]. Ignoring.",
-                             str(self.worker_id), self.current_task_index)
+            self.logger.info("Worker[%s] has received CompleteCurrentTask but is currently at join point at index [%d]. Ignoring.", str(self.worker_id), self.current_task_index)
         else:
-            self.logger.info("Worker[%s] has received CompleteCurrentTask. Completing tasks at index [%d].",
-                             str(self.worker_id), self.current_task_index)
+            self.logger.info("Worker[%s] has received CompleteCurrentTask. Completing tasks at index [%d].", str(self.worker_id), self.current_task_index)
             self.complete.set()
 
     @actor.no_retry("worker")  # pylint: disable=no-value-for-parameter
@@ -1647,37 +1678,25 @@ class Worker(actor.BenchmarkActor):
         else:
             current_samples = self.send_samples()
             if self.cancel.is_set():
-                self.logger.info("Worker[%s] has detected that benchmark has been cancelled. Notifying master...",
-                                 str(self.worker_id))
+                self.logger.info("Worker[%s] has detected that benchmark has been cancelled. Notifying master...", str(self.worker_id))
                 self.send(self.master, actor.BenchmarkCancelled())
             elif self.executor_future is not None and self.executor_future.done():
                 e = self.executor_future.exception(timeout=0)
                 if e:
                     currentTasks = self.client_allocations.tasks(self.current_task_index)
                     detailed_error = (
-                    f"Benchmark operation failed:\n"
-                    f"Worker ID: {self.worker_id}\n"
-                    f"Task: {', '.join(t.task.task.name for t in currentTasks)}\n"
-                    f"Workload: {self.workload.name if self.workload else 'Unknown'}\n"
-                    f"Test Procedure: {self.workload.selected_test_procedure_or_default}\n"
-                    f"Cause: {e.cause if hasattr(e, 'cause') and e.cause is not None else 'Unknown'}"
+                        f"Benchmark operation failed:\n"
+                        f"Worker ID: {self.worker_id}\n"
+                        f"Task: {', '.join(t.task.task.name for t in currentTasks)}\n"
+                        f"Workload: {self.workload.name if self.workload else 'Unknown'}\n"
+                        f"Test Procedure: {self.workload.selected_test_procedure_or_default}\n"
+                        f"Cause: {e.cause if hasattr(e, 'cause') and e.cause is not None else 'Unknown'}"
                     )
                     detailed_error += f"\nError: {str(e)}"
 
-                    self.logger.exception(
-                        "Worker[%s] has detected a benchmark failure:\n%s",
-                        str(self.worker_id),
-                        detailed_error,
-                        exc_info=e
-                    )
+                    self.logger.exception("Worker[%s] has detected a benchmark failure:\n%s", str(self.worker_id), detailed_error, exc_info=e)
 
-                    self.send(
-                        self.master,
-                        actor.BenchmarkFailure(
-                            detailed_error,
-                            str(e)
-                        )
-                    )
+                    self.send(self.master, actor.BenchmarkFailure(detailed_error, str(e)))
                 else:
                     self.logger.info("Worker[%s] is ready for the next task.", str(self.worker_id))
                     self.executor_future = None
@@ -1685,13 +1704,13 @@ class Worker(actor.BenchmarkActor):
             else:
                 if current_samples and len(current_samples) > 0:
                     most_recent_sample = current_samples[-1]
-                    if most_recent_sample.task_progress is not None and most_recent_sample.task_progress[1] == '%':
-                        self.logger.debug("Worker[%s] is executing [%s] (%.2f%% complete).",
-                                          str(self.worker_id), most_recent_sample.task, most_recent_sample.task_progress[0] * 100.0)
+                    if most_recent_sample.task_progress is not None and most_recent_sample.task_progress[1] == "%":
+                        self.logger.debug(
+                            "Worker[%s] is executing [%s] (%.2f%% complete).", str(self.worker_id), most_recent_sample.task, most_recent_sample.task_progress[0] * 100.0
+                        )
                     else:
                         # TODO: This could be misleading given that one worker could execute more than one task...
-                        self.logger.debug("Worker[%s] is executing [%s] (dependent eternal task).",
-                                          str(self.worker_id), most_recent_sample.task)
+                        self.logger.debug("Worker[%s] is executing [%s] (dependent eternal task).", str(self.worker_id), most_recent_sample.task)
                 else:
                     self.logger.debug("Worker[%s] is executing (no samples).", str(self.worker_id))
                 self.wakeupAfter(datetime.timedelta(seconds=self.wakeup_interval))
@@ -1731,14 +1750,27 @@ class Worker(actor.BenchmarkActor):
             # There may be a situation where there are more (parallel) tasks than workers. If we were asked to complete all tasks, we not
             # only need to complete actively running tasks but actually all scheduled tasks until we reach the next join point.
             if self.complete.is_set():
-                self.logger.info("Worker[%d] skips tasks at index [%d] because it has been asked to complete all "
-                                 "tasks until next join point.", self.worker_id, self.current_task_index)
+                self.logger.info(
+                    "Worker[%d] skips tasks at index [%d] because it has been asked to complete all tasks until next join point.", self.worker_id, self.current_task_index
+                )
             else:
                 self.logger.info("Worker[%d] is executing tasks at index [%d].", self.worker_id, self.current_task_index)
                 self.sampler = DefaultSampler(start_timestamp=time.perf_counter(), buffer_size=self.sample_queue_size)
                 self.profile_sampler = ProfileMetricsSampler(start_timestamp=time.perf_counter(), buffer_size=self.sample_queue_size)
-                executor = AsyncIoAdapter(self.config, self.workload, task_allocations, self.sampler, self.profile_sampler,
-                                          self.cancel, self.complete, self.on_error, self.shared_states, self.feedback_actor, self.error_queue, self.queue_lock)
+                executor = AsyncIoAdapter(
+                    self.config,
+                    self.workload,
+                    task_allocations,
+                    self.sampler,
+                    self.profile_sampler,
+                    self.cancel,
+                    self.complete,
+                    self.on_error,
+                    self.shared_states,
+                    self.feedback_actor,
+                    self.error_queue,
+                    self.queue_lock,
+                )
 
                 self.executor_future = self.pool.submit(executor)
                 self.wakeupAfter(datetime.timedelta(seconds=self.wakeup_interval))
@@ -1782,33 +1814,67 @@ class Sampler:
             pass
         return samples
 
+
 class DefaultSampler(Sampler):
     """
     Encapsulates management of gathered default samples (operational and correctness metrics).
     """
 
-    def add(self, task, client_id, sample_type, meta_data, absolute_time, request_start, latency, service_time,
-            client_processing_time, processing_time, throughput, ops, ops_unit, time_period, task_progress,
-            dependent_timing=None):
+    def add(
+        self,
+        task,
+        client_id,
+        sample_type,
+        meta_data,
+        absolute_time,
+        request_start,
+        latency,
+        service_time,
+        client_processing_time,
+        processing_time,
+        throughput,
+        ops,
+        ops_unit,
+        time_period,
+        task_progress,
+        dependent_timing=None,
+    ):
         try:
             self.q.put_nowait(
-                DefaultSample(client_id, absolute_time, request_start, self.start_timestamp, task, sample_type, meta_data,
-                       latency, service_time, client_processing_time, processing_time, throughput, ops, ops_unit, time_period,
-                       task_progress, dependent_timing))
+                DefaultSample(
+                    client_id,
+                    absolute_time,
+                    request_start,
+                    self.start_timestamp,
+                    task,
+                    sample_type,
+                    meta_data,
+                    latency,
+                    service_time,
+                    client_processing_time,
+                    processing_time,
+                    throughput,
+                    ops,
+                    ops_unit,
+                    time_period,
+                    task_progress,
+                    dependent_timing,
+                )
+            )
         except queue.Full:
             self.logger.warning("Dropping sample for [%s] due to a full sampling queue.", task.operation.name)
+
 
 class ProfileMetricsSampler(Sampler):
     """
     Encapsulates management of gathered profile metrics samples.
     """
 
-    def add(self, task, client_id, sample_type, meta_data, absolute_time, request_start, time_period, task_progress,
-            dependent_timing=None):
+    def add(self, task, client_id, sample_type, meta_data, absolute_time, request_start, time_period, task_progress, dependent_timing=None):
         try:
             self.q.put_nowait(
-                ProfileMetricsSample(client_id, absolute_time, request_start, self.start_timestamp, task, sample_type, meta_data,
-                       time_period, task_progress, dependent_timing))
+                ProfileMetricsSample(client_id, absolute_time, request_start, self.start_timestamp, task, sample_type, meta_data, time_period, task_progress, dependent_timing)
+            )
         except queue.Full:
             self.logger.warning("Dropping sample for [%s] due to a full sampling queue.", task.operation.name)
 
@@ -1817,8 +1883,8 @@ class Sample:
     """
     Basic information used by metrics store to keep track of samples
     """
-    def __init__(self, client_id, absolute_time, request_start, task_start, task, sample_type, request_meta_data,
-                time_period, task_progress, dependent_timing=None):
+
+    def __init__(self, client_id, absolute_time, request_start, task_start, task, sample_type, request_meta_data, time_period, task_progress, dependent_timing=None):
         self.client_id = client_id
         self.absolute_time = absolute_time
         self.request_start = request_start
@@ -1848,16 +1914,34 @@ class Sample:
         return self.request_start - self.task_start
 
     def __repr__(self, *args, **kwargs):
-        return f"[{self.absolute_time}; {self.relative_time}] [client [{self.client_id}]] [{self.task}] " \
-               f"[{self.sample_type}]"
+        return f"[{self.absolute_time}; {self.relative_time}] [client [{self.client_id}]] [{self.task}] [{self.sample_type}]"
+
 
 class DefaultSample(Sample):
     """
     Stores the operational and correctness metrics to later put into the metrics store
     """
-    def __init__(self, client_id, absolute_time, request_start, task_start, task, sample_type, request_meta_data, latency,
-                 service_time, client_processing_time, processing_time, throughput, total_ops, total_ops_unit, time_period,
-                 task_progress, dependent_timing=None):
+
+    def __init__(
+        self,
+        client_id,
+        absolute_time,
+        request_start,
+        task_start,
+        task,
+        sample_type,
+        request_meta_data,
+        latency,
+        service_time,
+        client_processing_time,
+        processing_time,
+        throughput,
+        total_ops,
+        total_ops_unit,
+        time_period,
+        task_progress,
+        dependent_timing=None,
+    ):
         super().__init__(client_id, absolute_time, request_start, task_start, task, sample_type, request_meta_data, time_period, task_progress, dependent_timing)
         self.latency = latency
         self.service_time = service_time
@@ -1871,14 +1955,33 @@ class DefaultSample(Sample):
     def dependent_timings(self):
         if self._dependent_timing:
             for t in self._dependent_timing:
-                yield DefaultSample(self.client_id, t["absolute_time"], t["request_start"], self.task_start, self.task,
-                             self.sample_type, self.request_meta_data, 0, t["service_time"], 0, 0, 0, self.total_ops,
-                             self.total_ops_unit, self.time_period, self.task_progress, None)
+                yield DefaultSample(
+                    self.client_id,
+                    t["absolute_time"],
+                    t["request_start"],
+                    self.task_start,
+                    self.task,
+                    self.sample_type,
+                    self.request_meta_data,
+                    0,
+                    t["service_time"],
+                    0,
+                    0,
+                    0,
+                    self.total_ops,
+                    self.total_ops_unit,
+                    self.time_period,
+                    self.task_progress,
+                    None,
+                )
 
     def __repr__(self, *args, **kwargs):
-        return f"[{self.absolute_time}; {self.relative_time}] [client [{self.client_id}]] [{self.task}] " \
-               f"[{self.sample_type}]: [{self.latency}s] request latency, [{self.service_time}s] service time, " \
-               f"[{self.total_ops} {self.total_ops_unit}]"
+        return (
+            f"[{self.absolute_time}; {self.relative_time}] [client [{self.client_id}]] [{self.task}] "
+            f"[{self.sample_type}]: [{self.latency}s] request latency, [{self.service_time}s] service time, "
+            f"[{self.total_ops} {self.total_ops_unit}]"
+        )
+
 
 class ProfileMetricsSample(Sample):
     """
@@ -1889,8 +1992,18 @@ class ProfileMetricsSample(Sample):
     def dependent_timings(self):
         if self._dependent_timing:
             for t in self._dependent_timing:
-                yield ProfileMetricsSample(self.client_id, t["absolute_time"], t["request_start"], self.task_start, self.task,
-                             self.sample_type, self.request_meta_data, self.time_period, self.task_progress, None)
+                yield ProfileMetricsSample(
+                    self.client_id,
+                    t["absolute_time"],
+                    t["request_start"],
+                    self.task_start,
+                    self.task,
+                    self.sample_type,
+                    self.request_meta_data,
+                    self.time_period,
+                    self.task_progress,
+                    None,
+                )
 
 
 def select_test_procedure(config, t):
@@ -1898,8 +2011,10 @@ def select_test_procedure(config, t):
     selected_test_procedure = t.find_test_procedure_or_default(test_procedure_name)
 
     if not selected_test_procedure:
-        raise exceptions.SystemSetupError("Unknown test_procedure [%s] for workload [%s]. You can list the available workloads and their "
-                                          "test_procedures with %s list workloads." % (test_procedure_name, t.name, PROGRAM_NAME))
+        raise exceptions.SystemSetupError(
+            "Unknown test_procedure [%s] for workload [%s]. You can list the available workloads and their "
+            "test_procedures with %s list workloads." % (test_procedure_name, t.name, PROGRAM_NAME)
+        )
     return selected_test_procedure
 
 
@@ -1908,6 +2023,7 @@ class ThroughputCalculator:
         """
         Stores per task numbers needed for throughput calculation in between multiple calculations.
         """
+
         def __init__(self, bucket_interval, sample_type, start_time):
             self.unprocessed = []
             self.total_count = 0
@@ -1994,9 +2110,9 @@ class ThroughputCalculator:
 
         if task not in self.task_stats:
             first_sample = current_samples[0]
-            self.task_stats[task] = ThroughputCalculator.TaskStats(bucket_interval=bucket_interval_secs,
-                                                                   sample_type=first_sample.sample_type,
-                                                                   start_time=first_sample.absolute_time - first_sample.time_period)
+            self.task_stats[task] = ThroughputCalculator.TaskStats(
+                bucket_interval=bucket_interval_secs, sample_type=first_sample.sample_type, start_time=first_sample.absolute_time - first_sample.time_period
+            )
         current = self.task_stats[task]
         count = current.total_count
         last_sample = None
@@ -2017,12 +2133,16 @@ class ThroughputCalculator:
 
             if current.can_calculate_throughput():
                 current.finish_bucket(count)
-                task_throughput.append((sample.absolute_time,
-                                        sample.relative_time,
-                                        current.sample_type,
-                                        current.throughput,
-                                        # we calculate throughput per second
-                                        f"{sample.total_ops_unit}/s"))
+                task_throughput.append(
+                    (
+                        sample.absolute_time,
+                        sample.relative_time,
+                        current.sample_type,
+                        current.throughput,
+                        # we calculate throughput per second
+                        f"{sample.total_ops_unit}/s",
+                    )
+                )
             else:
                 current.unprocessed.append(sample)
 
@@ -2030,28 +2150,33 @@ class ThroughputCalculator:
         # interval (mainly needed to ensure we show throughput data in test mode)
         if last_sample is not None and current.can_add_final_throughput_sample():
             current.finish_bucket(count)
-            task_throughput.append((last_sample.absolute_time,
-                                    last_sample.relative_time,
-                                    current.sample_type,
-                                    current.throughput,
-                                    f"{last_sample.total_ops_unit}/s"))
+            task_throughput.append((last_sample.absolute_time, last_sample.relative_time, current.sample_type, current.throughput, f"{last_sample.total_ops_unit}/s"))
 
         return task_throughput
 
     def map_task_throughput(self, current_samples):
         throughput = []
         for sample in current_samples:
-            throughput.append((sample.absolute_time,
-                               sample.relative_time,
-                               sample.sample_type,
-                               sample.throughput,
-                               f"{sample.total_ops_unit}/s"))
+            throughput.append((sample.absolute_time, sample.relative_time, sample.sample_type, sample.throughput, f"{sample.total_ops_unit}/s"))
         return throughput
 
 
 class AsyncIoAdapter:
-    def __init__(self, cfg, workload, task_allocations, sampler, profile_sampler, cancel, complete, abort_on_error,
-                 shared_states=None, feedback_actor=None, error_queue=None, queue_lock=None):
+    def __init__(
+        self,
+        cfg,
+        workload,
+        task_allocations,
+        sampler,
+        profile_sampler,
+        cancel,
+        complete,
+        abort_on_error,
+        shared_states=None,
+        feedback_actor=None,
+        error_queue=None,
+        queue_lock=None,
+    ):
         self.cfg = cfg
         self.workload = workload
         self.task_allocations = task_allocations
@@ -2099,8 +2224,7 @@ class AsyncIoAdapter:
         # Properly size the internal connection pool to match the number of expected clients but allow the user
         # to override it if needed.
         client_count = len(self.task_allocations)
-        clients = build_clients(self.cfg.opts("client", "hosts").all_hosts,
-                        self.cfg.opts("client", "options").with_max_connections(client_count))
+        clients = build_clients(self.cfg.opts("client", "hosts").all_hosts, self.cfg.opts("client", "options").with_max_connections(client_count))
 
         self.logger.info("Task assertions enabled: %s", str(self.assertions_enabled))
         runner.enable_assertions(self.assertions_enabled)
@@ -2123,8 +2247,21 @@ class AsyncIoAdapter:
             # need to start from (client) index 0 in both cases instead of 0 for indexA and 4 for indexB.
             schedule = schedule_for(task_allocation, params_per_task[task])
             async_executor = AsyncExecutor(
-                client_id, task, schedule, clients, self.sampler, self.profile_sampler, self.cancel, self.complete,
-                task.error_behavior(self.abort_on_error), self.cfg, self.shared_states, self.feedback_actor, self.error_queue, self.queue_lock)
+                client_id,
+                task,
+                schedule,
+                clients,
+                self.sampler,
+                self.profile_sampler,
+                self.cancel,
+                self.complete,
+                task.error_behavior(self.abort_on_error),
+                self.cfg,
+                self.shared_states,
+                self.feedback_actor,
+                self.error_queue,
+                self.queue_lock,
+            )
             final_executor = AsyncProfiler(async_executor) if self.profiling_enabled else async_executor
             aws.append(final_executor())
         run_start = time.perf_counter()
@@ -2155,19 +2292,14 @@ class AsyncProfiler:
         # pylint: disable=import-outside-toplevel
         import yappi
         import io as python_io
+
         yappi.start()
         try:
             return await self.target(*args, **kwargs)
         finally:
             yappi.stop()
             s = python_io.StringIO()
-            yappi.get_func_stats().print_all(out=s, columns={
-                0: ("name", 140),
-                1: ("ncall", 8),
-                2: ("tsub", 8),
-                3: ("ttot", 8),
-                4: ("tavg", 8)
-            })
+            yappi.get_func_stats().print_all(out=s, columns={0: ("name", 140), 1: ("ncall", 8), 2: ("tsub", 8), 3: ("ttot", 8), 4: ("tavg", 8)})
 
             profile = "\n=== Profile START ===\n"
             profile += s.getvalue()
@@ -2176,8 +2308,23 @@ class AsyncProfiler:
 
 
 class AsyncExecutor:
-    def __init__(self, client_id, task, schedule, clients, sampler, profile_sampler, cancel, complete, on_error,
-                 config=None, shared_states=None, feedback_actor=None, error_queue=None, queue_lock=None):
+    def __init__(
+        self,
+        client_id,
+        task,
+        schedule,
+        clients,
+        sampler,
+        profile_sampler,
+        cancel,
+        complete,
+        on_error,
+        config=None,
+        shared_states=None,
+        feedback_actor=None,
+        error_queue=None,
+        queue_lock=None,
+    ):
         """
         Executes tasks according to the schedule for a given operation.
         """
@@ -2231,8 +2378,7 @@ class AsyncExecutor:
         """Prepare the appropriate context manager for the request."""
         return self.clients["default"].new_request_context()
 
-    async def _execute_request(self, params: dict, expected_scheduled_time: float, total_start: float,
-                               client_state: bool) -> dict:
+    async def _execute_request(self, params: dict, expected_scheduled_time: float, total_start: float, client_state: bool) -> dict:
         """Execute a request with timing control and error handling."""
         request_timeout = (params or {}).get("request-timeout", None)
         absolute_expected_schedule_time = total_start + expected_scheduled_time
@@ -2254,11 +2400,8 @@ class AsyncExecutor:
         async with context_manager as request_context:
             try:
                 total_ops, total_ops_unit, request_meta_data = await asyncio.wait_for(
-                    execute_single(
-                        self.runner, self.clients, params, self.on_error,
-                        redline_enabled=self.redline_enabled, client_enabled=client_state
-                    ),
-                    timeout=self.base_timeout if request_timeout is None else request_timeout
+                    execute_single(self.runner, self.clients, params, self.on_error, redline_enabled=self.redline_enabled, client_enabled=client_state),
+                    timeout=self.base_timeout if request_timeout is None else request_timeout,
                 )
             except asyncio.TimeoutError:
                 self.logger.error("Client %s request timed out after %s s", self.client_id, self.base_timeout)
@@ -2277,8 +2420,7 @@ class AsyncExecutor:
             client_request_end = request_context.client_request_end
 
         # If request failed or timings weren't properly captured, fall back
-        if not request_meta_data.get("success") or None in (request_start, request_end, client_request_start,
-                                                            client_request_end):
+        if not request_meta_data.get("success") or None in (request_start, request_end, client_request_start, client_request_end):
             if request_start is None:
                 request_start = processing_start
             if client_request_start is None:
@@ -2290,11 +2432,7 @@ class AsyncExecutor:
                 client_request_end = now
 
             if not request_meta_data.get("skipped", False):
-                error_info = {
-                    "client_id": self.client_id,
-                    "task": str(self.task),
-                    "error_details": request_meta_data
-                }
+                error_info = {"client_id": self.client_id, "task": str(self.task), "error_details": request_meta_data}
                 self.report_error(error_info)
 
         processing_end = time.perf_counter()
@@ -2310,35 +2448,25 @@ class AsyncExecutor:
             "total_ops": total_ops,
             "total_ops_unit": total_ops_unit,
             "request_meta_data": request_meta_data,
-            "throughput_throttled": throughput_throttled
+            "throughput_throttled": throughput_throttled,
         }
 
-    def _process_results(self, result_data: dict, total_start: float, client_state: bool,
-                         task_progress: tuple, add_profile_metric_sample: bool = False) -> bool:
+    def _process_results(self, result_data: dict, total_start: float, client_state: bool, task_progress: tuple, add_profile_metric_sample: bool = False) -> bool:
         """Process results from a request."""
         # Handle cases where the request was skipped (no-op)
         if result_data["request_meta_data"].get("skipped_request"):
-            self.schedule_handle.after_request(
-                result_data["processing_end"], 0, "ops", {"success": False, "skipped": True}
-            )
+            self.schedule_handle.after_request(result_data["processing_end"], 0, "ops", {"success": False, "skipped": True})
             return self.complete.is_set()
 
         service_time = result_data["request_end"] - result_data["request_start"]
-        client_processing_time = (result_data["client_request_end"] - result_data[
-            "client_request_start"]) - service_time
+        client_processing_time = (result_data["client_request_end"] - result_data["client_request_start"]) - service_time
         processing_time = result_data["processing_end"] - result_data["processing_start"]
         time_period = result_data["request_end"] - total_start
 
-        self.schedule_handle.after_request(
-            result_data["processing_end"],
-            result_data["total_ops"],
-            result_data["total_ops_unit"],
-            result_data["request_meta_data"]
-        )
+        self.schedule_handle.after_request(result_data["processing_end"], result_data["total_ops"], result_data["total_ops_unit"], result_data["request_meta_data"])
 
         throughput = result_data["request_meta_data"].pop("throughput", None)
-        latency = (result_data["request_end"] - (total_start + self.expected_scheduled_time)
-                   if result_data["throughput_throttled"] else service_time)
+        latency = result_data["request_end"] - (total_start + self.expected_scheduled_time) if result_data["throughput_throttled"] else service_time
 
         runner_completed = getattr(self.runner, "completed", False)
         runner_task_progress = getattr(self.runner, "task_progress", None)
@@ -2358,23 +2486,34 @@ class AsyncExecutor:
         if client_state:
             if add_profile_metric_sample:
                 self.profile_sampler.add(
-                    self.task, self.client_id, self.sample_type,
+                    self.task,
+                    self.client_id,
+                    self.sample_type,
                     result_data["request_meta_data"],
                     result_data["absolute_processing_start"],
                     result_data["request_start"],
                     time_period,
                     progress,
-                    result_data["request_meta_data"].pop("dependent_timing", None))
+                    result_data["request_meta_data"].pop("dependent_timing", None),
+                )
             else:
                 self.sampler.add(
-                    self.task, self.client_id, self.sample_type,
+                    self.task,
+                    self.client_id,
+                    self.sample_type,
                     result_data["request_meta_data"],
                     result_data["absolute_processing_start"],
                     result_data["request_start"],
-                    latency, service_time, client_processing_time, processing_time,
-                    throughput, result_data["total_ops"], result_data["total_ops_unit"],
-                    time_period, progress,
-                    result_data["request_meta_data"].pop("dependent_timing", None)
+                    latency,
+                    service_time,
+                    client_processing_time,
+                    processing_time,
+                    throughput,
+                    result_data["total_ops"],
+                    result_data["total_ops_unit"],
+                    time_period,
+                    progress,
+                    result_data["request_meta_data"].pop("dependent_timing", None),
                 )
         return completed
 
@@ -2435,12 +2574,10 @@ class AsyncExecutor:
             raise exceptions.BenchmarkError(f"Cannot run task [{self.task}]: {e}") from None
         finally:
             if self.task_completes_parent:
-                self.logger.info(
-                    "Task [%s] completes parent. Client id [%s] is finished executing it and signals completion.",
-                    self.task, self.client_id
-                )
+                self.logger.info("Task [%s] completes parent. Client id [%s] is finished executing it and signals completion.", self.task, self.client_id)
                 self.complete.set()
             await self._cleanup()
+
 
 request_context_holder = client.RequestContextHolder()
 
@@ -2487,10 +2624,7 @@ async def execute_single(runner, clients, params, on_error, redline_enabled=Fals
 
             total_ops = 0
             total_ops_unit = "ops"
-            request_meta_data = {
-                "success": False,
-                "error-type": "transport"
-            }
+            request_meta_data = {"success": False, "error-type": "transport"}
             if isinstance(e.status_code, int):
                 request_meta_data["http-status"] = e.status_code
             if isinstance(e, exceptions.BenchmarkConnectionTimeout):
@@ -2514,7 +2648,7 @@ async def execute_single(runner, clients, params, on_error, redline_enabled=Fals
                 if not redline_enabled:
                     raise exceptions.BenchmarkAssertionError(msg)
 
-            if 'error-description' in request_meta_data:
+            if "error-description" in request_meta_data:
                 try:
                     error_metadata = json.loads(request_meta_data["error-description"])
                     # parse error-description metadata
@@ -2532,10 +2666,7 @@ async def execute_single(runner, clients, params, on_error, redline_enabled=Fals
         request_context_holder.on_request_start()
         total_ops = 0
         total_ops_unit = "ops"
-        request_meta_data = {
-            "success": True,
-            "skipped_request": True
-        }
+        request_meta_data = {"success": True, "skipped_request": True}
         request_context_holder.on_request_end()
         request_context_holder.on_client_request_end()
     return total_ops, total_ops_unit, request_meta_data
@@ -2587,8 +2718,7 @@ class TaskAllocation:
         return isinstance(other, type(self)) and self.task == other.task and self.global_client_index == other.global_client_index
 
     def __repr__(self, *args, **kwargs):
-        return f"TaskAllocation [{self.client_index_in_task}/{self.task.clients}] for {self.task} " \
-               f"and [{self.global_client_index}/{self.total_clients}] in total"
+        return f"TaskAllocation [{self.client_index_in_task}/{self.task.clients}] for {self.task} and [{self.global_client_index}/{self.total_clients}] in total"
 
 
 class Allocator:
@@ -2632,12 +2762,14 @@ class Allocator:
                     physical_client_index = client_index % max_clients
                     if sub_task.completes_parent:
                         clients_executing_completing_task.append(physical_client_index)
-                    ta = TaskAllocation(task = sub_task,
-                                        client_index_in_task = client_index - start_client_index,
-                                        global_client_index=client_index,
-                                        # if task represents a parallel structure this is the total number of clients
-                                        # executing sub-tasks concurrently.
-                                        total_clients=task.clients)
+                    ta = TaskAllocation(
+                        task=sub_task,
+                        client_index_in_task=client_index - start_client_index,
+                        global_client_index=client_index,
+                        # if task represents a parallel structure this is the total number of clients
+                        # executing sub-tasks concurrently.
+                        total_clients=task.clients,
+                    )
                     allocations[physical_client_index].append(ta)
                 start_client_index += sub_task.clients
 
@@ -2746,15 +2878,17 @@ def schedule_for(task_allocation, parameter_source):
         warmup_time_period = task.warmup_time_period if task.warmup_time_period else 0
         ramp_down_time_period = task.ramp_down_time_period if task.ramp_down_time_period else 0
         if client_index == 0:
-            logger.info("Creating time-period based schedule with [%s] distribution for [%s] with a warmup period of [%s] "
-                        "seconds and a time period of [%s] seconds.", task.schedule, task.name,
-                        str(warmup_time_period), str(task.time_period))
-        loop_control = TimePeriodBased(warmup_time_period, task.time_period, ramp_down_time_period,
-                                       client_index, task.clients)
+            logger.info(
+                "Creating time-period based schedule with [%s] distribution for [%s] with a warmup period of [%s] seconds and a time period of [%s] seconds.",
+                task.schedule,
+                task.name,
+                str(warmup_time_period),
+                str(task.time_period),
+            )
+        loop_control = TimePeriodBased(warmup_time_period, task.time_period, ramp_down_time_period, client_index, task.clients)
         # Log individual client duration if ramp-down is enabled
         if ramp_down_time_period > 0 and client_index == 0:
-            logger.info("Ramp-down enabled: clients will stop in reverse order over [%s] seconds",
-                        str(ramp_down_time_period))
+            logger.info("Ramp-down enabled: clients will stop in reverse order over [%s] seconds", str(ramp_down_time_period))
     else:
         warmup_iterations = task.warmup_iterations if task.warmup_iterations else 0
         if task.iterations:
@@ -2765,8 +2899,13 @@ def schedule_for(task_allocation, parameter_source):
         else:
             iterations = None
         if client_index == 0:
-            logger.info("Creating iteration-count based schedule with [%s] distribution for [%s] with [%s] warmup "
-                        "iterations and [%s] iterations.", task.schedule, task.name, str(warmup_iterations), str(iterations))
+            logger.info(
+                "Creating iteration-count based schedule with [%s] distribution for [%s] with [%s] warmup iterations and [%s] iterations.",
+                task.schedule,
+                task.name,
+                str(warmup_iterations),
+                str(iterations),
+            )
         loop_control = IterationBased(warmup_iterations, iterations)
 
     if client_index == 0:
@@ -2813,6 +2952,7 @@ class ScheduleHandle:
         # import asyncio
         # self.io_pool_exc = ThreadPoolExecutor(max_workers=1)
         # self.loop = asyncio.get_event_loop()
+
     @property
     def ramp_up_wait_time(self):
         """
@@ -2843,8 +2983,7 @@ class ScheduleHandle:
                     # does not contribute at all to completion. Hence, we cannot define completion.
                     task_progress = self.params.task_progress if param_source_knows_progress else None
                     # current_params = await self.loop.run_in_executor(self.io_pool_exc, self.params.params)
-                    yield (next_scheduled, self.task_progress_control.sample_type, task_progress, self.runner,
-                           self.params.params())
+                    yield (next_scheduled, self.task_progress_control.sample_type, task_progress, self.runner, self.params.params())
                     self.task_progress_control.next()
                 except StopIteration:
                     return
@@ -2852,20 +2991,15 @@ class ScheduleHandle:
             while not self.task_progress_control.completed:
                 try:
                     next_scheduled = self.sched.next(next_scheduled)
-                    #current_params = await self.loop.run_in_executor(self.io_pool_exc, self.params.params)
-                    yield (next_scheduled,
-                           self.task_progress_control.sample_type,
-                           self.task_progress_control.task_progress,
-                           self.runner,
-                           self.params.params())
+                    # current_params = await self.loop.run_in_executor(self.io_pool_exc, self.params.params)
+                    yield (next_scheduled, self.task_progress_control.sample_type, self.task_progress_control.task_progress, self.runner, self.params.params())
                     self.task_progress_control.next()
                 except StopIteration:
                     return
 
 
 class TimePeriodBased:
-    def __init__(self, warmup_time_period, time_period, ramp_down_time_period=None,
-                 client_index=None, total_clients=None):
+    def __init__(self, warmup_time_period, time_period, ramp_down_time_period=None, client_index=None, total_clients=None):
         self._warmup_time_period = warmup_time_period
         self._time_period = time_period
         self._ramp_down_time_period = ramp_down_time_period or 0
@@ -2882,8 +3016,14 @@ class TimePeriodBased:
                 reverse_index = (total_clients - 1) - client_index
                 client_early_stop = self._ramp_down_time_period * (reverse_index / total_clients)
                 self._duration = self._base_duration - client_early_stop
-                self.logger.info("Client [%d/%d] will run for %.2f seconds (base: %.2f, early stop: %.2f due to ramp-down)",
-                                 client_index, total_clients, self._duration, self._base_duration, client_early_stop)
+                self.logger.info(
+                    "Client [%d/%d] will run for %.2f seconds (base: %.2f, early stop: %.2f due to ramp-down)",
+                    client_index,
+                    total_clients,
+                    self._duration,
+                    self._base_duration,
+                    client_early_stop,
+                )
             else:
                 self._duration = self._base_duration
         else:
@@ -2911,7 +3051,7 @@ class TimePeriodBased:
 
     @property
     def task_progress(self):
-        return (self._elapsed / self._duration, '%')
+        return (self._elapsed / self._duration, "%")
 
     @property
     def completed(self):
@@ -2949,7 +3089,7 @@ class IterationBased:
 
     @property
     def task_progress(self):
-        return ((self._it + 1) / self._total_iterations, '%')
+        return ((self._it + 1) / self._total_iterations, "%")
 
     @property
     def completed(self):

@@ -69,7 +69,7 @@ class SliceTests(TestCase):
             '{"key": "value7"}',
             '{"key": "value8"}',
             '{"key": "value9"}',
-            '{"key": "value10"}'
+            '{"key": "value10"}',
         ]
 
         source.open(data, "r", 5)
@@ -106,75 +106,37 @@ class ConflictingIdsBuilderTests(TestCase):
 
     def test_sequential_conflicts(self):
         self.assertEqual(
-            [
-                '0000000000',
-                '0000000001',
-                '0000000002',
-                '0000000003',
-                '0000000004',
-                '0000000005',
-                '0000000006',
-                '0000000007',
-                '0000000008',
-                '0000000009',
-                '0000000010'
-            ],
-            params.build_conflicting_ids(params.IndexIdConflict.SequentialConflicts, 11, 0)
+            ["0000000000", "0000000001", "0000000002", "0000000003", "0000000004", "0000000005", "0000000006", "0000000007", "0000000008", "0000000009", "0000000010"],
+            params.build_conflicting_ids(params.IndexIdConflict.SequentialConflicts, 11, 0),
         )
 
         self.assertEqual(
-            [
-                '0000000005',
-                '0000000006',
-                '0000000007',
-                '0000000008',
-                '0000000009',
-                '0000000010',
-                '0000000011',
-                '0000000012',
-                '0000000013',
-                '0000000014',
-                '0000000015'
-            ],
-            params.build_conflicting_ids(params.IndexIdConflict.SequentialConflicts, 11, 5)
+            ["0000000005", "0000000006", "0000000007", "0000000008", "0000000009", "0000000010", "0000000011", "0000000012", "0000000013", "0000000014", "0000000015"],
+            params.build_conflicting_ids(params.IndexIdConflict.SequentialConflicts, 11, 5),
         )
 
     def test_random_conflicts(self):
         predictable_shuffle = list.reverse
 
-        self.assertEqual(
-            [
-                '0000000002', '0000000001', '0000000000'
-            ],
-            params.build_conflicting_ids(params.IndexIdConflict.RandomConflicts, 3, 0, shuffle=predictable_shuffle)
-        )
+        self.assertEqual(["0000000002", "0000000001", "0000000000"], params.build_conflicting_ids(params.IndexIdConflict.RandomConflicts, 3, 0, shuffle=predictable_shuffle))
 
-        self.assertEqual(
-            [
-                '0000000007', '0000000006', '0000000005'
-            ],
-            params.build_conflicting_ids(params.IndexIdConflict.RandomConflicts, 3, 5, shuffle=predictable_shuffle)
-        )
+        self.assertEqual(["0000000007", "0000000006", "0000000005"], params.build_conflicting_ids(params.IndexIdConflict.RandomConflicts, 3, 5, shuffle=predictable_shuffle))
 
 
 class ActionMetaDataTests(TestCase):
     def test_generate_action_meta_data_without_id_conflicts(self):
-        self.assertEqual(("index", '{"index": {"_index": "test_index", "_type": "test_type"}}\n'),
-                         next(params.GenerateActionMetaData("test_index", "test_type")))
+        self.assertEqual(("index", '{"index": {"_index": "test_index", "_type": "test_type"}}\n'), next(params.GenerateActionMetaData("test_index", "test_type")))
 
     def test_generate_action_meta_data_create(self):
-        self.assertEqual(("create", '{"create": {"_index": "test_index"}}\n'),
-                         next(params.GenerateActionMetaData("test_index", None, use_create=True)))
+        self.assertEqual(("create", '{"create": {"_index": "test_index"}}\n'), next(params.GenerateActionMetaData("test_index", None, use_create=True)))
 
     def test_generate_action_meta_data_create_with_conflicts(self):
         with self.assertRaises(exceptions.BenchmarkError) as ctx:
             params.GenerateActionMetaData("test_index", None, conflicting_ids=[100, 200, 300, 400], use_create=True)
-        self.assertEqual("Index mode '_create' cannot be used with conflicting ids",
-                         ctx.exception.args[0])
+        self.assertEqual("Index mode '_create' cannot be used with conflicting ids", ctx.exception.args[0])
 
     def test_generate_action_meta_data_typeless(self):
-        self.assertEqual(("index", '{"index": {"_index": "test_index"}}\n'),
-                         next(params.GenerateActionMetaData("test_index", type_name=None)))
+        self.assertEqual(("index", '{"index": {"_index": "test_index"}}\n'), next(params.GenerateActionMetaData("test_index", type_name=None)))
 
     def test_generate_action_meta_data_with_id_conflicts(self):
         def idx(id):
@@ -183,32 +145,40 @@ class ActionMetaDataTests(TestCase):
         def conflict(action, id):
             return action, '{"%s": {"_index": "test_index", "_type": "test_type", "_id": "%s"}}\n' % (action, id)
 
-        pseudo_random_conflicts = iter([
-            # if this value is <= our chosen threshold of 0.25 (see conflict_probability) we produce a conflict.
-            0.2,
-            0.25,
-            0.2,
-            # no conflict
-            0.3,
-            # conflict again
-            0.0
-        ])
+        pseudo_random_conflicts = iter(
+            [
+                # if this value is <= our chosen threshold of 0.25 (see conflict_probability) we produce a conflict.
+                0.2,
+                0.25,
+                0.2,
+                # no conflict
+                0.3,
+                # conflict again
+                0.0,
+            ]
+        )
 
-        chosen_index_of_conflicting_ids = iter([
-            # the "random" index of the id in the array `conflicting_ids` that will produce a conflict
-            1,
-            3,
-            2,
-            0])
+        chosen_index_of_conflicting_ids = iter(
+            [
+                # the "random" index of the id in the array `conflicting_ids` that will produce a conflict
+                1,
+                3,
+                2,
+                0,
+            ]
+        )
 
         conflict_action = random.choice(["index", "update"])
 
-        generator = params.GenerateActionMetaData("test_index", "test_type",
-                                                  conflicting_ids=[100, 200, 300, 400],
-                                                  conflict_probability=25,
-                                                  on_conflict=conflict_action,
-                                                  rand=lambda: next(pseudo_random_conflicts),
-                                                  randint=lambda x, y: next(chosen_index_of_conflicting_ids))
+        generator = params.GenerateActionMetaData(
+            "test_index",
+            "test_type",
+            conflicting_ids=[100, 200, 300, 400],
+            conflict_probability=25,
+            on_conflict=conflict_action,
+            rand=lambda: next(pseudo_random_conflicts),
+            randint=lambda x, y: next(chosen_index_of_conflicting_ids),
+        )
 
         # first one is always *not* drawn from a random index
         self.assertEqual(idx("100"), next(generator))
@@ -234,52 +204,58 @@ class ActionMetaDataTests(TestCase):
             else:
                 return action, '{"%s": {"_index": "test_index", "_id": "%s"}}\n' % (action, id)
 
-        pseudo_random_conflicts = iter([
-            # if this value is <= our chosen threshold of 0.25 (see conflict_probability) we produce a conflict.
-            0.2,
-            0.25,
-            0.2,
-            # no conflict
-            0.3,
-            0.4,
-            0.35,
-            # conflict again
-            0.0,
-            0.2,
-            0.15
-        ])
+        pseudo_random_conflicts = iter(
+            [
+                # if this value is <= our chosen threshold of 0.25 (see conflict_probability) we produce a conflict.
+                0.2,
+                0.25,
+                0.2,
+                # no conflict
+                0.3,
+                0.4,
+                0.35,
+                # conflict again
+                0.0,
+                0.2,
+                0.15,
+            ]
+        )
 
         # we use this value as `idx_range` in the calculation: idx = round((self.id_up_to - 1) * (1 - idx_range))
-        pseudo_exponential_distribution = iter([
-            # id_up_to = 1 -> idx = 0
-            0.013375248172714948,
-            # id_up_to = 1 -> idx = 0
-            0.042495604491024914,
-            # id_up_to = 1 -> idx = 0
-            0.005491072642023834,
-            # no conflict: id_up_to = 2
-            # no conflict: id_up_to = 3
-            # no conflict: id_up_to = 4
-            # id_up_to = 4 -> idx = round((4 - 1) * (1 - 0.028557879547255083)) = 3
-            0.028557879547255083,
-            # id_up_to = 4 -> idx = round((4 - 1) * (1 - 0.209771474243926352)) = 2
-            0.209771474243926352
-        ])
+        pseudo_exponential_distribution = iter(
+            [
+                # id_up_to = 1 -> idx = 0
+                0.013375248172714948,
+                # id_up_to = 1 -> idx = 0
+                0.042495604491024914,
+                # id_up_to = 1 -> idx = 0
+                0.005491072642023834,
+                # no conflict: id_up_to = 2
+                # no conflict: id_up_to = 3
+                # no conflict: id_up_to = 4
+                # id_up_to = 4 -> idx = round((4 - 1) * (1 - 0.028557879547255083)) = 3
+                0.028557879547255083,
+                # id_up_to = 4 -> idx = round((4 - 1) * (1 - 0.209771474243926352)) = 2
+                0.209771474243926352,
+            ]
+        )
 
         conflict_action = random.choice(["index", "update"])
         type_name = random.choice([None, "test_type"])
 
-        generator = params.GenerateActionMetaData("test_index", type_name=type_name,
-                                                  conflicting_ids=[100, 200, 300, 400, 500, 600],
-                                                  conflict_probability=25,
-                                                  # heavily biased towards recent ids
-                                                  recency=1.0,
-                                                  on_conflict=conflict_action,
-                                                  rand=lambda: next(pseudo_random_conflicts),
-                                                  # we don't use this one here because recency is > 0.
-                                                  # randint=lambda x, y: next(chosen_index_of_conflicting_ids),
-                                                  randexp=lambda lmbda: next(pseudo_exponential_distribution)
-                                                  )
+        generator = params.GenerateActionMetaData(
+            "test_index",
+            type_name=type_name,
+            conflicting_ids=[100, 200, 300, 400, 500, 600],
+            conflict_probability=25,
+            # heavily biased towards recent ids
+            recency=1.0,
+            on_conflict=conflict_action,
+            rand=lambda: next(pseudo_random_conflicts),
+            # we don't use this one here because recency is > 0.
+            # randint=lambda x, y: next(chosen_index_of_conflicting_ids),
+            randexp=lambda lmbda: next(pseudo_exponential_distribution),
+        )
 
         # first one is always *not* drawn from a random index
         self.assertEqual(idx(type_name, "100"), next(generator))
@@ -301,34 +277,22 @@ class ActionMetaDataTests(TestCase):
 
         test_ids = [100, 200, 300, 400]
 
-        generator = params.GenerateActionMetaData("test_index", "test_type",
-                                                  conflicting_ids=test_ids,
-                                                  conflict_probability=0)
+        generator = params.GenerateActionMetaData("test_index", "test_type", conflicting_ids=test_ids, conflict_probability=0)
 
         self.assertListEqual([idx(id) for id in test_ids], list(generator))
 
 
 class IndexDataReaderTests(TestCase):
     def test_read_bulk_larger_than_number_of_docs(self):
-        data = [
-            b'{"key": "value1"}\n',
-            b'{"key": "value2"}\n',
-            b'{"key": "value3"}\n',
-            b'{"key": "value4"}\n',
-            b'{"key": "value5"}\n'
-        ]
+        data = [b'{"key": "value1"}\n', b'{"key": "value2"}\n', b'{"key": "value3"}\n', b'{"key": "value4"}\n', b'{"key": "value5"}\n']
         bulk_size = 50
 
         source = params.Slice(io.StringAsFileSource, 0, len(data), self.corpus("a", [self.docs(80)]), None)
         am_handler = params.GenerateActionMetaData("test_index", "test_type")
 
-        reader = params.MetadataIndexDataReader(data,
-                                                batch_size=bulk_size,
-                                                bulk_size=bulk_size,
-                                                file_source=source,
-                                                action_metadata=am_handler,
-                                                index_name="test_index",
-                                                type_name="test_type")
+        reader = params.MetadataIndexDataReader(
+            data, batch_size=bulk_size, bulk_size=bulk_size, file_source=source, action_metadata=am_handler, index_name="test_index", type_name="test_type"
+        )
 
         expected_bulk_sizes = [len(data)]
         # lines should include meta-data
@@ -336,25 +300,15 @@ class IndexDataReaderTests(TestCase):
         self.assert_bulks_sized(reader, expected_bulk_sizes, expected_line_sizes)
 
     def test_read_bulk_with_offset(self):
-        data = [
-            b'{"key": "value1"}\n',
-            b'{"key": "value2"}\n',
-            b'{"key": "value3"}\n',
-            b'{"key": "value4"}\n',
-            b'{"key": "value5"}\n'
-        ]
+        data = [b'{"key": "value1"}\n', b'{"key": "value2"}\n', b'{"key": "value3"}\n', b'{"key": "value4"}\n', b'{"key": "value5"}\n']
         bulk_size = 50
 
         source = params.Slice(io.StringAsFileSource, 3, len(data), self.corpus("a", [self.docs(80)]), None)
         am_handler = params.GenerateActionMetaData("test_index", "test_type")
 
-        reader = params.MetadataIndexDataReader(data,
-                                                batch_size=bulk_size,
-                                                bulk_size=bulk_size,
-                                                file_source=source,
-                                                action_metadata=am_handler,
-                                                index_name="test_index",
-                                                type_name="test_type")
+        reader = params.MetadataIndexDataReader(
+            data, batch_size=bulk_size, bulk_size=bulk_size, file_source=source, action_metadata=am_handler, index_name="test_index", type_name="test_type"
+        )
 
         expected_bulk_sizes = [(len(data) - 3)]
         # lines should include meta-data
@@ -376,13 +330,9 @@ class IndexDataReaderTests(TestCase):
         source = params.Slice(io.StringAsFileSource, 0, len(data), self.corpus("a", [self.docs(80)]), None)
         am_handler = params.GenerateActionMetaData("test_index", "test_type")
 
-        reader = params.MetadataIndexDataReader(data,
-                                                batch_size=bulk_size,
-                                                bulk_size=bulk_size,
-                                                file_source=source,
-                                                action_metadata=am_handler,
-                                                index_name="test_index",
-                                                type_name="test_type")
+        reader = params.MetadataIndexDataReader(
+            data, batch_size=bulk_size, bulk_size=bulk_size, file_source=source, action_metadata=am_handler, index_name="test_index", type_name="test_type"
+        )
 
         expected_bulk_sizes = [3, 3, 1]
         # lines should include meta-data
@@ -405,13 +355,9 @@ class IndexDataReaderTests(TestCase):
         source = params.Slice(io.StringAsFileSource, 0, 5, self.corpus("a", [self.docs(80)]), None)
         am_handler = params.GenerateActionMetaData("test_index", "test_type")
 
-        reader = params.MetadataIndexDataReader(data,
-                                                batch_size=bulk_size,
-                                                bulk_size=bulk_size,
-                                                file_source=source,
-                                                action_metadata=am_handler,
-                                                index_name="test_index",
-                                                type_name="test_type")
+        reader = params.MetadataIndexDataReader(
+            data, batch_size=bulk_size, bulk_size=bulk_size, file_source=source, action_metadata=am_handler, index_name="test_index", type_name="test_type"
+        )
 
         expected_bulk_sizes = [3, 2]
         # lines should include meta-data
@@ -433,18 +379,13 @@ class IndexDataReaderTests(TestCase):
             b'{"index": {"_index": "test_index", "_type": "test_type"}\n',
             b'{"key": "value6"}\n',
             b'{"index": {"_index": "test_index", "_type": "test_type"}\n',
-            b'{"key": "value7"}\n'
+            b'{"key": "value7"}\n',
         ]
         bulk_size = 3
 
         source = params.Slice(io.StringAsFileSource, 0, len(data), self.corpus("a", [self.docs(80)]), None)
 
-        reader = params.SourceOnlyIndexDataReader(data,
-                                                  batch_size=bulk_size,
-                                                  bulk_size=bulk_size,
-                                                  file_source=source,
-                                                  index_name="test_index",
-                                                  type_name="test_type")
+        reader = params.SourceOnlyIndexDataReader(data, batch_size=bulk_size, bulk_size=bulk_size, file_source=source, index_name="test_index", type_name="test_type")
 
         expected_bulk_sizes = [3, 3, 1]
         # lines should include meta-data
@@ -452,45 +393,43 @@ class IndexDataReaderTests(TestCase):
         self.assert_bulks_sized(reader, expected_bulk_sizes, expected_line_sizes)
 
     def test_read_bulk_with_id_conflicts(self):
-        pseudo_random_conflicts = iter([
-            # if this value is <= our chosen threshold of 0.25 (see conflict_probability) we produce a conflict.
-            0.2,
-            0.25,
-            0.2,
-            # no conflict
-            0.3
-        ])
+        pseudo_random_conflicts = iter(
+            [
+                # if this value is <= our chosen threshold of 0.25 (see conflict_probability) we produce a conflict.
+                0.2,
+                0.25,
+                0.2,
+                # no conflict
+                0.3,
+            ]
+        )
 
-        chosen_index_of_conflicting_ids = iter([
-            # the "random" index of the id in the array `conflicting_ids` that will produce a conflict
-            1,
-            3,
-            2])
+        chosen_index_of_conflicting_ids = iter(
+            [
+                # the "random" index of the id in the array `conflicting_ids` that will produce a conflict
+                1,
+                3,
+                2,
+            ]
+        )
 
-        data = [
-            b'{"key": "value1"}\n',
-            b'{"key": "value2"}\n',
-            b'{"key": "value3"}\n',
-            b'{"key": "value4"}\n',
-            b'{"key": "value5"}\n'
-        ]
+        data = [b'{"key": "value1"}\n', b'{"key": "value2"}\n', b'{"key": "value3"}\n', b'{"key": "value4"}\n', b'{"key": "value5"}\n']
         bulk_size = 2
 
         source = params.Slice(io.StringAsFileSource, 0, len(data), self.corpus("a", [self.docs(80)]), None)
-        am_handler = params.GenerateActionMetaData("test_index", "test_type",
-                                                   conflicting_ids=[100, 200, 300, 400],
-                                                   conflict_probability=25,
-                                                   on_conflict="update",
-                                                   rand=lambda: next(pseudo_random_conflicts),
-                                                   randint=lambda x, y: next(chosen_index_of_conflicting_ids))
+        am_handler = params.GenerateActionMetaData(
+            "test_index",
+            "test_type",
+            conflicting_ids=[100, 200, 300, 400],
+            conflict_probability=25,
+            on_conflict="update",
+            rand=lambda: next(pseudo_random_conflicts),
+            randint=lambda x, y: next(chosen_index_of_conflicting_ids),
+        )
 
-        reader = params.MetadataIndexDataReader(data,
-                                                batch_size=bulk_size,
-                                                bulk_size=bulk_size,
-                                                file_source=source,
-                                                action_metadata=am_handler,
-                                                index_name="test_index",
-                                                type_name="test_type")
+        reader = params.MetadataIndexDataReader(
+            data, batch_size=bulk_size, bulk_size=bulk_size, file_source=source, action_metadata=am_handler, index_name="test_index", type_name="test_type"
+        )
 
         # consume all bulks
         bulks = []
@@ -499,40 +438,31 @@ class IndexDataReaderTests(TestCase):
                 for bulk_size, bulk in batch:
                     bulks.append(bulk)
 
-        self.assertEqual([
-            b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "100"}}\n' +
-            b'{"key": "value1"}\n' +
-            b'{"update": {"_index": "test_index", "_type": "test_type", "_id": "200"}}\n' +
-            b'{"doc":{"key": "value2"}}\n',
-            b'{"update": {"_index": "test_index", "_type": "test_type", "_id": "400"}}\n' +
-            b'{"doc":{"key": "value3"}}\n' +
-            b'{"update": {"_index": "test_index", "_type": "test_type", "_id": "300"}}\n' +
-            b'{"doc":{"key": "value4"}}\n',
-            b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "200"}}\n' +
-            b'{"key": "value5"}\n'
-        ], bulks)
+        self.assertEqual(
+            [
+                b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "100"}}\n'
+                + b'{"key": "value1"}\n'
+                + b'{"update": {"_index": "test_index", "_type": "test_type", "_id": "200"}}\n'
+                + b'{"doc":{"key": "value2"}}\n',
+                b'{"update": {"_index": "test_index", "_type": "test_type", "_id": "400"}}\n'
+                + b'{"doc":{"key": "value3"}}\n'
+                + b'{"update": {"_index": "test_index", "_type": "test_type", "_id": "300"}}\n'
+                + b'{"doc":{"key": "value4"}}\n',
+                b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "200"}}\n' + b'{"key": "value5"}\n',
+            ],
+            bulks,
+        )
 
     def test_read_bulk_with_external_id_and_zero_conflict_probability(self):
-        data = [
-            b'{"key": "value1"}\n',
-            b'{"key": "value2"}\n',
-            b'{"key": "value3"}\n',
-            b'{"key": "value4"}\n'
-        ]
+        data = [b'{"key": "value1"}\n', b'{"key": "value2"}\n', b'{"key": "value3"}\n', b'{"key": "value4"}\n']
         bulk_size = 2
 
         source = params.Slice(io.StringAsFileSource, 0, len(data), self.corpus("a", [self.docs(80)]), None)
-        am_handler = params.GenerateActionMetaData("test_index", "test_type",
-                                                   conflicting_ids=[100, 200, 300, 400],
-                                                   conflict_probability=0)
+        am_handler = params.GenerateActionMetaData("test_index", "test_type", conflicting_ids=[100, 200, 300, 400], conflict_probability=0)
 
-        reader = params.MetadataIndexDataReader(data,
-                                                batch_size=bulk_size,
-                                                bulk_size=bulk_size,
-                                                file_source=source,
-                                                action_metadata=am_handler,
-                                                index_name="test_index",
-                                                type_name="test_type")
+        reader = params.MetadataIndexDataReader(
+            data, batch_size=bulk_size, bulk_size=bulk_size, file_source=source, action_metadata=am_handler, index_name="test_index", type_name="test_type"
+        )
 
         # consume all bulks
         bulks = []
@@ -541,17 +471,19 @@ class IndexDataReaderTests(TestCase):
                 for bulk_size, bulk in batch:
                     bulks.append(bulk)
 
-        self.assertEqual([
-            b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "100"}}\n' +
-            b'{"key": "value1"}\n' +
-            b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "200"}}\n' +
-            b'{"key": "value2"}\n',
-
-            b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "300"}}\n' +
-            b'{"key": "value3"}\n' +
-            b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "400"}}\n' +
-            b'{"key": "value4"}\n'
-        ], bulks)
+        self.assertEqual(
+            [
+                b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "100"}}\n'
+                + b'{"key": "value1"}\n'
+                + b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "200"}}\n'
+                + b'{"key": "value2"}\n',
+                b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "300"}}\n'
+                + b'{"key": "value3"}\n'
+                + b'{"index": {"_index": "test_index", "_type": "test_type", "_id": "400"}}\n'
+                + b'{"key": "value4"}\n',
+            ],
+            bulks,
+        )
 
     def assert_bulks_sized(self, reader, expected_bulk_sizes, expected_line_sizes):
         self.assertEqual(len(expected_bulk_sizes), len(expected_line_sizes), "Bulk sizes and line sizes must be equal")
@@ -693,18 +625,18 @@ class InvocationGeneratorTests(TestCase):
 
         self.assertEqual(1, self.number_of_bulks([self.corpus("a", [docs1])], 0, 0, 1, 1))
         self.assertEqual(1, self.number_of_bulks([self.corpus("a", [docs1])], 0, 0, 1, 2))
-        self.assertEqual(20, self.number_of_bulks(
-            [self.corpus("a", [docs2, docs2, docs2, docs2, docs1]),
-             self.corpus("b", [docs2, docs2, docs2, docs2, docs2, docs1])], 0, 0, 1, 1))
-        self.assertEqual(11, self.number_of_bulks(
-            [self.corpus("a", [docs2, docs2, docs2, docs2, docs1]),
-             self.corpus("b", [docs2, docs2, docs2, docs2, docs2, docs1])], 0, 0, 1, 2))
-        self.assertEqual(11, self.number_of_bulks(
-            [self.corpus("a", [docs2, docs2, docs2, docs2, docs1]),
-             self.corpus("b", [docs2, docs2, docs2, docs2, docs2, docs1])], 0, 0, 1, 3))
-        self.assertEqual(11, self.number_of_bulks(
-            [self.corpus("a", [docs2, docs2, docs2, docs2, docs1]),
-             self.corpus("b", [docs2, docs2, docs2, docs2, docs2, docs1])], 0, 0, 1, 100))
+        self.assertEqual(
+            20, self.number_of_bulks([self.corpus("a", [docs2, docs2, docs2, docs2, docs1]), self.corpus("b", [docs2, docs2, docs2, docs2, docs2, docs1])], 0, 0, 1, 1)
+        )
+        self.assertEqual(
+            11, self.number_of_bulks([self.corpus("a", [docs2, docs2, docs2, docs2, docs1]), self.corpus("b", [docs2, docs2, docs2, docs2, docs2, docs1])], 0, 0, 1, 2)
+        )
+        self.assertEqual(
+            11, self.number_of_bulks([self.corpus("a", [docs2, docs2, docs2, docs2, docs1]), self.corpus("b", [docs2, docs2, docs2, docs2, docs2, docs1])], 0, 0, 1, 3)
+        )
+        self.assertEqual(
+            11, self.number_of_bulks([self.corpus("a", [docs2, docs2, docs2, docs2, docs1]), self.corpus("b", [docs2, docs2, docs2, docs2, docs2, docs1])], 0, 0, 1, 100)
+        )
 
         self.assertEqual(2, self.number_of_bulks([self.corpus("a", [self.docs(800)])], 0, 0, 3, 250))
         self.assertEqual(1, self.number_of_bulks([self.corpus("a", [self.docs(800)])], 0, 0, 3, 267))
@@ -727,8 +659,7 @@ class InvocationGeneratorTests(TestCase):
 
     def test_build_conflicting_ids(self):
         self.assertIsNone(params.build_conflicting_ids(params.IndexIdConflict.NoConflicts, 3, 0))
-        self.assertEqual(["0000000000", "0000000001", "0000000002"],
-                         params.build_conflicting_ids(params.IndexIdConflict.SequentialConflicts, 3, 0))
+        self.assertEqual(["0000000000", "0000000001", "0000000002"], params.build_conflicting_ids(params.IndexIdConflict.SequentialConflicts, 3, 0))
         # we cannot tell anything specific about the contents...
         self.assertEqual(3, len(params.build_conflicting_ids(params.IndexIdConflict.RandomConflicts, 3, 0)))
 
@@ -736,12 +667,10 @@ class InvocationGeneratorTests(TestCase):
 # pylint: disable=too-many-public-methods
 class BulkIndexParamSourceTests(TestCase):
     def test_create_without_params(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
             params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={})
@@ -752,283 +681,209 @@ class BulkIndexParamSourceTests(TestCase):
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
             params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={})
 
-        self.assertEqual("There is no document corpus definition for workload unit-test. "
-                         "You must add at least one before making bulk requests to the target cluster.", ctx.exception.args[0])
+        self.assertEqual(
+            "There is no document corpus definition for workload unit-test. You must add at least one before making bulk requests to the target cluster.", ctx.exception.args[0]
+        )
 
     def test_create_with_non_numeric_bulk_size(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-                "bulk-size": "Three"
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"bulk-size": "Three"})
 
         self.assertEqual("'bulk-size' must be numeric", ctx.exception.args[0])
 
     def test_create_with_negative_bulk_size(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-                "bulk-size": -5
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"bulk-size": -5})
 
         self.assertEqual("'bulk-size' must be positive but was -5", ctx.exception.args[0])
 
     def test_create_with_fraction_smaller_batch_size(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-                "bulk-size": 5,
-                "batch-size": 3
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"bulk-size": 5, "batch-size": 3})
 
         self.assertEqual("'batch-size' must be greater than or equal to 'bulk-size'", ctx.exception.args[0])
 
     def test_create_with_fraction_larger_batch_size(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-                "bulk-size": 5,
-                "batch-size": 8
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"bulk-size": 5, "batch-size": 8})
 
         self.assertEqual("'batch-size' must be a multiple of 'bulk-size'", ctx.exception.args[0])
 
     def test_create_with_metadata_in_source_file_but_conflicts(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            document_archive="docs.json.bz2",
-                            document_file="docs.json",
-                            number_of_documents=10,
-                            includes_action_and_meta_data=True)
-        ])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[
+                workload.Documents(
+                    source_format=workload.Documents.SOURCE_FORMAT_BULK,
+                    document_archive="docs.json.bz2",
+                    document_file="docs.json",
+                    number_of_documents=10,
+                    includes_action_and_meta_data=True,
+                )
+            ],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-                "conflicts": "random"
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"conflicts": "random"})
 
-        self.assertEqual("Cannot generate id conflicts [random] as [docs.json.bz2] in document corpus [default] already contains "
-                         "an action and meta-data line.", ctx.exception.args[0])
+        self.assertEqual(
+            "Cannot generate id conflicts [random] as [docs.json.bz2] in document corpus [default] already contains an action and meta-data line.", ctx.exception.args[0]
+        )
 
     def test_create_with_unknown_id_conflicts(self):
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={
-                "conflicts": "crazy"
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={"conflicts": "crazy"})
 
         self.assertEqual("Unknown 'conflicts' setting [crazy]", ctx.exception.args[0])
 
     def test_create_with_unknown_on_conflict_setting(self):
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={
-                "conflicts": "sequential",
-                "on-conflict": "delete"
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={"conflicts": "sequential", "on-conflict": "delete"})
 
         self.assertEqual("Unknown 'on-conflict' setting [delete]", ctx.exception.args[0])
 
     def test_create_with_conflicts_and_data_streams(self):
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={
-                "data-streams": ["test-data-stream-1", "test-data-stream-2"],
-                "conflicts": "sequential"
-            })
+            params.BulkIndexParamSource(
+                workload=workload.Workload(name="unit-test"), params={"data-streams": ["test-data-stream-1", "test-data-stream-2"], "conflicts": "sequential"}
+            )
 
         self.assertEqual("'conflicts' cannot be used with 'data-streams'", ctx.exception.args[0])
 
     def test_create_with_ingest_percentage_too_low(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-                "bulk-size": 5000,
-                "ingest-percentage": 0.0
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"bulk-size": 5000, "ingest-percentage": 0.0})
 
         self.assertEqual("'ingest-percentage' must be in the range (0.0, 100.0] but was 0.0", ctx.exception.args[0])
 
     def test_create_with_ingest_percentage_too_high(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-                "bulk-size": 5000,
-                "ingest-percentage": 100.1
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"bulk-size": 5000, "ingest-percentage": 100.1})
 
         self.assertEqual("'ingest-percentage' must be in the range (0.0, 100.0] but was 100.1", ctx.exception.args[0])
 
     def test_create_with_ingest_percentage_not_numeric(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-                "bulk-size": 5000,
-                "ingest-percentage": "100 percent"
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"bulk-size": 5000, "ingest-percentage": "100 percent"})
 
         self.assertEqual("'ingest-percentage' must be numeric", ctx.exception.args[0])
 
     def test_create_valid_param_source(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
-        self.assertIsNotNone(params.BulkIndexParamSource(workload.Workload(name="unit-test", corpora=[corpus]), params={
-            "conflicts": "random",
-            "bulk-size": 5000,
-            "batch-size": 20000,
-            "ingest-percentage": 20.5,
-            "pipeline": "test-pipeline"
-        }))
+        self.assertIsNotNone(
+            params.BulkIndexParamSource(
+                workload.Workload(name="unit-test", corpora=[corpus]),
+                params={"conflicts": "random", "bulk-size": 5000, "batch-size": 20000, "ingest-percentage": 20.5, "pipeline": "test-pipeline"},
+            )
+        )
 
     def test_passes_all_corpora_by_default(self):
         corpora = [
-            workload.DocumentCorpus(name="default", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=10,
-                                target_collection="test-idx",
-                                target_type="test-type"
-                                )
-            ]),
-            workload.DocumentCorpus(name="special", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=100,
-                                target_collection="test-idx2",
-                                target_type="type"
-                                )
-            ]),
+            workload.DocumentCorpus(
+                name="default",
+                documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+            ),
+            workload.DocumentCorpus(
+                name="special",
+                documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=100, target_collection="test-idx2", target_type="type")],
+            ),
         ]
 
         source = params.BulkIndexParamSource(
-            workload=workload.Workload(name="unit-test", corpora=corpora),
-            params={
-                "conflicts": "random",
-                "bulk-size": 5000,
-                "batch-size": 20000,
-                "pipeline": "test-pipeline"
-            })
+            workload=workload.Workload(name="unit-test", corpora=corpora), params={"conflicts": "random", "bulk-size": 5000, "batch-size": 20000, "pipeline": "test-pipeline"}
+        )
 
         partition = source.partition(0, 1)
         self.assertEqual(partition.corpora, corpora)
 
     def test_filters_corpora(self):
         corpora = [
-            workload.DocumentCorpus(name="default", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=10,
-                                target_collection="test-idx",
-                                target_type="test-type"
-                                )
-            ]),
-            workload.DocumentCorpus(name="special", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=100,
-                                target_collection="test-idx2",
-                                target_type="type"
-                                )
-            ]),
+            workload.DocumentCorpus(
+                name="default",
+                documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+            ),
+            workload.DocumentCorpus(
+                name="special",
+                documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=100, target_collection="test-idx2", target_type="type")],
+            ),
         ]
 
         source = params.BulkIndexParamSource(
             workload=workload.Workload(name="unit-test", corpora=corpora),
-            params={
-                "corpora": ["special"],
-                "conflicts": "random",
-                "bulk-size": 5000,
-                "batch-size": 20000,
-                "pipeline": "test-pipeline"
-            })
+            params={"corpora": ["special"], "conflicts": "random", "bulk-size": 5000, "batch-size": 20000, "pipeline": "test-pipeline"},
+        )
 
         partition = source.partition(0, 1)
         self.assertEqual(partition.corpora, [corpora[1]])
 
     def test_raises_exception_if_no_corpus_matches(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
         with self.assertRaises(exceptions.BenchmarkAssertionError) as ctx:
             params.BulkIndexParamSource(
                 workload=workload.Workload(name="unit-test", corpora=[corpus]),
-                params={
-                    "corpora": "does_not_exist",
-                    "conflicts": "random",
-                    "bulk-size": 5000,
-                    "batch-size": 20000,
-                    "pipeline": "test-pipeline"
-                })
+                params={"corpora": "does_not_exist", "conflicts": "random", "bulk-size": 5000, "batch-size": 20000, "pipeline": "test-pipeline"},
+            )
 
         self.assertEqual("The provided corpus ['does_not_exist'] does not match any of the corpora ['default'].", ctx.exception.args[0])
 
     def test_ingests_all_documents_by_default(self):
         corpora = [
-            workload.DocumentCorpus(name="default", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=300000,
-                                target_collection="test-idx",
-                                target_type="test-type"
-                                )
-            ]),
-            workload.DocumentCorpus(name="special", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=700000,
-                                target_collection="test-idx2",
-                                target_type="type"
-                                )
-            ]),
+            workload.DocumentCorpus(
+                name="default",
+                documents=[
+                    workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=300000, target_collection="test-idx", target_type="test-type")
+                ],
+            ),
+            workload.DocumentCorpus(
+                name="special",
+                documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=700000, target_collection="test-idx2", target_type="type")],
+            ),
         ]
 
-        source = params.BulkIndexParamSource(
-            workload=workload.Workload(name="unit-test", corpora=corpora),
-            params={
-                "bulk-size": 10000
-            })
+        source = params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=corpora), params={"bulk-size": 10000})
 
         partition = source.partition(0, 1)
         partition._init_internal_params()
@@ -1037,18 +892,22 @@ class BulkIndexParamSourceTests(TestCase):
 
     def test_restricts_number_of_bulks_if_required(self):
         def create_unit_test_reader(*args):
-            return StaticBulkReader("idx", "doc", bulks=[
-                ['{"location" : [-0.1485188, 51.5250666]}'],
-                ['{"location" : [-0.1479949, 51.5252071]}'],
-                ['{"location" : [-0.1458559, 51.5289059]}'],
-                ['{"location" : [-0.1498551, 51.5282564]}'],
-                ['{"location" : [-0.1487043, 51.5254843]}'],
-                ['{"location" : [-0.1533367, 51.5261779]}'],
-                ['{"location" : [-0.1543018, 51.5262398]}'],
-                ['{"location" : [-0.1522118, 51.5266564]}'],
-                ['{"location" : [-0.1529092, 51.5263360]}'],
-                ['{"location" : [-0.1537008, 51.5265365]}'],
-            ])
+            return StaticBulkReader(
+                "idx",
+                "doc",
+                bulks=[
+                    ['{"location" : [-0.1485188, 51.5250666]}'],
+                    ['{"location" : [-0.1479949, 51.5252071]}'],
+                    ['{"location" : [-0.1458559, 51.5289059]}'],
+                    ['{"location" : [-0.1498551, 51.5282564]}'],
+                    ['{"location" : [-0.1487043, 51.5254843]}'],
+                    ['{"location" : [-0.1533367, 51.5261779]}'],
+                    ['{"location" : [-0.1543018, 51.5262398]}'],
+                    ['{"location" : [-0.1522118, 51.5266564]}'],
+                    ['{"location" : [-0.1529092, 51.5263360]}'],
+                    ['{"location" : [-0.1537008, 51.5265365]}'],
+                ],
+            )
 
         def schedule(param_source):
             while True:
@@ -1058,29 +917,21 @@ class BulkIndexParamSourceTests(TestCase):
                     return
 
         corpora = [
-            workload.DocumentCorpus(name="default", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=300000,
-                                target_collection="test-idx",
-                                target_type="test-type"
-                                )
-            ]),
-            workload.DocumentCorpus(name="special", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=700000,
-                                target_collection="test-idx2",
-                                target_type="type"
-                                )
-            ]),
+            workload.DocumentCorpus(
+                name="default",
+                documents=[
+                    workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=300000, target_collection="test-idx", target_type="test-type")
+                ],
+            ),
+            workload.DocumentCorpus(
+                name="special",
+                documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=700000, target_collection="test-idx2", target_type="type")],
+            ),
         ]
 
         source = params.BulkIndexParamSource(
-            workload=workload.Workload(name="unit-test", corpora=corpora),
-            params={
-                "bulk-size": 10000,
-                "ingest-percentage": 2.5,
-                "__create_reader": create_unit_test_reader
-            })
+            workload=workload.Workload(name="unit-test", corpora=corpora), params={"bulk-size": 10000, "ingest-percentage": 2.5, "__create_reader": create_unit_test_reader}
+        )
 
         partition = source.partition(0, 1)
         partition._init_internal_params()
@@ -1089,46 +940,30 @@ class BulkIndexParamSourceTests(TestCase):
         self.assertEqual(3, len(list(schedule(partition))))
 
     def test_create_with_conflict_probability_zero(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
-        params.BulkIndexParamSource(workload=workload.Workload(name="unit-test", corpora=[corpus]), params={
-            "bulk-size": 5000,
-            "conflicts": "sequential",
-            "conflict-probability": 0
-        })
+        params.BulkIndexParamSource(
+            workload=workload.Workload(name="unit-test", corpora=[corpus]), params={"bulk-size": 5000, "conflicts": "sequential", "conflict-probability": 0}
+        )
 
     def test_create_with_conflict_probability_too_low(self):
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={
-                "bulk-size": 5000,
-                "conflicts": "sequential",
-                "conflict-probability": -0.1
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={"bulk-size": 5000, "conflicts": "sequential", "conflict-probability": -0.1})
 
         self.assertEqual("'conflict-probability' must be in the range [0.0, 100.0] but was -0.1", ctx.exception.args[0])
 
     def test_create_with_conflict_probability_too_high(self):
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={
-                "bulk-size": 5000,
-                "conflicts": "sequential",
-                "conflict-probability": 100.1
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={"bulk-size": 5000, "conflicts": "sequential", "conflict-probability": 100.1})
 
         self.assertEqual("'conflict-probability' must be in the range [0.0, 100.0] but was 100.1", ctx.exception.args[0])
 
     def test_create_with_conflict_probability_not_numeric(self):
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={
-                "bulk-size": 5000,
-                "conflicts": "sequential",
-                "conflict-probability": "100 percent"
-            })
+            params.BulkIndexParamSource(workload=workload.Workload(name="unit-test"), params={"bulk-size": 5000, "conflicts": "sequential", "conflict-probability": "100 percent"})
 
         self.assertEqual("'conflict-probability' must be numeric", ctx.exception.args[0])
 
@@ -1142,6 +977,7 @@ class BulkIndexParamSourceTests(TestCase):
                     ['{"location" : [-0.1479949, 51.5252071]}'],
                 ],
             )
+
         corpora = [
             workload.DocumentCorpus(
                 name="default",
@@ -1176,7 +1012,6 @@ class BulkIndexParamSourceTests(TestCase):
 
 
 class BulkDataGeneratorTests(TestCase):
-
     @classmethod
     def create_test_reader(cls, batches):
         def inner_create_test_reader(corpus, docs, *args):
@@ -1185,160 +1020,168 @@ class BulkDataGeneratorTests(TestCase):
         return inner_create_test_reader
 
     def test_generate_two_bulks(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=10,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )
-        ])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=10, target_collection="test-idx", target_type="test-type")],
+        )
 
-        bulks = params.bulk_data_based(num_clients=1, start_client_index=0, end_client_index=0, corpora=[corpus],
-                                       batch_size=5, bulk_size=5,
-                                       id_conflicts=params.IndexIdConflict.NoConflicts, conflict_probability=None, on_conflict=None,
-                                       recency=None, pipeline=None,
-                                       original_params={
-                                           "my-custom-parameter": "foo",
-                                           "my-custom-parameter-2": True
-                                       }, create_reader=BulkDataGeneratorTests.
-                                       create_test_reader([["1", "2", "3", "4", "5"], ["6", "7", "8"]]))
+        bulks = params.bulk_data_based(
+            num_clients=1,
+            start_client_index=0,
+            end_client_index=0,
+            corpora=[corpus],
+            batch_size=5,
+            bulk_size=5,
+            id_conflicts=params.IndexIdConflict.NoConflicts,
+            conflict_probability=None,
+            on_conflict=None,
+            recency=None,
+            pipeline=None,
+            original_params={"my-custom-parameter": "foo", "my-custom-parameter-2": True},
+            create_reader=BulkDataGeneratorTests.create_test_reader([["1", "2", "3", "4", "5"], ["6", "7", "8"]]),
+        )
         all_bulks = list(bulks)
         self.assertEqual(2, len(all_bulks))
-        self.assertEqual({
-            "action-metadata-present": True,
-            "body": ["1", "2", "3", "4", "5"],
-            "bulk-size": 5,
-            "unit": "docs",
-            "index": "test-idx",
-            "type": "test-type",
-            "my-custom-parameter": "foo",
-            "my-custom-parameter-2": True
-        }, all_bulks[0])
+        self.assertEqual(
+            {
+                "action-metadata-present": True,
+                "body": ["1", "2", "3", "4", "5"],
+                "bulk-size": 5,
+                "unit": "docs",
+                "index": "test-idx",
+                "type": "test-type",
+                "my-custom-parameter": "foo",
+                "my-custom-parameter-2": True,
+            },
+            all_bulks[0],
+        )
 
-        self.assertEqual({
-            "action-metadata-present": True,
-            "body": ["6", "7", "8"],
-            "bulk-size": 3,
-            "unit": "docs",
-            "index": "test-idx",
-            "type": "test-type",
-            "my-custom-parameter": "foo",
-            "my-custom-parameter-2": True
-        }, all_bulks[1])
+        self.assertEqual(
+            {
+                "action-metadata-present": True,
+                "body": ["6", "7", "8"],
+                "bulk-size": 3,
+                "unit": "docs",
+                "index": "test-idx",
+                "type": "test-type",
+                "my-custom-parameter": "foo",
+                "my-custom-parameter-2": True,
+            },
+            all_bulks[1],
+        )
 
     def test_generate_bulks_from_multiple_corpora(self):
         corpora = [
-            workload.DocumentCorpus(name="default", documents=[
-                        workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                        number_of_documents=5,
-                                        target_collection="logs-2018-01",
-                                        target_type="docs"
-                                        ),
-                        workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                        number_of_documents=5,
-                                        target_collection="logs-2018-02",
-                                        target_type="docs"
-                                        ),
+            workload.DocumentCorpus(
+                name="default",
+                documents=[
+                    workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-2018-01", target_type="docs"),
+                    workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-2018-02", target_type="docs"),
+                ],
+            ),
+            workload.DocumentCorpus(
+                name="special",
+                documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=5, target_collection="logs-2017-01", target_type="docs")],
+            ),
+        ]
 
-                    ]),
-            workload.DocumentCorpus(name="special", documents=[
-                workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                                number_of_documents=5,
-                                target_collection="logs-2017-01",
-                                target_type="docs"
-                                )
-            ])
-
-            ]
-
-        bulks = params.bulk_data_based(num_clients=1, start_client_index=0, end_client_index=0, corpora=corpora,
-                                       batch_size=5, bulk_size=5,
-                                       id_conflicts=params.IndexIdConflict.NoConflicts, conflict_probability=None, on_conflict=None,
-                                       recency=None, pipeline=None,
-                                       original_params={
-                                           "my-custom-parameter": "foo",
-                                           "my-custom-parameter-2": True
-                                       }, create_reader=BulkDataGeneratorTests.
-                                       create_test_reader([["1", "2", "3", "4", "5"]]))
+        bulks = params.bulk_data_based(
+            num_clients=1,
+            start_client_index=0,
+            end_client_index=0,
+            corpora=corpora,
+            batch_size=5,
+            bulk_size=5,
+            id_conflicts=params.IndexIdConflict.NoConflicts,
+            conflict_probability=None,
+            on_conflict=None,
+            recency=None,
+            pipeline=None,
+            original_params={"my-custom-parameter": "foo", "my-custom-parameter-2": True},
+            create_reader=BulkDataGeneratorTests.create_test_reader([["1", "2", "3", "4", "5"]]),
+        )
         all_bulks = list(bulks)
         self.assertEqual(3, len(all_bulks))
-        self.assertEqual({
-            "action-metadata-present": True,
-            "body": ["1", "2", "3", "4", "5"],
-            "bulk-size": 5,
-            "unit": "docs",
-            "index": "logs-2018-01",
-            "type": "docs",
-            "my-custom-parameter": "foo",
-            "my-custom-parameter-2": True
-        }, all_bulks[0])
+        self.assertEqual(
+            {
+                "action-metadata-present": True,
+                "body": ["1", "2", "3", "4", "5"],
+                "bulk-size": 5,
+                "unit": "docs",
+                "index": "logs-2018-01",
+                "type": "docs",
+                "my-custom-parameter": "foo",
+                "my-custom-parameter-2": True,
+            },
+            all_bulks[0],
+        )
 
-        self.assertEqual({
-            "action-metadata-present": True,
-            "body": ["1", "2", "3", "4", "5"],
-            "bulk-size": 5,
-            "unit": "docs",
-            "index": "logs-2018-02",
-            "type": "docs",
-            "my-custom-parameter": "foo",
-            "my-custom-parameter-2": True
-        }, all_bulks[1])
+        self.assertEqual(
+            {
+                "action-metadata-present": True,
+                "body": ["1", "2", "3", "4", "5"],
+                "bulk-size": 5,
+                "unit": "docs",
+                "index": "logs-2018-02",
+                "type": "docs",
+                "my-custom-parameter": "foo",
+                "my-custom-parameter-2": True,
+            },
+            all_bulks[1],
+        )
 
-        self.assertEqual({
-            "action-metadata-present": True,
-            "body": ["1", "2", "3", "4", "5"],
-            "bulk-size": 5,
-            "unit": "docs",
-            "index": "logs-2017-01",
-            "type": "docs",
-            "my-custom-parameter": "foo",
-            "my-custom-parameter-2": True
-        }, all_bulks[2])
+        self.assertEqual(
+            {
+                "action-metadata-present": True,
+                "body": ["1", "2", "3", "4", "5"],
+                "bulk-size": 5,
+                "unit": "docs",
+                "index": "logs-2017-01",
+                "type": "docs",
+                "my-custom-parameter": "foo",
+                "my-custom-parameter-2": True,
+            },
+            all_bulks[2],
+        )
 
     def test_internal_params_take_precedence(self):
-        corpus = workload.DocumentCorpus(name="default", documents=[
-            workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK,
-                            number_of_documents=3,
-                            target_collection="test-idx",
-                            target_type="test-type"
-                            )
-        ])
+        corpus = workload.DocumentCorpus(
+            name="default",
+            documents=[workload.Documents(source_format=workload.Documents.SOURCE_FORMAT_BULK, number_of_documents=3, target_collection="test-idx", target_type="test-type")],
+        )
 
-        bulks = params.bulk_data_based(num_clients=1, start_client_index=0, end_client_index=0, corpora=[corpus],
-                                       batch_size=3, bulk_size=3, id_conflicts=params.IndexIdConflict.NoConflicts,
-                                       conflict_probability=None, on_conflict=None,
-                                       recency=None, pipeline=None,
-                                       original_params={
-                                           "body": "foo",
-                                           "custom-param": "bar"
-                                       }, create_reader=BulkDataGeneratorTests.
-                                       create_test_reader([["1", "2", "3"]]))
+        bulks = params.bulk_data_based(
+            num_clients=1,
+            start_client_index=0,
+            end_client_index=0,
+            corpora=[corpus],
+            batch_size=3,
+            bulk_size=3,
+            id_conflicts=params.IndexIdConflict.NoConflicts,
+            conflict_probability=None,
+            on_conflict=None,
+            recency=None,
+            pipeline=None,
+            original_params={"body": "foo", "custom-param": "bar"},
+            create_reader=BulkDataGeneratorTests.create_test_reader([["1", "2", "3"]]),
+        )
         all_bulks = list(bulks)
         self.assertEqual(1, len(all_bulks))
         # body must not contain 'foo'!
-        self.assertEqual({
-            "action-metadata-present": True,
-            "body": ["1", "2", "3"],
-            "bulk-size": 3,
-            "unit": "docs",
-            "index": "test-idx",
-            "type": "test-type",
-            "custom-param": "bar"
-        }, all_bulks[0])
+        self.assertEqual(
+            {"action-metadata-present": True, "body": ["1", "2", "3"], "bulk-size": 3, "unit": "docs", "index": "test-idx", "type": "test-type", "custom-param": "bar"},
+            all_bulks[0],
+        )
 
 
 class ParamsRegistrationTests(TestCase):
     @staticmethod
     def param_source_legacy_function(indices, params):
-        return {
-            "key": params["parameter"]
-        }
+        return {"key": params["parameter"]}
 
     @staticmethod
     def param_source_function(workload, params, **kwargs):
-        return {
-            "key": params["parameter"]
-        }
+        return {"key": params["parameter"]}
 
     class ParamSourceLegacyClass:
         def __init__(self, indices=None, params=None):
@@ -1352,9 +1195,7 @@ class ParamsRegistrationTests(TestCase):
             return 1
 
         def params(self):
-            return {
-                "class-key": self._params["parameter"]
-            }
+            return {"class-key": self._params["parameter"]}
 
     class ParamSourceClass:
         def __init__(self, workload=None, params=None, **kwargs):
@@ -1368,9 +1209,7 @@ class ParamsRegistrationTests(TestCase):
             return 1
 
         def params(self):
-            return {
-                "class-key": self._params["parameter"]
-            }
+            return {"class-key": self._params["parameter"]}
 
         def __str__(self):
             return "test param source"
@@ -1414,13 +1253,13 @@ class ParamsRegistrationTests(TestCase):
     def test_cannot_register_an_instance_as_param_source(self):
         source_name = "params-test-class-param-source"
         # we create an instance, instead of passing the class
-        with self.assertRaisesRegex(exceptions.BenchmarkAssertionError,
-                                    "Parameter source \\[test param source\\] must be either a function or a class\\."):
+        with self.assertRaisesRegex(exceptions.BenchmarkAssertionError, "Parameter source \\[test param source\\] must be either a function or a class\\."):
             params.register_param_source_for_name(source_name, ParamsRegistrationTests.ParamSourceClass())
+
 
 class StandardValueSourceRegistrationTests(TestCase):
     def get_mock_standard_value_source(self, gte, lte):
-        return lambda : {"gte":gte, "lte":lte}
+        return lambda: {"gte": gte, "lte": lte}
 
     def test_register_standard_value_source(self):
         # Test the sequence: register standard value source -> generate saved standard values
@@ -1439,48 +1278,46 @@ class StandardValueSourceRegistrationTests(TestCase):
 
         params.register_standard_value_source(op_name, field_name_1, self.get_mock_standard_value_source(gte_field_1, lte_field_1))
 
-        self.assertEqual(params.get_standard_value_source(op_name, field_name_1)(), {"gte":gte_field_1, "lte":lte_field_1})
+        self.assertEqual(params.get_standard_value_source(op_name, field_name_1)(), {"gte": gte_field_1, "lte": lte_field_1})
 
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             _ = params.get_standard_value_source(op_name, field_name_2)
             self.assertEqual(
-                "Could not find standard value source for operation {}, field {}! Make sure this is registered in workload.py"
-                .format(op_name, field_name_2), ctx.exception.args[0])
+                "Could not find standard value source for operation {}, field {}! Make sure this is registered in workload.py".format(op_name, field_name_2), ctx.exception.args[0]
+            )
 
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             _ = params.get_standard_value(op_name, field_name_1, 0)
             self.assertEqual("No standard values generated for operation {}, field {}".format(op_name, field_name_1), ctx.exception.args[0])
 
         params.generate_standard_values_if_absent(op_name, field_name_1, n)
-        self.assertEqual(params.get_standard_value(op_name, field_name_1, 0), {"gte":gte_field_1, "lte":lte_field_1})
+        self.assertEqual(params.get_standard_value(op_name, field_name_1, 0), {"gte": gte_field_1, "lte": lte_field_1})
 
         # check that running generate_standard_values_if_absent on the same inputs does nothing
         # we can do this by telling it to generate 2*n, but it won't because values are already present
-        params.generate_standard_values_if_absent(op_name, field_name_1, 2*n)
+        params.generate_standard_values_if_absent(op_name, field_name_1, 2 * n)
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             _ = params.get_standard_value(op_name, field_name_1, n + 1)
             self.assertEqual(
-                "Standard value index {} out of range for operation {}, field name {} ({} values total)"
-                .format(n+1, op_name, field_name_1, n), ctx.exception.args[0])
+                "Standard value index {} out of range for operation {}, field name {} ({} values total)".format(n + 1, op_name, field_name_1, n), ctx.exception.args[0]
+            )
 
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             params.generate_standard_values_if_absent(op_name, field_name_2, n)
-            self.assertEqual(
-                "Cannot generate standard values for operation {}, field {}. Standard value source is missing"
-                .format(op_name, field_name_2), ctx.exception.args[0])
+            self.assertEqual("Cannot generate standard values for operation {}, field {}. Standard value source is missing".format(op_name, field_name_2), ctx.exception.args[0])
 
         params.register_standard_value_source(op_name, field_name_2, self.get_mock_standard_value_source(gte_field_2, lte_field_2))
-        self.assertEqual(params.get_standard_value_source(op_name, field_name_2)(), {"gte":gte_field_2, "lte":lte_field_2})
-        self.assertEqual(params.get_standard_value_source(op_name, field_name_1)(), {"gte":gte_field_1, "lte":lte_field_1})
+        self.assertEqual(params.get_standard_value_source(op_name, field_name_2)(), {"gte": gte_field_2, "lte": lte_field_2})
+        self.assertEqual(params.get_standard_value_source(op_name, field_name_1)(), {"gte": gte_field_1, "lte": lte_field_1})
 
         params._clear_standard_values()
+
 
 class QueryRandomizationInfoRegistrationTests(TestCase):
     def check_result_equality(self, result, expected):
         self.assertEqual(result.query_name, expected.query_name)
         self.assertEqual(result.parameter_name_options_list, expected.parameter_name_options_list)
         self.assertEqual(result.optional_parameters, expected.optional_parameters)
-
 
     def test_register_query_randomization_info(self):
         params._clear_query_randomization_infos()
@@ -1502,19 +1339,18 @@ class QueryRandomizationInfoRegistrationTests(TestCase):
 
         params._clear_query_randomization_infos()
 
+
 class SleepParamSourceTests(TestCase):
     def test_missing_duration_parameter(self):
         with self.assertRaisesRegex(exceptions.InvalidSyntax, "parameter 'duration' is mandatory for sleep operation"):
             params.SleepParamSource(workload.Workload(name="unit-test"), params={})
 
     def test_duration_parameter_wrong_type(self):
-        with self.assertRaisesRegex(exceptions.InvalidSyntax,
-                                    "parameter 'duration' for sleep operation must be a number"):
+        with self.assertRaisesRegex(exceptions.InvalidSyntax, "parameter 'duration' for sleep operation must be a number"):
             params.SleepParamSource(workload.Workload(name="unit-test"), params={"duration": "this is a string"})
 
     def test_duration_parameter_negative_number(self):
-        with self.assertRaisesRegex(exceptions.InvalidSyntax,
-                                    "parameter 'duration' must be non-negative but was -1.0"):
+        with self.assertRaisesRegex(exceptions.InvalidSyntax, "parameter 'duration' must be non-negative but was -1.0"):
             params.SleepParamSource(workload.Workload(name="unit-test"), params={"duration": -1.0})
 
     def test_param_source_passes_all_parameters(self):
@@ -1526,18 +1362,10 @@ class SearchParamSourceTests(TestCase):
     def test_passes_cache(self):
         col1 = workload.Collection(name="index1")
 
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
-            "index": "index1",
-            "body": {
-                "query": {
-                    "match_all": {}
-                }
-            },
-            "headers": {
-                "header1": "value1"
-            },
-            "cache": True
-        })
+        source = params.SearchParamSource(
+            workload=workload.Workload(name="unit-test", collections=[col1]),
+            params={"index": "index1", "body": {"query": {"match_all": {}}}, "headers": {"header1": "value1"}, "cache": True},
+        )
         p = source.params()
 
         self.assertEqual(11, len(p))
@@ -1552,28 +1380,14 @@ class SearchParamSourceTests(TestCase):
         self.assertEqual(True, p["cache"])
         self.assertEqual(True, p["response-compression-enabled"])
         self.assertEqual(False, p["detailed-results"])
-        self.assertEqual({
-            "query": {
-                "match_all": {}
-            }
-        }, p["body"])
+        self.assertEqual({"query": {"match_all": {}}}, p["body"])
 
     def test_uses_collection_default(self):
         col1 = workload.Collection(name="collection-1")
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
-            "body": {
-                "query": {
-                    "match_all": {}
-                }
-            },
-            "request-timeout": 1.0,
-            "headers": {
-                "header1": "value1",
-                "header2": "value2"
-            },
-            "opaque-id": "12345abcde",
-            "cache": True
-        })
+        source = params.SearchParamSource(
+            workload=workload.Workload(name="unit-test", collections=[col1]),
+            params={"body": {"query": {"match_all": {}}}, "request-timeout": 1.0, "headers": {"header1": "value1", "header2": "value2"}, "opaque-id": "12345abcde", "cache": True},
+        )
         p = source.params()
 
         self.assertEqual(11, len(p))
@@ -1581,48 +1395,27 @@ class SearchParamSourceTests(TestCase):
         self.assertEqual("collection-1", p["index"])
         self.assertIsNone(p["type"])
         self.assertEqual(1.0, p["request-timeout"])
-        self.assertDictEqual({
-            "header1": "value1",
-            "header2": "value2"
-        }, p["headers"])
+        self.assertDictEqual({"header1": "value1", "header2": "value2"}, p["headers"])
         self.assertEqual("12345abcde", p["opaque-id"])
         self.assertEqual({}, p["request-params"])
         self.assertEqual(True, p["cache"])
         self.assertEqual(True, p["response-compression-enabled"])
         self.assertEqual(False, p["detailed-results"])
-        self.assertEqual({
-            "query": {
-                "match_all": {}
-            }
-        }, p["body"])
+        self.assertEqual({"query": {"match_all": {}}}, p["body"])
 
     def test_create_without_index(self):
         with self.assertRaises(exceptions.InvalidSyntax) as ctx:
-            params.SearchParamSource(workload=workload.Workload(name="unit-test"), params={
-                "type": "type1",
-                "body": {
-                    "query": {
-                        "match_all": {}
-                    }
-                }
-            }, operation_name="test_operation")
+            params.SearchParamSource(workload=workload.Workload(name="unit-test"), params={"type": "type1", "body": {"query": {"match_all": {}}}}, operation_name="test_operation")
 
         self.assertEqual("'index' or 'data-stream' is mandatory and is missing for operation 'test_operation'", ctx.exception.args[0])
 
     def test_passes_request_parameters(self):
         col1 = workload.Collection(name="index1")
 
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
-            "index": "index1",
-            "request-params": {
-                "_source_include": "some_field"
-            },
-            "body": {
-                "query": {
-                    "match_all": {}
-                }
-            }
-        })
+        source = params.SearchParamSource(
+            workload=workload.Workload(name="unit-test", collections=[col1]),
+            params={"index": "index1", "request-params": {"_source_include": "some_field"}, "body": {"query": {"match_all": {}}}},
+        )
         p = source.params()
 
         self.assertEqual(11, len(p))
@@ -1632,34 +1425,27 @@ class SearchParamSourceTests(TestCase):
         self.assertIsNone(p["request-timeout"])
         self.assertIsNone(p["headers"])
         self.assertIsNone(p["opaque-id"])
-        self.assertEqual({
-            "_source_include": "some_field"
-        }, p["request-params"])
+        self.assertEqual({"_source_include": "some_field"}, p["request-params"])
         self.assertIsNone(p["cache"])
         self.assertEqual(True, p["response-compression-enabled"])
         self.assertEqual(False, p["detailed-results"])
-        self.assertEqual({
-            "query": {
-                "match_all": {}
-            }
-        }, p["body"])
+        self.assertEqual({"query": {"match_all": {}}}, p["body"])
 
     def test_user_specified_overrides_defaults(self):
         col1 = workload.Collection(name="index1")
 
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
-            "index": "_all",
-            "type": "type1",
-            "cache": False,
-            "response-compression-enabled": False,
-            "detailed-results": True,
-            "opaque-id": "12345abcde",
-            "body": {
-                "query": {
-                    "match_all": {}
-                }
-            }
-        })
+        source = params.SearchParamSource(
+            workload=workload.Workload(name="unit-test", collections=[col1]),
+            params={
+                "index": "_all",
+                "type": "type1",
+                "cache": False,
+                "response-compression-enabled": False,
+                "detailed-results": True,
+                "opaque-id": "12345abcde",
+                "body": {"query": {"match_all": {}}},
+            },
+        )
         p = source.params()
 
         self.assertEqual(11, len(p))
@@ -1674,26 +1460,15 @@ class SearchParamSourceTests(TestCase):
         self.assertEqual(False, p["cache"])
         self.assertEqual(False, p["response-compression-enabled"])
         self.assertEqual(True, p["detailed-results"])
-        self.assertEqual({
-            "query": {
-                "match_all": {}
-            }
-        }, p["body"])
+        self.assertEqual({"query": {"match_all": {}}}, p["body"])
 
     def test_user_specified_collection_overrides_defaults(self):
         col1 = workload.Collection(name="collection-1")
 
-        source = params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
-            "index": "collection-2",
-            "cache": False,
-            "response-compression-enabled": False,
-            "request-timeout": 1.0,
-            "body": {
-                "query": {
-                    "match_all": {}
-                }
-            }
-        })
+        source = params.SearchParamSource(
+            workload=workload.Workload(name="unit-test", collections=[col1]),
+            params={"index": "collection-2", "cache": False, "response-compression-enabled": False, "request-timeout": 1.0, "body": {"query": {"match_all": {}}}},
+        )
         p = source.params()
 
         self.assertEqual(11, len(p))
@@ -1708,37 +1483,26 @@ class SearchParamSourceTests(TestCase):
         self.assertEqual(False, p["cache"])
         self.assertEqual(False, p["response-compression-enabled"])
         self.assertEqual(False, p["detailed-results"])
-        self.assertEqual({
-            "query": {
-                "match_all": {}
-            }
-        }, p["body"])
+        self.assertEqual({"query": {"match_all": {}}}, p["body"])
 
     def test_assertions_without_detailed_results_are_invalid(self):
         col1 = workload.Collection(name="index1")
-        with self.assertRaisesRegex(exceptions.InvalidSyntax,
-                                    r"The property \[detailed-results\] must be \[true\] if assertions are defined"):
-            params.SearchParamSource(workload=workload.Workload(name="unit-test", collections=[col1]), params={
-                "index": "_all",
-                # unset!
-                #"detailed-results": True,
-                "assertions": [{
-                    "property": "hits",
-                    "condition": ">",
-                    "value": 0
-                }],
-                "body": {
-                    "query": {
-                        "match_all": {}
-                    }
-                }
-            })
+        with self.assertRaisesRegex(exceptions.InvalidSyntax, r"The property \[detailed-results\] must be \[true\] if assertions are defined"):
+            params.SearchParamSource(
+                workload=workload.Workload(name="unit-test", collections=[col1]),
+                params={
+                    "index": "_all",
+                    # unset!
+                    # "detailed-results": True,
+                    "assertions": [{"property": "hits", "condition": ">", "value": 0}],
+                    "body": {"query": {"match_all": {}}},
+                },
+            )
 
 
 class CreateCollectionParamSourceTests(TestCase):
     def test_uses_first_collection_when_no_target_specified(self):
-        col = workload.Collection(name="my-col", configset="my-cfg", configset_path="/path/conf",
-                                  num_shards=2, replication_factor=1)
+        col = workload.Collection(name="my-col", configset="my-cfg", configset_path="/path/conf", num_shards=2, replication_factor=1)
         wl = workload.Workload(name="unit-test", collections=[col])
         ps = params.CreateCollectionParamSource(workload=wl, params={})
         p = ps.params()
@@ -1765,10 +1529,7 @@ class CreateCollectionParamSourceTests(TestCase):
     def test_operation_params_override_collection_defaults(self):
         col = workload.Collection(name="my-col", num_shards=1, replication_factor=1)
         wl = workload.Workload(name="unit-test", collections=[col])
-        ps = params.CreateCollectionParamSource(
-            workload=wl,
-            params={"collection": "my-col", "num-shards": 4, "replication-factor": 2,
-                    "tlog-replicas": 1, "pull-replicas": 3})
+        ps = params.CreateCollectionParamSource(workload=wl, params={"collection": "my-col", "num-shards": 4, "replication-factor": 2, "tlog-replicas": 1, "pull-replicas": 3})
         p = ps.params()
         self.assertEqual(4, p["num-shards"])
         self.assertEqual(2, p["replication-factor"])
@@ -1779,12 +1540,9 @@ class CreateCollectionParamSourceTests(TestCase):
         # The loader resolves configset-path to an absolute path against the
         # workload directory; the operation template only carries the relative
         # form. The loader-resolved path must survive.
-        col = workload.Collection(name="my-col", configset="my-col",
-                                  configset_path="/abs/workload/configsets/my-col")
+        col = workload.Collection(name="my-col", configset="my-col", configset_path="/abs/workload/configsets/my-col")
         wl = workload.Workload(name="unit-test", collections=[col])
-        ps = params.CreateCollectionParamSource(
-            workload=wl,
-            params={"collection": "my-col", "configset-path": "configsets/my-col"})
+        ps = params.CreateCollectionParamSource(workload=wl, params={"collection": "my-col", "configset-path": "configsets/my-col"})
         p = ps.params()
         self.assertEqual("/abs/workload/configsets/my-col", p["configset-path"])
 

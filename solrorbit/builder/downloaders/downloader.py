@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -33,6 +33,7 @@ class Downloader(ABC):
     A downloader is used to supply the necessary components for running self-managed Solr. Implementations of this
     interface will download distributions or fetch from a source repository for Solr
     """
+
     def __init__(self, executor):
         self.executor = executor
 

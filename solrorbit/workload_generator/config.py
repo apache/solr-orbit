@@ -9,12 +9,14 @@
 from dataclasses import dataclass, field
 from typing import List
 
+
 @dataclass
 class Index:
     name: str = None
     sample_frequency: int = 1
     number_of_docs: int = None
     settings_and_mappings: dict = field(default_factory=dict)
+
 
 @dataclass
 class CustomWorkload:

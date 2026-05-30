@@ -16,8 +16,7 @@ class DockerLauncher(Launcher):
         super().__init__(shell_executor)
         self.logger = logging.getLogger(__name__)
         self.metrics_store = metrics_store
-        self.waiter = PeriodicWaiter(DockerLauncher.CONTAINER_WAIT_INTERVAL_SECONDS,
-                                     DockerLauncher.CONTAINER_WAIT_TIMEOUT_SECONDS, clock=clock)
+        self.waiter = PeriodicWaiter(DockerLauncher.CONTAINER_WAIT_INTERVAL_SECONDS, DockerLauncher.CONTAINER_WAIT_TIMEOUT_SECONDS, clock=clock)
 
     def start(self, host, node_configurations):
         nodes = []

@@ -10,4 +10,4 @@ class ExceptionHandlingShellExecutor(ShellExecutor):
         try:
             return self.executor.execute(host, command, kwargs)
         except Exception as e:
-            raise ExecutorError(f"Command \"{command}\" on host \"{host}\" failed to execute", e)
+            raise ExecutorError(f'Command "{command}" on host "{host}" failed to execute', e)

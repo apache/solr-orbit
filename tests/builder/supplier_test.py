@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -39,12 +39,10 @@ class RevisionExtractorTests(TestCase):
     def test_single_revision(self):
         self.assertDictEqual({"solr": "67c2f42", "all": "67c2f42"}, supplier._extract_revisions("67c2f42"))
         self.assertDictEqual({"solr": "current", "all": "current"}, supplier._extract_revisions("current"))
-        self.assertDictEqual({"solr": "@2015-01-01-01:00:00", "all": "@2015-01-01-01:00:00"},
-                             supplier._extract_revisions("@2015-01-01-01:00:00"))
+        self.assertDictEqual({"solr": "@2015-01-01-01:00:00", "all": "@2015-01-01-01:00:00"}, supplier._extract_revisions("@2015-01-01-01:00:00"))
 
     def test_multiple_revisions(self):
-        self.assertDictEqual({"solr": "67c2f42", "some-plugin": "current"},
-                             supplier._extract_revisions("solr:67c2f42,some-plugin:current"))
+        self.assertDictEqual({"solr": "67c2f42", "some-plugin": "current"}, supplier._extract_revisions("solr:67c2f42,some-plugin:current"))
 
     def test_invalid_revisions(self):
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
@@ -84,8 +82,7 @@ class SourceRepositoryTests(TestCase):
         mock_is_working_copy.assert_called_with("/src")
         self.assertEqual(0, mock_clone.call_count)
         self.assertEqual(0, mock_pull.call_count)
-        mock_head_revision.assert_called_with("/src")\
-
+        mock_head_revision.assert_called_with("/src")
 
     @mock.patch("solrorbit.utils.git.head_revision", autospec=True)
     @mock.patch("solrorbit.utils.git.checkout")
@@ -208,16 +205,9 @@ class CachedSolrSourceSupplierTests(TestCase):
         # no version / revision provided
         renderer = supplier.TemplateRenderer(version=None)
 
-        dist_cfg = {
-            "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"
-        }
-        file_resolver = supplier.FileNameResolver(
-            distribution_config=dist_cfg,
-            template_renderer=renderer
-        )
-        cached_supplier = supplier.CachedSourceSupplier(distributions_root="/tmp",
-                                                        source_supplier=opensearch,
-                                                        file_resolver=file_resolver)
+        dist_cfg = {"release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"}
+        file_resolver = supplier.FileNameResolver(distribution_config=dist_cfg, template_renderer=renderer)
+        cached_supplier = supplier.CachedSourceSupplier(distributions_root="/tmp", source_supplier=opensearch, file_resolver=file_resolver)
 
         cached_supplier.fetch()
         cached_supplier.prepare()
@@ -238,16 +228,9 @@ class CachedSolrSourceSupplierTests(TestCase):
         path_exists.return_value = True
         renderer = supplier.TemplateRenderer(version="abc123")
 
-        dist_cfg = {
-            "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"
-        }
-        file_resolver = supplier.FileNameResolver(
-            distribution_config=dist_cfg,
-            template_renderer=renderer
-        )
-        cached_supplier = supplier.CachedSourceSupplier(distributions_root="/tmp",
-                                                        source_supplier=opensearch,
-                                                        file_resolver=file_resolver)
+        dist_cfg = {"release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"}
+        file_resolver = supplier.FileNameResolver(distribution_config=dist_cfg, template_renderer=renderer)
+        cached_supplier = supplier.CachedSourceSupplier(distributions_root="/tmp", source_supplier=opensearch, file_resolver=file_resolver)
 
         cached_supplier.fetch()
         cached_supplier.prepare()
@@ -278,16 +261,11 @@ class CachedSolrSourceSupplierTests(TestCase):
 
         renderer = supplier.TemplateRenderer(version="abc123")
 
-        dist_cfg = {
-            "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"
-        }
+        dist_cfg = {"release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"}
 
-        cached_supplier = supplier.CachedSourceSupplier(distributions_root="/tmp",
-                                                        source_supplier=opensearch,
-                                                        file_resolver=supplier.FileNameResolver(
-                                                            distribution_config=dist_cfg,
-                                                            template_renderer=renderer
-                                                        ))
+        cached_supplier = supplier.CachedSourceSupplier(
+            distributions_root="/tmp", source_supplier=opensearch, file_resolver=supplier.FileNameResolver(distribution_config=dist_cfg, template_renderer=renderer)
+        )
         cached_supplier.fetch()
         cached_supplier.prepare()
 
@@ -330,16 +308,11 @@ class CachedSolrSourceSupplierTests(TestCase):
 
         renderer = supplier.TemplateRenderer(version="abc123")
 
-        dist_cfg = {
-            "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"
-        }
+        dist_cfg = {"release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"}
 
-        cached_supplier = supplier.CachedSourceSupplier(distributions_root="/tmp",
-                                                        source_supplier=opensearch,
-                                                        file_resolver=supplier.FileNameResolver(
-                                                            distribution_config=dist_cfg,
-                                                            template_renderer=renderer
-                                                        ))
+        cached_supplier = supplier.CachedSourceSupplier(
+            distributions_root="/tmp", source_supplier=opensearch, file_resolver=supplier.FileNameResolver(distribution_config=dist_cfg, template_renderer=renderer)
+        )
         cached_supplier.fetch()
         cached_supplier.prepare()
 
@@ -360,14 +333,9 @@ class SolrFileNameResolverTests(TestCase):
         super().setUp()
         renderer = supplier.TemplateRenderer(version="9.10.1")
 
-        dist_cfg = {
-            "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"
-        }
+        dist_cfg = {"release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz"}
 
-        self.resolver = supplier.FileNameResolver(
-            distribution_config=dist_cfg,
-            template_renderer=renderer
-        )
+        self.resolver = supplier.FileNameResolver(distribution_config=dist_cfg, template_renderer=renderer)
 
     def test_resolve(self):
         self.resolver.revision = "9.10.1"
@@ -418,7 +386,7 @@ class PruneTests(TestCase):
             # opensearch-1.0.0.tar.gz
             PruneTests.LStat(st_ctime=int(ten_days_ago.timestamp())),
             # opensearch-1.0.1-x64.tar.gz
-            PruneTests.LStat(st_ctime=int(one_day_ago.timestamp()))
+            PruneTests.LStat(st_ctime=int(one_day_ago.timestamp())),
         ]
 
         supplier._prune(root_path="/tmp/test", max_age_days=7)
@@ -428,70 +396,57 @@ class PruneTests(TestCase):
 
 class SolrSourceSupplierTests(TestCase):
     def test_no_build(self):
-        cluster_config_instance = cluster_config.ClusterConfigInstance("default", root_path=None, config_paths=[], variables={
-            "clean_command": "./gradlew clean",
-            "system.build_command": "./gradlew assemble"
-        })
+        cluster_config_instance = cluster_config.ClusterConfigInstance(
+            "default", root_path=None, config_paths=[], variables={"clean_command": "./gradlew clean", "system.build_command": "./gradlew assemble"}
+        )
         renderer = supplier.TemplateRenderer(version=None)
-        opensearch = supplier.SourceSupplier(revision="abc",
-                                                  os_src_dir="/src",
-                                                  remote_url="",
-                                                  cluster_config=cluster_config_instance,
-                                                  builder=None,
-                                                  template_renderer=renderer)
+        opensearch = supplier.SourceSupplier(revision="abc", os_src_dir="/src", remote_url="", cluster_config=cluster_config_instance, builder=None, template_renderer=renderer)
         opensearch.prepare()
         # nothing has happened (intentionally) because there is no builder
 
     def test_build(self):
-        cluster_config_instance = cluster_config.ClusterConfigInstance("default", root_path=None, config_paths=[], variables={
-            "clean_command": "./gradlew clean",
-            "system.build_command": "./gradlew assemble"
-        })
+        cluster_config_instance = cluster_config.ClusterConfigInstance(
+            "default", root_path=None, config_paths=[], variables={"clean_command": "./gradlew clean", "system.build_command": "./gradlew assemble"}
+        )
         builder = mock.create_autospec(supplier.Builder)
         renderer = supplier.TemplateRenderer(version="abc")
-        opensearch = supplier.SourceSupplier(revision="abc",
-                                                  os_src_dir="/src",
-                                                  remote_url="",
-                                                  cluster_config=cluster_config_instance,
-                                                  builder=builder,
-                                                  template_renderer=renderer)
+        opensearch = supplier.SourceSupplier(revision="abc", os_src_dir="/src", remote_url="", cluster_config=cluster_config_instance, builder=builder, template_renderer=renderer)
         opensearch.prepare()
 
         builder.build.assert_called_once_with(["./gradlew clean", "./gradlew assemble"])
 
     def test_raises_error_on_missing_cluster_config_variable(self):
-        cluster_config_instance = cluster_config.ClusterConfigInstance("default", root_path=None, config_paths=[], variables={
-            "clean_command": "./gradlew clean",
-            # system.build_command is not defined
-        })
+        cluster_config_instance = cluster_config.ClusterConfigInstance(
+            "default",
+            root_path=None,
+            config_paths=[],
+            variables={
+                "clean_command": "./gradlew clean",
+                # system.build_command is not defined
+            },
+        )
         renderer = supplier.TemplateRenderer(version="abc")
         builder = mock.create_autospec(supplier.Builder)
-        opensearch = supplier.SourceSupplier(revision="abc",
-                                                  os_src_dir="/src",
-                                                  remote_url="",
-                                                  cluster_config=cluster_config_instance,
-                                                  builder=builder,
-                                                  template_renderer=renderer)
-        with self.assertRaisesRegex(exceptions.SystemSetupError,
-                                    "ClusterConfigInstance \"default\" requires config key \"system.build_command\""):
+        opensearch = supplier.SourceSupplier(revision="abc", os_src_dir="/src", remote_url="", cluster_config=cluster_config_instance, builder=builder, template_renderer=renderer)
+        with self.assertRaisesRegex(exceptions.SystemSetupError, 'ClusterConfigInstance "default" requires config key "system.build_command"'):
             opensearch.prepare()
 
         self.assertEqual(0, builder.build.call_count)
 
     @mock.patch("glob.glob", lambda p: ["opensearch.tar.gz"])
     def test_add_opensearch_binary(self):
-        cluster_config_instance = cluster_config.ClusterConfigInstance("default", root_path=None, config_paths=[], variables={
-            "clean_command": "./gradlew clean",
-            "system.build_command": "./gradlew assemble",
-            "system.artifact_path_pattern": "distribution/archives/tar/build/distributions/*.tar.gz"
-        })
+        cluster_config_instance = cluster_config.ClusterConfigInstance(
+            "default",
+            root_path=None,
+            config_paths=[],
+            variables={
+                "clean_command": "./gradlew clean",
+                "system.build_command": "./gradlew assemble",
+                "system.artifact_path_pattern": "distribution/archives/tar/build/distributions/*.tar.gz",
+            },
+        )
         renderer = supplier.TemplateRenderer(version="abc")
-        opensearch = supplier.SourceSupplier(revision="abc",
-                                                  os_src_dir="/src",
-                                                  remote_url="",
-                                                  cluster_config=cluster_config_instance,
-                                                  builder=None,
-                                                  template_renderer=renderer)
+        opensearch = supplier.SourceSupplier(revision="abc", os_src_dir="/src", remote_url="", cluster_config=cluster_config_instance, builder=None, template_renderer=renderer)
         binaries = {}
         opensearch.add(binaries=binaries)
         self.assertEqual(binaries, {"solr": "opensearch.tar.gz"})
@@ -500,14 +455,12 @@ class SolrSourceSupplierTests(TestCase):
 class CreateSupplierTests(TestCase):
     def test_derive_supply_requirements_source_build(self):
         # corresponds to --revision="abc"
-        requirements = supplier._supply_requirements(
-            sources=True, revisions={"solr": "abc"}, distribution_version=None)
+        requirements = supplier._supply_requirements(sources=True, revisions={"solr": "abc"}, distribution_version=None)
         self.assertDictEqual({"solr": ("source", "abc", True)}, requirements)
 
     def test_derive_supply_requirements_distribution(self):
         # corresponds to --distribution-version=1.0.0
-        requirements = supplier._supply_requirements(
-            sources=False, revisions={}, distribution_version="1.0.0")
+        requirements = supplier._supply_requirements(sources=False, revisions={}, distribution_version="1.0.0")
         self.assertDictEqual({"solr": ("distribution", "1.0.0", False)}, requirements)
 
     def test_create_suppliers_for_os_only_config(self):
@@ -516,8 +469,12 @@ class CreateSupplierTests(TestCase):
         # default value from command line
         cfg.add(config.Scope.application, "builder", "source.revision", "current")
         cfg.add(config.Scope.application, "builder", "distribution.repository", "release")
-        cfg.add(config.Scope.application, "distributions", "release.url",
-                "https://artifacts.opensearch.org/releases/bundle/opensearch/{{VERSION}}/opensearch-{{VERSION}}-{{OSNAME}}-{{ARCH}}.tar.gz")
+        cfg.add(
+            config.Scope.application,
+            "distributions",
+            "release.url",
+            "https://artifacts.opensearch.org/releases/bundle/opensearch/{{VERSION}}/opensearch-{{VERSION}}-{{OSNAME}}-{{ARCH}}.tar.gz",
+        )
         cfg.add(config.Scope.application, "distributions", "release.cache", True)
         cfg.add(config.Scope.application, "node", "root.dir", "/opt/benchmark")
 
@@ -529,38 +486,41 @@ class CreateSupplierTests(TestCase):
         self.assertIsInstance(composite_supplier.suppliers[0], supplier.DistributionSupplier)
 
 
-
 class DistributionRepositoryTests(TestCase):
     def test_release_repo_config_with_default_url(self):
         renderer = supplier.TemplateRenderer(version="9.10.1")
-        repo = supplier.DistributionRepository(name="release", distribution_config={
-            "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz",
-            "release.cache": "true"
-        }, template_renderer=renderer)
-        self.assertEqual("https://downloads.apache.org/solr/solr/9.10.1/solr-9.10.1.tgz",
-         repo.download_url)
+        repo = supplier.DistributionRepository(
+            name="release",
+            distribution_config={"release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz", "release.cache": "true"},
+            template_renderer=renderer,
+        )
+        self.assertEqual("https://downloads.apache.org/solr/solr/9.10.1/solr-9.10.1.tgz", repo.download_url)
         self.assertEqual("solr-9.10.1.tgz", repo.file_name)
         self.assertTrue(repo.cache)
 
     def test_release_repo_config_with_user_url(self):
         renderer = supplier.TemplateRenderer(version="9.10.1")
-        repo = supplier.DistributionRepository(name="release", distribution_config={
-            "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz",
-            # user override
-            "release.url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz",
-            "release.cache": "false"
-        }, template_renderer=renderer)
-        self.assertEqual("https://downloads.apache.org/solr/solr/9.10.1/solr-9.10.1.tgz",
-         repo.download_url)
+        repo = supplier.DistributionRepository(
+            name="release",
+            distribution_config={
+                "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz",
+                # user override
+                "release.url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz",
+                "release.cache": "false",
+            },
+            template_renderer=renderer,
+        )
+        self.assertEqual("https://downloads.apache.org/solr/solr/9.10.1/solr-9.10.1.tgz", repo.download_url)
         self.assertEqual("solr-9.10.1.tgz", repo.file_name)
         self.assertFalse(repo.cache)
 
     def test_missing_url(self):
         renderer = supplier.TemplateRenderer(version="9.10.1")
-        repo = supplier.DistributionRepository(name="miss", distribution_config={
-            "release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz",
-            "release.cache": "true"
-        }, template_renderer=renderer)
+        repo = supplier.DistributionRepository(
+            name="miss",
+            distribution_config={"release_url": "https://downloads.apache.org/solr/solr/{{VERSION}}/solr-{{VERSION}}.tgz", "release.cache": "true"},
+            template_renderer=renderer,
+        )
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             # pylint: disable=pointless-statement
             # noinspection PyStatementEffect
@@ -569,11 +529,15 @@ class DistributionRepositoryTests(TestCase):
 
     def test_missing_cache(self):
         renderer = supplier.TemplateRenderer(version="1.0.0")
-        repo = supplier.DistributionRepository(name="release", distribution_config={
-            "jdk.unbundled.release.url": "https://artifacts.opensearch\
+        repo = supplier.DistributionRepository(
+            name="release",
+            distribution_config={
+                "jdk.unbundled.release.url": "https://artifacts.opensearch\
                 .org/releases/bundle/opensearch/{{VERSION}}/opensearch-{{VERSION}}-{{OSNAME}}-{{ARCH}}.tar.gz",
-            "runtime.jdk.bundled": "false"
-        }, template_renderer=renderer)
+                "runtime.jdk.bundled": "false",
+            },
+            template_renderer=renderer,
+        )
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             # pylint: disable=pointless-statement
             # noinspection PyStatementEffect
@@ -582,12 +546,16 @@ class DistributionRepositoryTests(TestCase):
 
     def test_invalid_cache_value(self):
         renderer = supplier.TemplateRenderer(version="1.0.0")
-        repo = supplier.DistributionRepository(name="release", distribution_config={
-            "jdk.unbundled.release.url": "https://artifacts.opensearch\
+        repo = supplier.DistributionRepository(
+            name="release",
+            distribution_config={
+                "jdk.unbundled.release.url": "https://artifacts.opensearch\
                 .org/releases/bundle/opensearch/{{VERSION}}/opensearch-{{VERSION}}-{{OSNAME}}-{{ARCH}}.tar.gz",
-            "runtime.jdk.bundled": "false",
-            "release.cache": "Invalid"
-        }, template_renderer=renderer)
+                "runtime.jdk.bundled": "false",
+                "release.cache": "Invalid",
+            },
+            template_renderer=renderer,
+        )
         with self.assertRaises(exceptions.SystemSetupError) as ctx:
             # pylint: disable=pointless-statement
             # noinspection PyStatementEffect
@@ -596,25 +564,34 @@ class DistributionRepositoryTests(TestCase):
 
     def test_plugin_config_with_default_url(self):
         renderer = supplier.TemplateRenderer(version="5.5.0")
-        repo = supplier.DistributionRepository(name="release", distribution_config={
-            "runtime.jdk.bundled": "false",
-            "plugin_example_release_url": "https://artifacts.example.org/downloads/plugins/example-{{VERSION}}.zip"
-        }, template_renderer=renderer)
+        repo = supplier.DistributionRepository(
+            name="release",
+            distribution_config={"runtime.jdk.bundled": "false", "plugin_example_release_url": "https://artifacts.example.org/downloads/plugins/example-{{VERSION}}.zip"},
+            template_renderer=renderer,
+        )
         self.assertEqual("https://artifacts.example.org/downloads/plugins/example-5.5.0.zip", repo.plugin_download_url("example"))
 
     def test_plugin_config_with_user_url(self):
         renderer = supplier.TemplateRenderer(version="5.5.0")
-        repo = supplier.DistributionRepository(name="release", distribution_config={
-            "runtime.jdk.bundled": "false",
-            "plugin_example_release_url": "https://artifacts.example.org/downloads/plugins/example-{{VERSION}}.zip",
-            # user override
-            "plugin.example.release.url": "https://mirror.example.org/downloads/plugins/example-{{VERSION}}.zip"
-        }, template_renderer=renderer)
+        repo = supplier.DistributionRepository(
+            name="release",
+            distribution_config={
+                "runtime.jdk.bundled": "false",
+                "plugin_example_release_url": "https://artifacts.example.org/downloads/plugins/example-{{VERSION}}.zip",
+                # user override
+                "plugin.example.release.url": "https://mirror.example.org/downloads/plugins/example-{{VERSION}}.zip",
+            },
+            template_renderer=renderer,
+        )
         self.assertEqual("https://mirror.example.org/downloads/plugins/example-5.5.0.zip", repo.plugin_download_url("example"))
 
     def test_missing_plugin_config(self):
         renderer = supplier.TemplateRenderer(version="5.5.0")
-        repo = supplier.DistributionRepository(name="release", distribution_config={
-            "runtime.jdk.bundled": "false",
-        }, template_renderer=renderer)
+        repo = supplier.DistributionRepository(
+            name="release",
+            distribution_config={
+                "runtime.jdk.bundled": "false",
+            },
+            template_renderer=renderer,
+        )
         self.assertIsNone(repo.plugin_download_url("not existing"))

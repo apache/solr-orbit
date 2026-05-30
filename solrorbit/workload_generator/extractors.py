@@ -36,8 +36,7 @@ def _cursor_scan(client, collection, batch_size=1000):
     while True:
         resp = session.get(
             url,
-            params={"q": "*:*", "rows": batch_size, "sort": "id asc",
-                    "cursorMark": cursor, "wt": "json"},
+            params={"q": "*:*", "rows": batch_size, "sort": "id asc", "cursorMark": cursor, "wt": "json"},
             timeout=client.timeout,
         )
         resp.raise_for_status()
@@ -51,6 +50,7 @@ def _cursor_scan(client, collection, batch_size=1000):
         if next_cursor == cursor:
             break
         cursor = next_cursor
+
 
 class IndexExtractor:
     def __init__(self, custom_workload, client):
@@ -117,7 +117,6 @@ class IndexExtractor:
 
 
 class CorpusExtractor(ABC):
-
     @abstractmethod
     def extract_documents(self, index, documents_limit=None, sample_frequency=None):
         pass
@@ -132,7 +131,7 @@ class SequentialCorpusExtractor(CorpusExtractor):
         self.client = client
         self.logger = logging.getLogger(__name__)
 
-    def template_vars(self,index_name, docs_path, doc_count):
+    def template_vars(self, index_name, docs_path, doc_count):
         comp_outpath = docs_path + COMP_EXT
         return {
             "index_name": index_name,
@@ -140,12 +139,11 @@ class SequentialCorpusExtractor(CorpusExtractor):
             "path": comp_outpath,
             "doc_count": doc_count,
             "uncompressed_bytes": os.path.getsize(docs_path),
-            "compressed_bytes": os.path.getsize(comp_outpath)
+            "compressed_bytes": os.path.getsize(comp_outpath),
         }
 
     def _get_doc_outpath(self, outdir, name, suffix=""):
         return os.path.join(outdir, f"{name}-documents{suffix}.json")
-
 
     def extract_documents(self, index, documents_limit=None, sample_frequency=None):
         """
@@ -168,15 +166,16 @@ class SequentialCorpusExtractor(CorpusExtractor):
             # Only time when documents-1k.json will be less than 1K documents is
             # when the documents_limit is < 1k documents or source index has less than 1k documents
             if documents_limit < self.DEFAULT_TEST_MODE_DOC_COUNT:
-                test_mode_warning_msg = "Due to --number-of-docs set by user, " + \
-                    f"test-mode docs will be less than the default {self.DEFAULT_TEST_MODE_DOC_COUNT} documents."
+                test_mode_warning_msg = "Due to --number-of-docs set by user, " + f"test-mode docs will be less than the default {self.DEFAULT_TEST_MODE_DOC_COUNT} documents."
                 console.warn(test_mode_warning_msg)
 
             # Notify users when they specified more documents than available in index
             if documents_limit > total_documents:
-                documents_to_extract_warning_msg = f"User requested extraction of {documents_limit} documents " + \
-                    f"but there are only {total_documents} documents in {index}. " + \
-                    f"Will only extract {total_documents} documents from {index}."
+                documents_to_extract_warning_msg = (
+                    f"User requested extraction of {documents_limit} documents "
+                    + f"but there are only {total_documents} documents in {index}. "
+                    + f"Will only extract {total_documents} documents from {index}."
+                )
                 console.warn(documents_to_extract_warning_msg)
 
         if sample_frequency and sample_frequency > 1:
@@ -184,7 +183,6 @@ class SequentialCorpusExtractor(CorpusExtractor):
             return self.sample_frequency_extraction(total_documents, sample_frequency, index)
         else:
             return self.standard_extraction(total_documents, documents_to_extract, index)
-
 
     def sample_frequency_extraction(self, total_documents, sample_frequency, index):
         if total_documents > 0:
@@ -195,12 +193,13 @@ class SequentialCorpusExtractor(CorpusExtractor):
                 index,
                 self._get_doc_outpath(self.custom_workload.workload_path, index, self.DEFAULT_TEST_MODE_SUFFIX),
                 min(total_documents, self.DEFAULT_TEST_MODE_DOC_COUNT),
-                " for test mode")
+                " for test mode",
+            )
 
             docs_path = self._get_doc_outpath(self.custom_workload.workload_path, index)
             self.dump_documents_with_sample_frequency(total_documents, sample_frequency, docs_path, index)
 
-            amount_of_docs_to_extract = (total_documents // sample_frequency)
+            amount_of_docs_to_extract = total_documents // sample_frequency
             return self.template_vars(index, docs_path, amount_of_docs_to_extract)
         else:
             self.logger.info("Skipping corpus extraction for index [%s] as it contains no documents.", index)
@@ -217,7 +216,8 @@ class SequentialCorpusExtractor(CorpusExtractor):
                 index,
                 self._get_doc_outpath(self.custom_workload.workload_path, index, self.DEFAULT_TEST_MODE_SUFFIX),
                 min(documents_to_extract, self.DEFAULT_TEST_MODE_DOC_COUNT),
-                " for test mode")
+                " for test mode",
+            )
             # Create full corpora
             self.dump_documents(self.client, index, docs_path, documents_to_extract)
 
@@ -242,7 +242,7 @@ class SequentialCorpusExtractor(CorpusExtractor):
         with open(docs_path, "wb") as outfile:
             with open(comp_outpath, "wb") as comp_outfile:
                 self.logger.info("Dumping corpus for index [%s] to [%s].", index, docs_path)
-                progress_bar = tqdm(range(number_of_docs_to_fetch), desc=progress_message, ascii=' >=', bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')
+                progress_bar = tqdm(range(number_of_docs_to_fetch), desc=progress_message, ascii=" >=", bar_format="{l_bar}{bar:10}{r_bar}{bar:-10b}")
 
                 for n, doc in enumerate(_cursor_scan(self.client, collection=index), start=1):
                     if (n % sample_frequency) != 0:
@@ -283,7 +283,6 @@ class SequentialCorpusExtractor(CorpusExtractor):
 
                 comp_outfile.write(compressor.flush())
         progress.finish()
-
 
     def render_progress(self, progress, progress_message_suffix, index, cur, total, freq):
         if cur % freq == 0 or total - cur < freq:

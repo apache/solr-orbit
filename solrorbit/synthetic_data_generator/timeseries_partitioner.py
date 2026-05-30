@@ -16,45 +16,45 @@ import pandas as pd
 
 import solrorbit.exceptions as exceptions
 
-class TimeSeriesPartitioner:
 
+class TimeSeriesPartitioner:
     # TODO: Change this into a dictionary that points to which frequencies can have which formats
     VALID_DATETIMESTAMPS_FORMATS = [
-        "%Y-%m-%d",                 # 2023-05-20
-        "%Y-%m-%dT%H:%M:%S",        # 2023-05-20T15:30:45
-        "%Y-%m-%dT%H:%M:%S.%f",     # 2023-05-20T15:30:45.123456
-        "%Y-%m-%d %H:%M:%S",        # 2023-05-20 15:30:45
-        "%Y-%m-%d %H:%M:%S.%f",     # 2023-05-20 15:30:45.123456
-        "%d/%m/%Y",                 # 20/05/2023
-        "%m/%d/%Y",                 # 05/20/2023
-        "%d-%m-%Y",                 # 20-05-2023
-        "%m-%d-%Y",                 # 05-20-2023
-        "%d.%m.%Y",                 # 20.05.2023
-        "%Y%m%d",                   # 20230520
-        "%B %d, %Y",                # May 20, 2023
-        "%b %d, %Y",                # May 20, 2023
-        "%d %B %Y",                 # 20 May 2023
-        "%d %b %Y",                 # 20 May 2023
-        "%Y %B %d",                 # 2023 May 20
-        "%d/%m/%Y %H:%M",           # 20/05/2023 15:30
-        "%d/%m/%Y %H:%M:%S",        # 20/05/2023 15:30:45
-        "%Y-%m-%d %I:%M %p",        # 2023-05-20 03:30 PM
-        "%d.%m.%Y %H:%M",           # 20.05.2023 15:30
-        "%H:%M",                    # 15:30
-        "%H:%M:%S",                 # 15:30:45
-        "%I:%M %p",                 # 03:30 PM
-        "%I:%M:%S %p",              # 03:30:45 PM
-        "%a, %d %b %Y %H:%M:%S",    # Sat, 20 May 2023 15:30:45
-        "%Y/%m/%d",                 # 2023/05/20
-        "%Y/%m/%d %H:%M:%S",        # 2023/05/20 15:30:45
-        "%Y%m%d%H%M%S",             # 20230520153045
-        "epoch_s",                  # Epoch time in seconds format
-        "epoch_ms"                  # Epoch time in ms format
+        "%Y-%m-%d",  # 2023-05-20
+        "%Y-%m-%dT%H:%M:%S",  # 2023-05-20T15:30:45
+        "%Y-%m-%dT%H:%M:%S.%f",  # 2023-05-20T15:30:45.123456
+        "%Y-%m-%d %H:%M:%S",  # 2023-05-20 15:30:45
+        "%Y-%m-%d %H:%M:%S.%f",  # 2023-05-20 15:30:45.123456
+        "%d/%m/%Y",  # 20/05/2023
+        "%m/%d/%Y",  # 05/20/2023
+        "%d-%m-%Y",  # 20-05-2023
+        "%m-%d-%Y",  # 05-20-2023
+        "%d.%m.%Y",  # 20.05.2023
+        "%Y%m%d",  # 20230520
+        "%B %d, %Y",  # May 20, 2023
+        "%b %d, %Y",  # May 20, 2023
+        "%d %B %Y",  # 20 May 2023
+        "%d %b %Y",  # 20 May 2023
+        "%Y %B %d",  # 2023 May 20
+        "%d/%m/%Y %H:%M",  # 20/05/2023 15:30
+        "%d/%m/%Y %H:%M:%S",  # 20/05/2023 15:30:45
+        "%Y-%m-%d %I:%M %p",  # 2023-05-20 03:30 PM
+        "%d.%m.%Y %H:%M",  # 20.05.2023 15:30
+        "%H:%M",  # 15:30
+        "%H:%M:%S",  # 15:30:45
+        "%I:%M %p",  # 03:30 PM
+        "%I:%M:%S %p",  # 03:30:45 PM
+        "%a, %d %b %Y %H:%M:%S",  # Sat, 20 May 2023 15:30:45
+        "%Y/%m/%d",  # 2023/05/20
+        "%Y/%m/%d %H:%M:%S",  # 2023/05/20 15:30:45
+        "%Y%m%d%H%M%S",  # 20230520153045
+        "epoch_s",  # Epoch time in seconds format
+        "epoch_ms",  # Epoch time in ms format
     ]
 
     # TODO: Let's make this a hashmap so that we can ensure the invalid formats are not used (e.g. frequency is updated to ms and format is still seconds)
     # These frequencies are based on what is supported in the Pandas library
-    AVAILABLE_FREQUENCIES = ['B', 'C', 'D', 'h', 'bh', 'cbh', 'min', 's', 'ms']
+    AVAILABLE_FREQUENCIES = ["B", "C", "D", "h", "bh", "cbh", "min", "s", "ms"]
 
     def __init__(self, timeseries_enabled: dict, workers: int, docs_per_chunk: int, avg_document_size: int, total_size_bytes: int):
         self.timeseries_enabled = timeseries_enabled
@@ -88,9 +88,9 @@ class TimeSeriesPartitioner:
         return timeseries_settings
 
     def create_window_generator(self) -> Generator:
-        '''
+        """
         returns: a list of timestamp pairs where each timestamp pair is a set containing start datetime and end datetime
-        '''
+        """
         # Determine optimal time settings
         # Check if number of docs generated will fit in the timestamp. Adjust frequency as needed
         expected_number_of_docs = self.total_size_bytes // self.avg_document_size
@@ -102,12 +102,12 @@ class TimeSeriesPartitioner:
         if number_of_timestamps < expected_number_of_docs_with_buffer:
             self.logger.info("Number of timestamps generated is less than expected docs generated. Trying to find the optimal frequency")
             # ms is the smallest unit of time SDG can generate
-            if self.frequency == 'ms':
-                msg = "No finer time frequencies available to try than \"ms\". Please expand dates and frequency accordingly."
+            if self.frequency == "ms":
+                msg = 'No finer time frequencies available to try than "ms". Please expand dates and frequency accordingly.'
                 self.logger.error(msg)
                 raise exceptions.ConfigError(msg)
 
-            #TODO: Update the timeseries enabled settings too so downstream isn't confused
+            # TODO: Update the timeseries enabled settings too so downstream isn't confused
             optimal_frequency = self._try_other_frequencies(expected_number_of_docs_with_buffer)
             if not self._does_user_want_optimal_frequency(user_frequency=self.frequency, optimal_frequency=optimal_frequency):
                 self.logger.info("User does not want to use optimal frequency and will cancel generation.")
@@ -123,7 +123,7 @@ class TimeSeriesPartitioner:
     def generate_datetimestamp_window(self):
         current = pd.Timestamp(self.start_date)
         end = pd.Timestamp(self.end_date)
-        freq = pd.Timedelta(f"{self.docs_per_chunk-1}{self.frequency}") # Need to subtract one to include current timestamp.
+        freq = pd.Timedelta(f"{self.docs_per_chunk - 1}{self.frequency}")  # Need to subtract one to include current timestamp.
 
         while current < end:
             window_end = min(current + freq, end)
@@ -144,7 +144,7 @@ class TimeSeriesPartitioner:
             start_datetimestamp = window[0]
             end_datetimestamp = window[1]
             generated_datetimestamps: pd.DatetimeIndex = pd.date_range(start_datetimestamp, end_datetimestamp, freq=frequency)
-            #TODO: Handle formatting after generating iterator?
+            # TODO: Handle formatting after generating iterator?
             if format and format in TimeSeriesPartitioner.VALID_DATETIMESTAMPS_FORMATS:
                 if format == "epoch_s":
                     generated_datetimestamps = generated_datetimestamps.map(lambda x: int(x.timestamp()))
@@ -166,11 +166,10 @@ class TimeSeriesPartitioner:
         logger.info("Length of results: %s", len(results))
         logger.info("Docs in each result: %s ", [len(result) for result in results])
 
-
         start_time = time.time()
         sorted_results = sorted(results, key=lambda chunk: chunk[0][timeseries_field])
         end_time = time.time()
-        logger.info("Time it took to sort: %s secs", end_time-start_time)
+        logger.info("Time it took to sort: %s secs", end_time - start_time)
         logger.info("First timestamp from all chunks: %s ", [result[0][timeseries_field] for result in sorted_results])
 
         return sorted_results
@@ -193,9 +192,8 @@ class TimeSeriesPartitioner:
             count = int(delta / offset) + 1
             return count
 
-
     def _try_other_frequencies(self, expected_number_of_docs_with_buffer: int) -> str:
-        frequencies_to_try = deque(TimeSeriesPartitioner.AVAILABLE_FREQUENCIES[TimeSeriesPartitioner.AVAILABLE_FREQUENCIES.index(self.frequency)+1:])
+        frequencies_to_try = deque(TimeSeriesPartitioner.AVAILABLE_FREQUENCIES[TimeSeriesPartitioner.AVAILABLE_FREQUENCIES.index(self.frequency) + 1 :])
 
         frequency = ""
         while frequencies_to_try:
@@ -210,16 +208,20 @@ class TimeSeriesPartitioner:
         return frequency
 
     def _does_user_want_optimal_frequency(self, user_frequency: str, optimal_frequency: str) -> bool:
-        valid_responses = ['y', 'yes', 'n', 'no']
-        msg = f"The frequency [{optimal_frequency}] is a better option for the number of docs you are trying to generate " + \
-            "because the current frequency you've selected does not have enough timestamps to allocate to docs generated." + \
-            f"If you prefer your current frequency [{user_frequency}], please extend the time frame. " + \
-            f"Would you like to use [{optimal_frequency}] as the frequency? (y/n): "
+        valid_responses = ["y", "yes", "n", "no"]
+        msg = (
+            f"The frequency [{optimal_frequency}] is a better option for the number of docs you are trying to generate "
+            + "because the current frequency you've selected does not have enough timestamps to allocate to docs generated."
+            + f"If you prefer your current frequency [{user_frequency}], please extend the time frame. "
+            + f"Would you like to use [{optimal_frequency}] as the frequency? (y/n): "
+        )
         requested_input = input(msg)
         while requested_input.lower() not in valid_responses:
-            msg = f"Please enter y or n. The frequency [{optimal_frequency}] is a better option for the number of docs you are trying to generate. " + \
-            f"If you prefer your current frequency [{user_frequency}], please extend the time frame. " + \
-            f"Would you like to use [{optimal_frequency}] as the frequency? (y/n): "
+            msg = (
+                f"Please enter y or n. The frequency [{optimal_frequency}] is a better option for the number of docs you are trying to generate. "
+                + f"If you prefer your current frequency [{user_frequency}], please extend the time frame. "
+                + f"Would you like to use [{optimal_frequency}] as the frequency? (y/n): "
+            )
             requested_input = input(msg)
 
-        return requested_input.lower() in ['y', 'yes']
+        return requested_input.lower() in ["y", "yes"]

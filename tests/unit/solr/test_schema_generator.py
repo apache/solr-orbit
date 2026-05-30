@@ -59,14 +59,7 @@ class TestTranslateOpenSearchMapping(unittest.TestCase):
 
     def test_multi_field_with_raw_suffix(self):
         """Test multi-field with .raw sub-field creates separate field and copyField."""
-        properties = {
-            "country_code": {
-                "type": "text",
-                "fields": {
-                    "raw": {"type": "keyword"}
-                }
-            }
-        }
+        properties = {"country_code": {"type": "text", "fields": {"raw": {"type": "keyword"}}}}
 
         field_defs, copy_fields = translate_opensearch_mapping(properties)
 
@@ -84,14 +77,7 @@ class TestTranslateOpenSearchMapping(unittest.TestCase):
 
     def test_multi_field_with_keyword_suffix(self):
         """Test multi-field with .keyword sub-field."""
-        properties = {
-            "name": {
-                "type": "text",
-                "fields": {
-                    "keyword": {"type": "keyword"}
-                }
-            }
-        }
+        properties = {"name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}}}
 
         field_defs, copy_fields = translate_opensearch_mapping(properties)
 
@@ -106,15 +92,7 @@ class TestTranslateOpenSearchMapping(unittest.TestCase):
 
     def test_multi_field_with_multiple_subfields(self):
         """Test field with multiple sub-fields."""
-        properties = {
-            "title": {
-                "type": "text",
-                "fields": {
-                    "raw": {"type": "keyword"},
-                    "sort": {"type": "keyword"}
-                }
-            }
-        }
+        properties = {"title": {"type": "text", "fields": {"raw": {"type": "keyword"}, "sort": {"type": "keyword"}}}}
 
         field_defs, copy_fields = translate_opensearch_mapping(properties)
 

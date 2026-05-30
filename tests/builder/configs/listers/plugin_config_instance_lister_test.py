@@ -18,10 +18,13 @@ class PluginConfigInstanceListerTest(TestCase):
         plugin_config_instances = self.plugin_config_instance_lister.list_plugin_config_instances()
         print(plugin_config_instances)
 
-        self.assertEqual(plugin_config_instances, [
-            PluginConfigInstance(name="complex-plugin", format_version="v1", config_names=["config-a"]),
-            PluginConfigInstance(name="complex-plugin", format_version="v1", config_names=["config-b"]),
-            PluginConfigInstance(name="my-analysis-plugin", format_version="v1", is_core_plugin=True),
-            PluginConfigInstance(name="my-core-plugin-with-config", format_version="v1", is_core_plugin=True),
-            PluginConfigInstance(name="my-ingest-plugin", format_version="v1", is_core_plugin=True)
-        ])
+        self.assertEqual(
+            plugin_config_instances,
+            [
+                PluginConfigInstance(name="complex-plugin", format_version="v1", config_names=["config-a"]),
+                PluginConfigInstance(name="complex-plugin", format_version="v1", config_names=["config-b"]),
+                PluginConfigInstance(name="my-analysis-plugin", format_version="v1", is_core_plugin=True),
+                PluginConfigInstance(name="my-core-plugin-with-config", format_version="v1", is_core_plugin=True),
+                PluginConfigInstance(name="my-ingest-plugin", format_version="v1", is_core_plugin=True),
+            ],
+        )

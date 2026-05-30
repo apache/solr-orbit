@@ -17,7 +17,8 @@ source .venv/bin/activate  # Activate virtual environment
 ## Common Commands
 
 ```bash
-make lint             # Run ruff check on all Python source files
+make format           # Auto-format all Python source files (run before committing)
+make lint             # Run ruff check + ruff format --check (enforced in CI)
 make test             # Run unit tests (pytest tests/)
 pytest tests/path/to/test_file.py::TestClass::test_method  # Run a single test
 make it               # Run integration tests via tox (requires Java, Docker; ~30 min)
@@ -29,9 +30,9 @@ make clean            # Remove build artifacts, caches, tox environments
 
 ## Code Style
 
-- **Linter**: [ruff](https://docs.astral.sh/ruff/) (configured in `pyproject.toml` under `[tool.ruff]`)
+- **Linter + formatter**: [ruff](https://docs.astral.sh/ruff/) (configured in `pyproject.toml` under `[tool.ruff]`)
 - **Max line length**: 180 characters
-- Run `make lint` before committing; CI enforces this on every PR
+- Run `ruff format .` then `make lint` before committing; CI enforces both on every PR
 
 ## Architecture
 

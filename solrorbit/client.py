@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 # Exceptions
 # ---------------------------------------------------------------------------
 
+
 class SolrClientError(Exception):
     """Base exception for all SolrAdminClient errors."""
 
@@ -58,6 +59,7 @@ class CollectionNotFoundError(SolrClientError):
 # SolrAdminClient
 # ---------------------------------------------------------------------------
 
+
 class SolrAdminClient:
     """
     Thin wrapper around requests.Session for Solr V2 API admin operations.
@@ -69,9 +71,7 @@ class SolrAdminClient:
     Not thread-safe — each worker process creates its own instance.
     """
 
-    def __init__(self, host: str, port: int = 8983,
-                 username: str = None, password: str = None,
-                 tls: bool = False, timeout: int = 30):
+    def __init__(self, host: str, port: int = 8983, username: str = None, password: str = None, tls: bool = False, timeout: int = 30):
         scheme = "https" if tls else "http"
         self.base_url = f"{scheme}://{host}:{port}"
         self.api_url = f"{self.base_url}/api"
@@ -111,9 +111,7 @@ class SolrAdminClient:
         try:
             return data["lucene"]["solr-spec-version"]
         except KeyError as exc:
-            raise SolrClientError(
-                f"Could not parse Solr version from /api/node/system response: {data}"
-            ) from exc
+            raise SolrClientError(f"Could not parse Solr version from /api/node/system response: {data}") from exc
 
     def get_major_version(self) -> int:
         """Return the major version integer (9 or 10)."""
@@ -136,9 +134,7 @@ class SolrAdminClient:
             except Exception as exc:
                 last_exc = exc
             time.sleep(2)
-        raise SolrClientError(
-            f"Solr cluster did not become ready within {timeout}s. Last error: {last_exc}"
-        )
+        raise SolrClientError(f"Solr cluster did not become ready within {timeout}s. Last error: {last_exc}")
 
     # ------------------------------------------------------------------
     # Configset management
@@ -192,10 +188,9 @@ class SolrAdminClient:
     # Collection management
     # ------------------------------------------------------------------
 
-    def create_collection(self, name: str, configset: str,
-                          num_shards: int = 1, replication_factor: int = 1,
-                          tlog_replicas: int = 0, pull_replicas: int = 0,
-                          wait_for_active_shards: int = 1) -> None:
+    def create_collection(
+        self, name: str, configset: str, num_shards: int = 1, replication_factor: int = 1, tlog_replicas: int = 0, pull_replicas: int = 0, wait_for_active_shards: int = 1
+    ) -> None:
         """
         Create a Solr collection via POST /api/collections.
 
@@ -220,12 +215,9 @@ class SolrAdminClient:
         if resp.status_code == 400:
             body = self._try_parse_json(resp)
             if "already exists" in str(body).lower():
-                raise CollectionAlreadyExistsError(
-                    f"Collection '{name}' already exists"
-                )
+                raise CollectionAlreadyExistsError(f"Collection '{name}' already exists")
         self._raise_for_solr_error(resp, f"create collection '{name}'")
-        logger.info("Created collection '%s' (shards=%d, nrt=%d, tlog=%d, pull=%d)",
-                    name, num_shards, replication_factor, tlog_replicas, pull_replicas)
+        logger.info("Created collection '%s' (shards=%d, nrt=%d, tlog=%d, pull=%d)", name, num_shards, replication_factor, tlog_replicas, pull_replicas)
 
     def delete_collection(self, name: str) -> None:
         """Delete a Solr collection via DELETE /api/collections/{name}."""
@@ -366,8 +358,7 @@ class SolrAdminClient:
     # Raw request (for the raw-request workload operation)
     # ------------------------------------------------------------------
 
-    def raw_request(self, method: str, path: str,
-                    body=None, headers: dict = None) -> requests.Response:
+    def raw_request(self, method: str, path: str, body=None, headers: dict = None) -> requests.Response:
         """
         Send an arbitrary HTTP request to a Solr endpoint.
 
@@ -401,9 +392,7 @@ class SolrAdminClient:
             return
         body = self._try_parse_json(resp)
         msg = body.get("error", {}).get("msg", resp.text) if isinstance(body, dict) else resp.text
-        raise SolrClientError(
-            f"Solr {operation} failed (HTTP {resp.status_code}): {msg}"
-        )
+        raise SolrClientError(f"Solr {operation} failed (HTTP {resp.status_code}): {msg}")
 
     @staticmethod
     def _try_parse_json(resp: requests.Response) -> dict:
@@ -432,6 +421,7 @@ class SolrAdminClient:
 # SolrClient — unified client used by runners and telemetry devices
 # ---------------------------------------------------------------------------
 
+
 class SolrClient(RequestContextHolder):  # pylint: disable=too-many-public-methods
     """
     Single unified Solr client. Wraps SolrAdminClient (admin/HTTP) and pysolr.Solr
@@ -446,16 +436,14 @@ class SolrClient(RequestContextHolder):  # pylint: disable=too-many-public-metho
         async def close(self):
             pass
 
-    def __init__(self, host="localhost", port=8983, username=None, password=None,
-                 tls=False, timeout=30):
+    def __init__(self, host="localhost", port=8983, username=None, password=None, tls=False, timeout=30):
         self._host = host
         self._port = port
         self._username = username
         self._password = password
         self._tls = tls
         self._timeout = timeout
-        self._admin = SolrAdminClient(host=host, port=port, username=username,
-                                      password=password, tls=tls, timeout=timeout)
+        self._admin = SolrAdminClient(host=host, port=port, username=username, password=password, tls=tls, timeout=timeout)
         self._pysolr_clients = {}  # collection → pysolr.Solr (created lazily)
         self.transport = SolrClient._NoOpTransport()
 
@@ -534,6 +522,7 @@ class SolrClient(RequestContextHolder):  # pylint: disable=too-many-public-metho
     def _get_pysolr(self, collection: str):
         """Return (lazily-created, cached) pysolr.Solr for the given collection."""
         import pysolr  # pylint: disable=import-outside-toplevel
+
         if collection not in self._pysolr_clients:
             scheme = "https" if self._tls else "http"
             url = f"{scheme}://{self._host}:{self._port}/solr/{collection}"
@@ -541,8 +530,7 @@ class SolrClient(RequestContextHolder):  # pylint: disable=too-many-public-metho
             session.trust_env = False  # fork-safe on macOS (no CFNetwork proxy detection)
             if self._username and self._password:
                 session.auth = (self._username, self._password)
-            self._pysolr_clients[collection] = pysolr.Solr(
-                url, timeout=self._timeout, always_commit=False, session=session)
+            self._pysolr_clients[collection] = pysolr.Solr(url, timeout=self._timeout, always_commit=False, session=session)
         return self._pysolr_clients[collection]
 
     def add(self, collection, docs, **kwargs):

@@ -99,21 +99,18 @@ Usage:
 
 """
 
+
 def handler(signum, frame):
     sys.exit(1)
 
 
 def error_exit(script_name, message):
-    print(f'{script_name}: {message}', file=sys.stderr)
+    print(f"{script_name}: {message}", file=sys.stderr)
     sys.exit(1)
 
 
 class DocGenerator:
-
-    def __init__(self,
-                 input_file: str,
-                 start_timestamp: int,
-                 interval:int) -> None:
+    def __init__(self, input_file: str, start_timestamp: int, interval: int) -> None:
         self.input_file = input_file
         self.timestamp = start_timestamp
         self.interval = interval
@@ -140,7 +137,7 @@ class DocGenerator:
 
 
 class ArgParser(argparse.ArgumentParser):
-    def usage_msg(self, message: str=None) -> None:
+    def usage_msg(self, message: str = None) -> None:
         if message:
             print(message, file=sys.stderr)
         print(file=sys.stderr)
@@ -148,49 +145,41 @@ class ArgParser(argparse.ArgumentParser):
         sys.exit(1)
 
     def error(self, message):
-        print('error: %s' % message, file=sys.stderr)
+        print("error: %s" % message, file=sys.stderr)
         self.usage_msg()
 
 
-def generate_docs(script_name: str,
-                  workload: str,
-                  repository: str,
-                  input_file: str,
-                  output_file_suffix: str,
-                  n_docs: int,
-                  corpus_size: int,
-                  interval: int,
-                  start_timestamp: int,
-                  batch_size: int):
+def generate_docs(
+    script_name: str, workload: str, repository: str, input_file: str, output_file_suffix: str, n_docs: int, corpus_size: int, interval: int, start_timestamp: int, batch_size: int
+):
 
     #
     # Set up for generation.
     #
     config = configparser.ConfigParser()
-    benchmark_home = os.environ.get('BENCHMARK_HOME') or os.environ['HOME']
-    benchmark_ini = benchmark_home + '/.benchmark/benchmark.ini'
+    benchmark_home = os.environ.get("BENCHMARK_HOME") or os.environ["HOME"]
+    benchmark_ini = benchmark_home + "/.benchmark/benchmark.ini"
     if not os.path.isfile(benchmark_ini):
         error_exit(script_name, f"could not find benchmark config file {benchmark_ini}, run a workload first to create it")
     config.read(benchmark_ini)
 
-    root_dir = config['node']['root.dir']
-    workload_dir= root_dir + '/workloads/' + repository + '/' + workload
-    data_dir = config['benchmarks']['local.dataset.cache'] + '/' + workload
+    root_dir = config["node"]["root.dir"]
+    workload_dir = root_dir + "/workloads/" + repository + "/" + workload
+    data_dir = config["benchmarks"]["local.dataset.cache"] + "/" + workload
 
     if not os.path.exists(data_dir):
         error_exit(script_name, f"workload data directory {data_dir} does not exist, run the appropriate workload first to create it")
-    output_file = data_dir + '/documents-' + output_file_suffix + '.json'
-    if '/' not in input_file:
-        input_file = data_dir + '/' + input_file
+    output_file = data_dir + "/documents-" + output_file_suffix + ".json"
+    if "/" not in input_file:
+        input_file = data_dir + "/" + input_file
 
-    out = open(output_file, 'w')
-    offsets = open(output_file + '.offset', 'w')
+    out = open(output_file, "w")
+    offsets = open(output_file + ".offset", "w")
 
     #
     # Obtain the generator to synthesize the documents.
     #
-    g = DocGenerator(input_file, start_timestamp, interval).\
-                        get_next_doc()
+    g = DocGenerator(input_file, start_timestamp, interval).get_next_doc()
 
     #
     # Generate the desired number of documents.
@@ -207,7 +196,7 @@ def generate_docs(script_name: str,
 
         # Offset file entry.
         if line_num > 0 and line_num % batch_size == 0:
-            s = str(line_num) + ';' + str(offset) + '\n'
+            s = str(line_num) + ";" + str(offset) + "\n"
             offsets.write(s)
 
         line = next(g)
@@ -222,21 +211,21 @@ def generate_docs(script_name: str,
     # Create the metadata files.
     #
     corpus_spec = dict()
-    corpus_spec['target-index'] = 'logs-' + output_file_suffix
-    corpus_spec['source-file'] = output_file
-    corpus_spec['document-count'] = line_num
-    corpus_spec['uncompressed-bytes'] = offset
+    corpus_spec["target-index"] = "logs-" + output_file_suffix
+    corpus_spec["source-file"] = output_file
+    corpus_spec["document-count"] = line_num
+    corpus_spec["uncompressed-bytes"] = offset
 
-    out = open(workload_dir + '/gen-docs-' + output_file_suffix + '.json', 'w')
-    out.write(json.dumps(corpus_spec) + '\n')
+    out = open(workload_dir + "/gen-docs-" + output_file_suffix + ".json", "w")
+    out.write(json.dumps(corpus_spec) + "\n")
     out.close()
 
     idx_spec = dict()
-    idx_spec['name'] = 'logs-' + output_file_suffix
-    idx_spec['body'] = 'index.json'
+    idx_spec["name"] = "logs-" + output_file_suffix
+    idx_spec["body"] = "index.json"
 
-    out = open(workload_dir + '/gen-idx-' + output_file_suffix + '.json', 'w')
-    out.write(json.dumps(idx_spec) + '\n')
+    out = open(workload_dir + "/gen-idx-" + output_file_suffix + ".json", "w")
+    out.write(json.dumps(idx_spec) + "\n")
     out.close()
 
 
@@ -245,34 +234,16 @@ def main(args: list) -> None:
     signal.signal(signal.SIGINT, handler)
     script_name = os.path.basename(__file__)
 
-    parser = ArgParser(description=help_msg,
-                       formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('-w', '--workload',
-                        default='http_logs',
-                        help="workload name, default: %(default)s")
-    parser.add_argument('-r', '--workload-repository', default='default',
-                        help="workload name, default: %(default)s")
-    parser.add_argument('-c', '--corpus-size', type=int,
-                        help="size of corpus to generate in GB")
-    parser.add_argument('-o', '--output-file-suffix',
-                        default='generated',
-                        help="suffix for output file name, "
-                        "documents-SUFFIX.json, default: %(default)s")
-    parser.add_argument('-f', '--input-file',
-                        default='documents-241998.json',
-                        help="[EXPERT] input file name, default: %(default)s")
-    parser.add_argument('-n', '--number-of-docs', type=int,
-                        help="[EXPERT] number of documents to generate")
-    parser.add_argument('-i', '--interval', type=int,
-                        help="[EXPERT] interval between consecutive "
-                        "timestamps, use a negative number to specify multiple "
-                        "docs per timestamp")
-    parser.add_argument('-t', '--start-timestamp', type=int,
-                        default=893964618,
-                        help="[EXPERT] start timestamp, default: %(default)d")
-    parser.add_argument('-b', '--batch-size', default=50000,
-                        help="[EXPERT] batch size per benchmark client thread, "
-                        "default: %(default)d")
+    parser = ArgParser(description=help_msg, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("-w", "--workload", default="http_logs", help="workload name, default: %(default)s")
+    parser.add_argument("-r", "--workload-repository", default="default", help="workload name, default: %(default)s")
+    parser.add_argument("-c", "--corpus-size", type=int, help="size of corpus to generate in GB")
+    parser.add_argument("-o", "--output-file-suffix", default="generated", help="suffix for output file name, documents-SUFFIX.json, default: %(default)s")
+    parser.add_argument("-f", "--input-file", default="documents-241998.json", help="[EXPERT] input file name, default: %(default)s")
+    parser.add_argument("-n", "--number-of-docs", type=int, help="[EXPERT] number of documents to generate")
+    parser.add_argument("-i", "--interval", type=int, help="[EXPERT] interval between consecutive timestamps, use a negative number to specify multiple docs per timestamp")
+    parser.add_argument("-t", "--start-timestamp", type=int, default=893964618, help="[EXPERT] start timestamp, default: %(default)d")
+    parser.add_argument("-b", "--batch-size", default=50000, help="[EXPERT] batch size per benchmark client thread, default: %(default)d")
 
     args = parser.parse_args()
 
@@ -286,29 +257,15 @@ def main(args: list) -> None:
     batch_size = args.batch_size
 
     if n_docs and corpus_size:
-        parser.usage_msg(script_name +
-                     ": can specify either number of documents"
-                     "or corpus size, but not both")
+        parser.usage_msg(script_name + ": can specify either number of documentsor corpus size, but not both")
     elif not n_docs and not corpus_size:
-        parser.usage_msg(script_name +
-                     ": must specify number of documents or corpus size")
-    interval = args.interval if args.interval is not None else \
-        corpus_size * -2
-    if workload != 'http_logs':
-        parser.usage_msg(script_name +
-                     ': only the "http_logs" workload is currently supported')
+        parser.usage_msg(script_name + ": must specify number of documents or corpus size")
+    interval = args.interval if args.interval is not None else corpus_size * -2
+    if workload != "http_logs":
+        parser.usage_msg(script_name + ': only the "http_logs" workload is currently supported')
 
-    generate_docs(script_name,
-                  workload,
-                  repository,
-                  input_file,
-                  output_file_suffix,
-                  n_docs,
-                  corpus_size,
-                  interval,
-                  start_timestamp,
-                  batch_size)
+    generate_docs(script_name, workload, repository, input_file, output_file_suffix, n_docs, corpus_size, interval, start_timestamp, batch_size)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

@@ -23,8 +23,7 @@ from solrorbit.builder.utils.binary_keys import BinaryKeys
 
 
 class SourceDownloader(Downloader):
-    def __init__(self, cluster_config, executor, source_repository_provider, binary_builder, template_renderer,
-                 artifact_variables_provider):
+    def __init__(self, cluster_config, executor, source_repository_provider, binary_builder, template_renderer, artifact_variables_provider):
         super().__init__(executor)
         self.logger = logging.getLogger(__name__)
         self.cluster_config = cluster_config
@@ -58,10 +57,13 @@ class SourceDownloader(Downloader):
         build_command_template = self.cluster_config.variables["source"]["build"]["command"]
 
         if self.binary_builder:
-            self.binary_builder.build(host, [
-                self.template_renderer.render_template_string(clean_command_template, artifact_variables),
-                self.template_renderer.render_template_string(build_command_template, artifact_variables)
-            ])
+            self.binary_builder.build(
+                host,
+                [
+                    self.template_renderer.render_template_string(clean_command_template, artifact_variables),
+                    self.template_renderer.render_template_string(build_command_template, artifact_variables),
+                ],
+            )
 
     def _get_zip_path(self, source_path, artifact_variables):
         artifact_path_pattern_template = self.cluster_config.variables["source"]["artifact_path_pattern"]

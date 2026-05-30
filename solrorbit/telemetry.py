@@ -16,7 +16,7 @@
 # not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#	http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -37,13 +37,15 @@ import tabulate
 from solrorbit import metrics, time, exceptions
 from solrorbit.utils import io, sysstats, console, process
 
+
 def list_telemetry():
     console.println("Available telemetry devices:\n")
 
     # --- Solr-native devices (always enabled) ---
     console.println("Always-enabled Solr devices (no --telemetry flag needed):\n")
     solr_devices = [
-        [d.command, d.human_name, d.help] for d in [
+        [d.command, d.human_name, d.help]
+        for d in [
             SolrJvmStats,
             SolrNodeStats,
             SolrCollectionStats,
@@ -57,16 +59,27 @@ def list_telemetry():
 
     # --- Optional REST devices (all pipelines) ---
     console.println("\n\nOptional REST devices (all pipelines — enable with --telemetry <command>):\n")
-    rest_devices = [[device.command, device.human_name, device.help] for device in [
-        SegmentStats, ShardStats, ClusterEnvironmentInfo,
-    ]]
+    rest_devices = [
+        [device.command, device.human_name, device.help]
+        for device in [
+            SegmentStats,
+            ShardStats,
+            ClusterEnvironmentInfo,
+        ]
+    ]
     console.println(tabulate.tabulate(rest_devices, ["Command", "Name", "Description"]))
 
     # --- Optional JVM/process devices (provisioned pipelines only) ---
     console.println("\n\nOptional JVM/process devices (docker or from-distribution pipelines only):\n")
-    jvm_devices = [[device.command, device.human_name, device.help] for device in [
-        FlightRecorder, Gc, JitCompiler, Heapdump,
-    ]]
+    jvm_devices = [
+        [device.command, device.human_name, device.help]
+        for device in [
+            FlightRecorder,
+            Gc,
+            JitCompiler,
+            Heapdump,
+        ]
+    ]
     console.println(tabulate.tabulate(jvm_devices, ["Command", "Name", "Description"]))
     console.println("\nJVM/process devices inject flags into SOLR_OPTS before Solr starts.")
     console.println("They are silently skipped when pipeline is benchmark-only.")
@@ -130,6 +143,7 @@ class Telemetry:
 # Telemetry devices
 #
 ########################################################################################
+
 
 class TelemetryDevice:
     def __init__(self):
@@ -246,8 +260,7 @@ class JitCompiler(TelemetryDevice):
         io.ensure_dir(self.log_root)
         log_file = os.path.join(self.log_root, "jit.log")
         console.info("%s: Writing JIT compiler log to [%s]" % (self.human_name, log_file), logger=self.logger)
-        return ["-XX:+UnlockDiagnosticVMOptions", "-XX:+TraceClassLoading", "-XX:+LogCompilation",
-                "-XX:LogFile={}".format(log_file), "-XX:+PrintAssembly"]
+        return ["-XX:+UnlockDiagnosticVMOptions", "-XX:+TraceClassLoading", "-XX:+LogCompilation", "-XX:LogFile={}".format(log_file), "-XX:+PrintAssembly"]
 
 
 class Gc(TelemetryDevice):
@@ -293,8 +306,7 @@ class Heapdump(TelemetryDevice):
             # noinspection PyBroadException
             try:
                 if self.docker_container:
-                    cmd = "docker exec {} jmap -dump:format=b,file={} {}".format(
-                        self.docker_container, heap_dump_file, node.pid)
+                    cmd = "docker exec {} jmap -dump:format=b,file={} {}".format(self.docker_container, heap_dump_file, node.pid)
                 else:
                     cmd = "jmap -dump:format=b,file={} {}".format(heap_dump_file, node.pid)
                 if process.run_subprocess_with_logging(cmd):
@@ -363,9 +375,7 @@ class ShardStats(TelemetryDevice):
         self.metrics_store = metrics_store
         self.sample_interval = telemetry_params.get("shard-stats-sample-interval", 60)
         if self.sample_interval <= 0:
-            raise exceptions.SystemSetupError(
-                f"The telemetry parameter 'shard-stats-sample-interval' must be greater than zero but was {self.sample_interval}."
-            )
+            raise exceptions.SystemSetupError(f"The telemetry parameter 'shard-stats-sample-interval' must be greater than zero but was {self.sample_interval}.")
         self.samplers = []
 
     def on_benchmark_start(self):
@@ -429,13 +439,12 @@ class ShardStatsRecorder:
                             idx = core_status.get("index", {})
                             num_docs = idx.get("numDocs", 0)
                             size_bytes = idx.get("sizeInBytes", 0)
-                            self.metrics_store.put_value_cluster_level(
-                                f"shard_{shard_name}_num_docs", num_docs, "")
-                            self.metrics_store.put_value_cluster_level(
-                                f"shard_{shard_name}_size_bytes", size_bytes, "byte")
+                            self.metrics_store.put_value_cluster_level(f"shard_{shard_name}_num_docs", num_docs, "")
+                            self.metrics_store.put_value_cluster_level(f"shard_{shard_name}_size_bytes", size_bytes, "byte")
                         except BaseException:
                             self.logger.warning("ShardStats: could not get core STATUS for [%s].", core_name)
                         break  # only need the leader replica per shard
+
 
 class StartupTime(InternalTelemetryDevice):
     def __init__(self, stopwatch=time.StopWatch):
@@ -456,6 +465,7 @@ class DiskIo(InternalTelemetryDevice):
     """
     Gathers disk I/O stats.
     """
+
     def __init__(self, node_count_on_host):
         super().__init__()
         self.node_count_on_host = node_count_on_host
@@ -475,8 +485,7 @@ class DiskIo(InternalTelemetryDevice):
                 disk_start = sysstats.disk_io_counters()
                 self.read_bytes = disk_start.read_bytes
                 self.write_bytes = disk_start.write_bytes
-                self.logger.warning("Process I/O counters are not supported on this platform. Falling back to less "
-                                    "accurate disk I/O counters.")
+                self.logger.warning("Process I/O counters are not supported on this platform. Falling back to less accurate disk I/O counters.")
             except BaseException:
                 self.logger.exception("Could not determine I/O stats at benchmark start.")
 
@@ -495,9 +504,12 @@ class DiskIo(InternalTelemetryDevice):
                 else:
                     disk_end = sysstats.disk_io_counters()
                     if self.node_count_on_host > 1:
-                        self.logger.info("There are [%d] nodes on this host and Solr Orbit fell back to disk I/O counters. "
-                                         "Attributing [1/%d] of total I/O to [%s].",
-                                         self.node_count_on_host, self.node_count_on_host, node.node_name)
+                        self.logger.info(
+                            "There are [%d] nodes on this host and Solr Orbit fell back to disk I/O counters. Attributing [1/%d] of total I/O to [%s].",
+                            self.node_count_on_host,
+                            self.node_count_on_host,
+                            node.node_name,
+                        )
 
                     self.read_bytes = (disk_end.read_bytes - self.read_bytes) // self.node_count_on_host
                     self.write_bytes = (disk_end.write_bytes - self.write_bytes) // self.node_count_on_host
@@ -568,6 +580,7 @@ class ClusterEnvironmentInfo(TelemetryDevice):
     Gathers static environment information on a cluster level (Solr version, JVM, CPU).
     Called once at benchmark start; stores results as run metadata.
     """
+
     internal = False
     command = "cluster-environment-info"
     human_name = "Cluster Environment Info"
@@ -625,11 +638,11 @@ def add_metadata_for_node(metrics_store, node_name, host_name):
     metrics_store.add_meta_info(metrics.MetaInfoScope.node, node_name, "host_name", host_name)
 
 
-
 class IndexSize(InternalTelemetryDevice):
     """
     Measures the final size of the index
     """
+
     def __init__(self, data_paths):
         super().__init__()
         self.data_paths = data_paths
@@ -660,6 +673,7 @@ class IndexSize(InternalTelemetryDevice):
 # ---------------------------------------------------------------------------
 # Prometheus text format parser (shared with runner.py)
 # ---------------------------------------------------------------------------
+
 
 def _parse_prometheus_text(text: str) -> dict:
     """
@@ -692,6 +706,7 @@ def _parse_prometheus_text(text: str) -> dict:
 # ---------------------------------------------------------------------------
 # Base class
 # ---------------------------------------------------------------------------
+
 
 class SolrTelemetryDevice(TelemetryDevice):
     """
@@ -780,8 +795,11 @@ class SolrTelemetryDevice(TelemetryDevice):
             self._metrics_store[name] = {"value": value, "unit": unit}
             return
         self._metrics_store.put_value_cluster_level(
-            name=name, value=value, unit=unit,
-            task=task, operation_type="telemetry",
+            name=name,
+            value=value,
+            unit=unit,
+            task=task,
+            operation_type="telemetry",
             meta_data=meta or {},
         )
 
@@ -789,6 +807,7 @@ class SolrTelemetryDevice(TelemetryDevice):
 # ---------------------------------------------------------------------------
 # Device: SolrJvmStats
 # ---------------------------------------------------------------------------
+
 
 class SolrJvmStats(SolrTelemetryDevice):
     """
@@ -892,6 +911,7 @@ class SolrJvmStats(SolrTelemetryDevice):
 # Device: SolrNodeStats
 # ---------------------------------------------------------------------------
 
+
 class SolrNodeStats(SolrTelemetryDevice):
     """
     Collect OS, file-descriptor, HTTP, and query-handler metrics from Solr.
@@ -957,9 +977,7 @@ class SolrNodeStats(SolrTelemetryDevice):
             self._put("query_handler_avg_latency_ms", avg_latency, "ms")
 
         jetty = self._get_metric_json(data, "metrics", "solr.jetty") or {}
-        http_requests = jetty.get(
-            "org.eclipse.jetty.server.handler.StatisticsHandler.requests"
-        )
+        http_requests = jetty.get("org.eclipse.jetty.server.handler.StatisticsHandler.requests")
         if http_requests is not None:
             self._put("node_http_requests_total", http_requests, "")
 
@@ -980,6 +998,7 @@ class SolrNodeStats(SolrTelemetryDevice):
 # Device: SolrCollectionStats
 # ---------------------------------------------------------------------------
 
+
 class SolrCollectionStats(SolrTelemetryDevice):
     """
     Collect per-collection document count, index size, segment count, and deleted docs.
@@ -990,8 +1009,7 @@ class SolrCollectionStats(SolrTelemetryDevice):
     human_name = "Solr Collection Stats"
     help = "Per-collection: doc count, deleted docs, index size, and segment count (30 s interval)"
 
-    def __init__(self, admin_client, metrics_store,
-                 collections: list = None, sample_interval_s: float = 30.0):
+    def __init__(self, admin_client, metrics_store, collections: list = None, sample_interval_s: float = 30.0):
         super().__init__(admin_client, metrics_store, sample_interval_s)
         self._collections = collections
 
@@ -1018,8 +1036,7 @@ class SolrCollectionStats(SolrTelemetryDevice):
 
             self._put("num_docs", num_docs, "docs", meta={"collection": collection})
             if index_size:
-                self._put("index_size_bytes", index_size, "bytes",
-                          meta={"collection": collection})
+                self._put("index_size_bytes", index_size, "bytes", meta={"collection": collection})
         except Exception:
             pass
 
@@ -1027,9 +1044,7 @@ class SolrCollectionStats(SolrTelemetryDevice):
 
     def _fetch_luke_stats(self, collection: str) -> None:
         try:
-            resp = self._client._get(
-                f"/solr/{collection}/admin/luke?numTerms=0&wt=json"
-            )
+            resp = self._client._get(f"/solr/{collection}/admin/luke?numTerms=0&wt=json")
             info = resp.json().get("index", {})
             num_docs = info.get("numDocs")
             deleted_docs = info.get("deletedDocs") or info.get("numDeletedDocs")
@@ -1038,19 +1053,17 @@ class SolrCollectionStats(SolrTelemetryDevice):
             if num_docs is not None:
                 self._put("num_docs", num_docs, "docs", meta={"collection": collection})
             if deleted_docs is not None:
-                self._put("num_deleted_docs", deleted_docs, "docs",
-                          meta={"collection": collection})
+                self._put("num_deleted_docs", deleted_docs, "docs", meta={"collection": collection})
             if segment_count is not None:
-                self._put("segment_count", segment_count, "",
-                          meta={"collection": collection})
+                self._put("segment_count", segment_count, "", meta={"collection": collection})
         except Exception as exc:
-            logging.getLogger(__name__).debug("SolrCollectionStats: luke fallback failed for %s: %s",
-                         collection, exc)
+            logging.getLogger(__name__).debug("SolrCollectionStats: luke fallback failed for %s: %s", collection, exc)
 
 
 # ---------------------------------------------------------------------------
 # Device: SolrQueryStats
 # ---------------------------------------------------------------------------
+
 
 class SolrQueryStats(SolrTelemetryDevice):
     """
@@ -1107,6 +1120,7 @@ class SolrQueryStats(SolrTelemetryDevice):
 # Device: SolrIndexingStats
 # ---------------------------------------------------------------------------
 
+
 class SolrIndexingStats(SolrTelemetryDevice):
     """
     Collect indexing throughput and merge metrics from Solr.
@@ -1157,6 +1171,7 @@ class SolrIndexingStats(SolrTelemetryDevice):
 # ---------------------------------------------------------------------------
 # Device: SolrCacheStats
 # ---------------------------------------------------------------------------
+
 
 class SolrCacheStats(SolrTelemetryDevice):
     """

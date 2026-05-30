@@ -6,6 +6,7 @@ class BootstrapPhase(Enum):
     An enum defining the valid phases of bootstrapping. A BootstrapPhase is used to define when a BootstrapHookHandler
     is executed during cluster creation.
     """
+
     POST_INSTALL = 10
 
     @classmethod

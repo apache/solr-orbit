@@ -81,10 +81,13 @@ class TestConvertOpensearchWorkload(unittest.TestCase):
 
     def test_renames_indices_to_collections(self):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
-            self._make_source_workload(src, {
-                "indices": [{"name": "my-index"}],
-                "challenges": [],
-            })
+            self._make_source_workload(
+                src,
+                {
+                    "indices": [{"name": "my-index"}],
+                    "challenges": [],
+                },
+            )
             result = convert_opensearch_workload(src, dst)
             self.assertEqual(0, len(result["issues"]))
 
@@ -96,28 +99,31 @@ class TestConvertOpensearchWorkload(unittest.TestCase):
 
     def test_renames_operation_types(self):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
-            self._make_source_workload(src, {
-                "indices": [],
-                "challenges": [
-                    {
-                        "name": "default",
-                        "schedule": [
-                            {
-                                "operation": {
-                                    "name": "index-docs",
-                                    "operation-type": "bulk",
+            self._make_source_workload(
+                src,
+                {
+                    "indices": [],
+                    "challenges": [
+                        {
+                            "name": "default",
+                            "schedule": [
+                                {
+                                    "operation": {
+                                        "name": "index-docs",
+                                        "operation-type": "bulk",
+                                    },
                                 },
-                            },
-                            {
-                                "operation": {
-                                    "name": "run-search",
-                                    "operation-type": "search",
+                                {
+                                    "operation": {
+                                        "name": "run-search",
+                                        "operation-type": "search",
+                                    },
                                 },
-                            },
-                        ],
-                    }
-                ],
-            })
+                            ],
+                        }
+                    ],
+                },
+            )
             convert_opensearch_workload(src, dst)
             with open(os.path.join(dst, "workload.json")) as f:
                 out = json.load(f)
@@ -127,23 +133,26 @@ class TestConvertOpensearchWorkload(unittest.TestCase):
 
     def test_translates_search_body_to_solr_json_dsl(self):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
-            self._make_source_workload(src, {
-                "indices": [],
-                "challenges": [
-                    {
-                        "name": "default",
-                        "schedule": [
-                            {
-                                "operation": {
-                                    "name": "search-all",
-                                    "operation-type": "search",
-                                    "body": {"query": {"match_all": {}}, "size": 10},
+            self._make_source_workload(
+                src,
+                {
+                    "indices": [],
+                    "challenges": [
+                        {
+                            "name": "default",
+                            "schedule": [
+                                {
+                                    "operation": {
+                                        "name": "search-all",
+                                        "operation-type": "search",
+                                        "body": {"query": {"match_all": {}}, "size": 10},
+                                    }
                                 }
-                            }
-                        ],
-                    }
-                ],
-            })
+                            ],
+                        }
+                    ],
+                },
+            )
             convert_opensearch_workload(src, dst)
             with open(os.path.join(dst, "workload.json")) as f:
                 out = json.load(f)
@@ -155,22 +164,25 @@ class TestConvertOpensearchWorkload(unittest.TestCase):
 
     def test_unsupported_ops_are_skipped(self):
         with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
-            self._make_source_workload(src, {
-                "indices": [],
-                "challenges": [
-                    {
-                        "name": "default",
-                        "schedule": [
-                            {
-                                "operation": {
-                                    "name": "snap",
-                                    "operation-type": "create-snapshot",
+            self._make_source_workload(
+                src,
+                {
+                    "indices": [],
+                    "challenges": [
+                        {
+                            "name": "default",
+                            "schedule": [
+                                {
+                                    "operation": {
+                                        "name": "snap",
+                                        "operation-type": "create-snapshot",
+                                    }
                                 }
-                            }
-                        ],
-                    }
-                ],
-            })
+                            ],
+                        }
+                    ],
+                },
+            )
             result = convert_opensearch_workload(src, dst)
             self.assertIn("snap", result["skipped"])
 
@@ -235,14 +247,7 @@ class TestTranslateToSolrJsonDsl(unittest.TestCase):
         self.assertIn("desc", result["sort"])
 
     def test_terms_aggregation_converted_to_facet(self):
-        body = {
-            "query": {"match_all": {}},
-            "aggs": {
-                "vendors": {
-                    "terms": {"field": "vendor_id", "size": 5}
-                }
-            }
-        }
+        body = {"query": {"match_all": {}}, "aggs": {"vendors": {"terms": {"field": "vendor_id", "size": 5}}}}
         result = translate_to_solr_json_dsl(body)
         self.assertIn("facet", result)
         facet = result["facet"]["vendors"]
@@ -260,7 +265,7 @@ class TestTranslateToSolrJsonDsl(unittest.TestCase):
                         "calendar_interval": "month",
                     }
                 }
-            }
+            },
         }
         result = translate_to_solr_json_dsl(body)
         facet = result["facet"]["pickup_by_month"]
@@ -269,10 +274,7 @@ class TestTranslateToSolrJsonDsl(unittest.TestCase):
         self.assertEqual("+1MONTH", facet["gap"])
 
     def test_avg_metric_aggregation(self):
-        body = {
-            "query": {"match_all": {}},
-            "aggs": {"avg_fare": {"avg": {"field": "fare_amount"}}}
-        }
+        body = {"query": {"match_all": {}}, "aggs": {"avg_fare": {"avg": {"field": "fare_amount"}}}}
         result = translate_to_solr_json_dsl(body)
         self.assertEqual("avg(fare_amount)", result["facet"]["avg_fare"])
 
@@ -294,14 +296,7 @@ class TestConvertAggregationsToFacets(unittest.TestCase):
         self.assertEqual({}, _convert_aggregations_to_facets(None))
 
     def test_nested_agg_within_terms(self):
-        aggs = {
-            "by_vendor": {
-                "terms": {"field": "vendor_id", "size": 10},
-                "aggs": {
-                    "avg_fare": {"avg": {"field": "fare_amount"}}
-                }
-            }
-        }
+        aggs = {"by_vendor": {"terms": {"field": "vendor_id", "size": 10}, "aggs": {"avg_fare": {"avg": {"field": "fare_amount"}}}}}
         result = _convert_aggregations_to_facets(aggs)
         self.assertIn("by_vendor", result)
         self.assertIn("facet", result["by_vendor"])

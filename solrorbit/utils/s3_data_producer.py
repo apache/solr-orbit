@@ -15,19 +15,25 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from boto3 import client
 
 from solrorbit import exceptions
+
 try:
     from solrorbit.data_streaming.data_producer import DataProducer
 except ImportError:
+
     class DataProducer:  # pylint: disable=too-few-public-methods
         """Fallback when data_streaming package is not available."""
+
+
 from solrorbit.workload.ingestion_manager import IngestionManager
+
 
 class S3DataProducer(DataProducer):
     """
     Generate data by downloading an object from S3.
     Will support downloading from multiple objects in the future.
     """
-    def __init__(self, bucket:str, keys, client_options: dict, data_dir=None) -> None:
+
+    def __init__(self, bucket: str, keys, client_options: dict, data_dir=None) -> None:
         """
         Constructor.
         :param bucket: The S3 bucket to download from.
@@ -45,29 +51,29 @@ class S3DataProducer(DataProducer):
             self.chunk_size = IngestionManager.chunk_size * 1024**2
             self.num_workers = os.cpu_count() * 2
 
-            self.s3_client = client('s3')
+            self.s3_client = client("s3")
         except Exception as e:
             print(f"Error: {e}")
 
     def _get_next_key(self):
-        if len(self.keys) > 2 and self.keys.endswith('**'):
+        if len(self.keys) > 2 and self.keys.endswith("**"):
             processed_keys = set()
             while True:
                 response = self.s3_client.list_objects(Bucket=self.bucket, Prefix=self.keys[:-2])
-                for object in response['Contents']:
-                    key = object['Key']
+                for object in response["Contents"]:
+                    key = object["Key"]
                     if key not in processed_keys:
                         processed_keys.add(key)
-                        size = self.s3_client.head_object(Bucket=self.bucket, Key=key)['ContentLength']
+                        size = self.s3_client.head_object(Bucket=self.bucket, Key=key)["ContentLength"]
                         if size == 0:
                             return
                         yield key
                 self.logger.info("Waiting for next (or empty) S3 object to appear in target bucket")
                 time.sleep(60)
-        elif len(self.keys) > 1 and self.keys[-1] == '*':
+        elif len(self.keys) > 1 and self.keys[-1] == "*":
             response = self.s3_client.list_objects(Bucket=self.bucket, Prefix=self.keys[:-1])
-            for object in response['Contents']:
-                yield object['Key']
+            for object in response["Contents"]:
+                yield object["Key"]
         else:
             yield self.keys
 
@@ -77,7 +83,7 @@ class S3DataProducer(DataProducer):
             # Obtain the object size.
             self.logger.info("Processing object %s", k)
             response = self.s3_client.head_object(Bucket=self.bucket, Key=k)
-            size = response['ContentLength']
+            size = response["ContentLength"]
             yield self._s3_multipart_downloader(self.bucket, k, 0, size)
 
     def _gen_range_args(self, beg, end, chunk_size):
@@ -93,14 +99,14 @@ class S3DataProducer(DataProducer):
                 r_end = end - 1
             else:
                 r_end = r_beg + chunk_size - 1
-            ranges.append(f'bytes={r_beg}-{r_end}')
+            ranges.append(f"bytes={r_beg}-{r_end}")
         return ranges
 
     def _s3_get_object_subrange(self, args):
         "Download a subrange of an S3 object."
         bucket, key, range = args
         resp = self.s3_client.get_object(Bucket=bucket, Key=key, Range=range)
-        return resp['Body'].read()
+        return resp["Body"].read()
 
     def _s3_multipart_downloader(self, bucket, key, beg, end):
         """
@@ -113,17 +119,15 @@ class S3DataProducer(DataProducer):
         # Ensure futures are garbage collected before more are issued, to not run out of memory.
         with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             for i in range(0, len(ranges), self.num_workers):
-                subranges = ranges[i:i+self.num_workers]
-                futures = [executor.submit(self._s3_get_object_subrange, (bucket, key, range))
-                           for range in subranges]
+                subranges = ranges[i : i + self.num_workers]
+                futures = [executor.submit(self._s3_get_object_subrange, (bucket, key, range)) for range in subranges]
                 wait(futures)
                 for future in futures:
                     yield future.result()
 
     def _output_chunk(self, rsl, chunk_id):
         "Write a chunk into its file.  It will be processed later by one ingestion client."
-        with open(os.path.join(self.data_dir, self.chunk_prefix + "{:05d}".format(chunk_id)),
-                  "w", encoding='utf-8') as fh:
+        with open(os.path.join(self.data_dir, self.chunk_prefix + "{:05d}".format(chunk_id)), "w", encoding="utf-8") as fh:
             fh.write(rsl)
 
     def generate_chunked_data(self):
@@ -133,9 +137,9 @@ class S3DataProducer(DataProducer):
         downloaders = self._get_next_downloader()
         for downloader in downloaders:
             for chunk in downloader:
-                rsl = chunk.decode('utf-8')
+                rsl = chunk.decode("utf-8")
                 i = len(rsl)
-                while i and rsl[i-1] != '\n':
+                while i and rsl[i - 1] != "\n":
                     i -= 1
                 if i == 0:
                     raise exceptions.DataStreamingError(f"could not locate document end in chunk {chunk_id}")
@@ -163,6 +167,7 @@ def main(bucket: str, keys: str) -> None:
     producer = S3DataProducer(bucket, keys, None)
     producer.generate_chunked_data()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # pylint: disable = no-value-for-parameter
     main(*sys.argv[1:])

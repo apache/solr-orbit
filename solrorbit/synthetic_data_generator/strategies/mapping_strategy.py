@@ -22,12 +22,13 @@ from solrorbit.synthetic_data_generator.strategies import DataGenerationStrategy
 from solrorbit.synthetic_data_generator.models import SyntheticDataGeneratorMetadata, SDGConfig, MappingGenerationValuesConfig
 from solrorbit.synthetic_data_generator.timeseries_partitioner import TimeSeriesPartitioner
 
+
 class MappingStrategy(DataGenerationStrategy):
-    def __init__(self, sdg_metadata: SyntheticDataGeneratorMetadata,  sdg_config: SDGConfig, index_mapping: dict) -> None:
+    def __init__(self, sdg_metadata: SyntheticDataGeneratorMetadata, sdg_config: SDGConfig, index_mapping: dict) -> None:
         self.sdg_metadata = sdg_metadata
-        self.sdg_config = sdg_config # Optional YAML-based config for value constraints
-        self.index_mapping = index_mapping # OpenSearch Mapping
-        self.mapping_generation_values =  (self.sdg_config.MappingGenerationValues or {}) if self.sdg_config else {}
+        self.sdg_config = sdg_config  # Optional YAML-based config for value constraints
+        self.index_mapping = index_mapping  # OpenSearch Mapping
+        self.mapping_generation_values = (self.sdg_config.MappingGenerationValues or {}) if self.sdg_config else {}
 
         self.logger = logging.getLogger(__name__)
 
@@ -43,10 +44,7 @@ class MappingStrategy(DataGenerationStrategy):
             for _ in range(len(seeds)):
                 seed = seeds[_]
                 window = timeseries_windows[_]
-                future = dask_client.submit(
-                    self.generate_data_chunk_from_worker,
-                    docs_per_chunk, seed, timeseries_enabled, window
-                )
+                future = dask_client.submit(self.generate_data_chunk_from_worker, docs_per_chunk, seed, timeseries_enabled, window)
 
                 futures.append(future)
 
@@ -76,7 +74,7 @@ class MappingStrategy(DataGenerationStrategy):
             synthetic_docs = []
             datetimestamps: Generator = TimeSeriesPartitioner.generate_datetimestamps_from_window(
                 window=timeseries_window, frequency=timeseries_enabled.timeseries_frequency, format=timeseries_enabled.timeseries_format
-                )
+            )
             for datetimestamp in datetimestamps:
                 document = MappingConverter.generate_synthetic_document(mappings_with_generators)
                 try:
@@ -87,7 +85,6 @@ class MappingStrategy(DataGenerationStrategy):
                     raise exceptions.DataError(f"Encountered problem when inserting datetimestamps for timeseries data being generated: {e}")
 
             return synthetic_docs
-
 
         documents = [MappingConverter.generate_synthetic_document(mappings_with_generators) for _ in range(docs_per_chunk)]
 
@@ -101,7 +98,7 @@ class MappingStrategy(DataGenerationStrategy):
         if timeseries_enabled and timeseries_enabled.timeseries_field:
             datetimestamps: Generator = TimeSeriesPartitioner.generate_datetimestamps_from_window(
                 window=timeseries_window, frequency=timeseries_enabled.timeseries_frequency, format=timeseries_enabled.timeseries_format
-                )
+            )
             for datetimestamp in datetimestamps:
                 document[timeseries_enabled.timeseries_field] = datetimestamp
 
@@ -158,11 +155,11 @@ class MappingConverter:
 
         return document
 
-    def generate_text(self, field_def: Dict[str, Any],  **params) -> str:
-        choices = params.get('must_include', None)
+    def generate_text(self, field_def: Dict[str, Any], **params) -> str:
+        choices = params.get("must_include", None)
         analyzer = field_def.get("analyzer", "standard")
 
-        #TODO: Need to support other analyzers
+        # TODO: Need to support other analyzers
         text = ""
         if choices:
             term = random.choice(choices)
@@ -174,9 +171,8 @@ class MappingConverter:
         text += f"Sample text for {random.randint(1, 100)}"
         return text
 
-
     def generate_keyword(self, field_def: Dict[str, Any], **params) -> str:
-        choices = params.get('choices', None)
+        choices = params.get("choices", None)
         if choices:
             keyword = random.choice(choices)
             return keyword
@@ -184,43 +180,47 @@ class MappingConverter:
             return f"key_{uuid.uuid4().hex[:8]}"
 
     def generate_long(self, field_def: Dict[str, Any], **params) -> int:
-        min = params.get('min', -(2**63 - 1))
-        max = params.get('max', (2**63 - 1))
+        min = params.get("min", -(2**63 - 1))
+        max = params.get("max", (2**63 - 1))
         return random.randint(min, max)
 
     def generate_integer(self, field_def: Dict[str, Any], **params) -> int:
-        min = params.get('min', -2147483648)
-        max = params.get('max', 2147483647)
+        min = params.get("min", -2147483648)
+        max = params.get("max", 2147483647)
 
         return random.randint(min, max)
 
     def generate_short(self, field_def: Dict[str, Any], **params) -> int:
-        min = params.get('min', -32768)
-        max = params.get('max', 32767)
+        min = params.get("min", -32768)
+        max = params.get("max", 32767)
         return random.randint(min, max)
 
     def generate_byte(self, field_def: Dict[str, Any], **params) -> int:
-        min = params.get('min', -128)
-        max = params.get('max', 127)
+        min = params.get("min", -128)
+        max = params.get("max", 127)
         return random.randint(min, max)
 
     def generate_double(self, field_def: Dict[str, Any], **params) -> float:
-        min = params.get('min', -1e9)
-        max = params.get('max', 1e9)
+        min = params.get("min", -1e9)
+        max = params.get("max", 1e9)
         return random.uniform(min, max)
 
     def generate_float(self, field_def: Dict[str, Any], **params) -> float:
-        min = params.get('min', 0)
-        max = params.get('max', 1000)
-        decimal_places = params.get('round', 2)
+        min = params.get("min", 0)
+        max = params.get("max", 1000)
+        decimal_places = params.get("round", 2)
 
         float_value = random.uniform(min, max)
-        return round(float_value , decimal_places)
+        return round(float_value, decimal_places)
 
     def generate_boolean(self, field_def: Dict[str, Any], **params) -> bool:
         return random.choice([True, False])
 
-    def generate_date(self, field_def: Dict[str, Any], **params,) -> str:
+    def generate_date(
+        self,
+        field_def: Dict[str, Any],
+        **params,
+    ) -> str:
         # TODO Need to handle actual format values
         # If field definition includes format, then use it.
         date_format = field_def.get("format", "yyyy-mm-dd")
@@ -233,9 +233,7 @@ class MappingConverter:
 
         start_dt = datetime.datetime.fromisoformat(start_date)
         end_dt = datetime.datetime.fromisoformat(end_date)
-        random_date = start_dt + datetime.timedelta(
-            days=random.randint(0, (end_dt - start_dt).days)
-        )
+        random_date = start_dt + datetime.timedelta(days=random.randint(0, (end_dt - start_dt).days))
 
         # Apply formatting
         if date_format == "yyyy-mm-dd":
@@ -248,10 +246,7 @@ class MappingConverter:
         return f"{random.randint(1, 255)}.{random.randint(0, 255)}.{random.randint(0, 255)}.{random.randint(1, 254)}"
 
     def generate_geo_point(self, field_def: Dict[str, Any], **params) -> Dict[str, float]:
-        return {
-            "lat": random.uniform(-90, 90),
-            "lon": random.uniform(-180, 180)
-        }
+        return {"lat": random.uniform(-90, 90), "lon": random.uniform(-180, 180)}
 
     def generate_object(self, field_def: Dict[str, Any], **params) -> Dict[str, Any]:
         # This will be replaced by the nested fields generator
@@ -336,17 +331,17 @@ class MappingConverter:
         Returns:
             Dict of token_id -> weight pairs with positive float values
         """
-        num_tokens = params.get('num_tokens', 10)
-        min_weight = params.get('min_weight', 0.01)
-        max_weight = params.get('max_weight', 1.0)
-        token_id_start = params.get('token_id_start', 1000)
-        token_id_step = params.get('token_id_step', 100)
+        num_tokens = params.get("num_tokens", 10)
+        min_weight = params.get("min_weight", 0.01)
+        max_weight = params.get("max_weight", 1.0)
+        token_id_start = params.get("token_id_start", 1000)
+        token_id_step = params.get("token_id_step", 100)
 
         sparse_vector = {}
         for i in range(num_tokens):
             token_id = str(token_id_start + (i * token_id_step))
             weight = random.uniform(min_weight, max_weight)
-            sparse_vector[token_id] = round(weight, 4) # imitate real neural sparse search models like Splade and DeepImpact
+            sparse_vector[token_id] = round(weight, 4)  # imitate real neural sparse search models like Splade and DeepImpact
 
         return sparse_vector
 
@@ -423,9 +418,7 @@ class MappingConverter:
 
                 transformed_mapping[field_name] = lambda f=field_def, gen=generator_func, p=generator_override_params: gen(f, **p)
 
-
         return transformed_mapping
-
 
     def _generate_obj(self, field_def: Dict[str, Any], nested_generators: Dict[str, Callable]) -> Dict[str, Any]:
         """Generate an object using nested generators"""
