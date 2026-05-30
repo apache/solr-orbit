@@ -67,7 +67,15 @@ def main() -> None:
     sha_archive_url = f"{tar_archive_url}.sha512"
 
     tarball = download_with_fallback(tar_url, tar_archive_url)
-    expected_hex = download_with_fallback(sha_url, sha_archive_url).decode().strip()
+    # Apache .sha512 files use coreutils format: "<hex>  <filename>" or BSD
+    # format: "SHA512 (<filename>) = <hex>".  Extract the bare hex token.
+    sha_content = download_with_fallback(sha_url, sha_archive_url).decode().strip()
+    if "=" in sha_content:
+        # BSD format
+        expected_hex = sha_content.split("=", 1)[1].strip()
+    else:
+        # GNU coreutils format: first whitespace-delimited token is the hash
+        expected_hex = sha_content.split()[0]
 
     actual_hex = hashlib.sha512(tarball).hexdigest()
     if actual_hex != expected_hex:
