@@ -88,6 +88,7 @@ Accepted by all subcommands.
 | `--on-error` | string | `continue` | Error strategy: `continue` or `abort` |
 | `--client-options` | string | `timeout:60` | Comma-separated client options passed to the Solr client (short: `-c`) |
 | `--kill-running-processes` | flag | off | Kill other running `solr-orbit` processes before starting (short: `-k`) |
+| `--allow-user-managed` | flag | off | Skip the SolrCloud-mode requirement check and run against a user-managed (non-cloud) target anyway (use at your own risk) |
 | `--preserve-install` | flag | off | Keep the Solr installation after the run (provisioned pipelines only) |
 
 ### Provisioning

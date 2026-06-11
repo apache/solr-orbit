@@ -702,6 +702,14 @@ def create_arg_parser():
         help="If any processes is running, it is going to kill them and allow solr-orbit to continue to run."
     )
     test_run_parser.add_argument(
+        "--allow-user-managed",
+        action="store_true",
+        default=False,
+        help="Skip the SolrCloud (ZooKeeper) mode requirement check and run against a user-managed "
+             "(non-cloud) target anyway (default: false). Use at your own risk; some operations only "
+             "work in SolrCloud mode."
+    )
+    test_run_parser.add_argument(
         "--latency-percentiles",
         help=f"A comma-separated list of percentiles to report for latency "
              f"(default: {metrics.GlobalStatsCalculator.DEFAULT_LATENCY_PERCENTILES}).",
@@ -1155,6 +1163,7 @@ def configure_test(arg_parser, args, cfg):
         "worker_coordinator",
         "worker_ips",
         opts.csv_to_list(args.worker_ips))
+    cfg.add(config.Scope.applicationOverride, "solr", "allow.user.managed", args.allow_user_managed)
     cfg.add(config.Scope.applicationOverride, "workload", "test.mode.enabled", args.test_mode)
     cfg.add(config.Scope.applicationOverride, "workload", "load.test.clients", int(args.load_test_qps))
     if args.redline_test:
