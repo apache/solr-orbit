@@ -130,11 +130,11 @@ def test_runs_a_default_pipeline(benchmark_only_pipeline):
     benchmark_only_pipeline.target.assert_called_once_with(cfg)
 
 
-def test_check_cloud_mode_skipped_when_allow_user_managed():
+def test_check_cloud_mode_skipped_when_allow_unsupported_user_managed():
     # --allow-unsupported-user-managed must bypass the check entirely, without touching the network
     cfg = config.Config()
     cfg.add(config.Scope.benchmark, "client", "hosts", ["localhost:8983"])
-    cfg.add(config.Scope.benchmark, "solr", "allow.user.managed", True)
+    cfg.add(config.Scope.benchmark, "solr", "allow.unsupported.user.managed", True)
 
     with mock.patch("solrorbit.client.SolrAdminClient") as admin_client:
         test_run_orchestrator._check_cloud_mode(cfg)
@@ -145,7 +145,7 @@ def test_check_cloud_mode_skipped_when_allow_user_managed():
 def test_check_cloud_mode_raises_for_standalone_solr():
     cfg = config.Config()
     cfg.add(config.Scope.benchmark, "client", "hosts", opts.TargetHosts("localhost:8983"))
-    cfg.add(config.Scope.benchmark, "solr", "allow.user.managed", False)
+    cfg.add(config.Scope.benchmark, "solr", "allow.unsupported.user.managed", False)
 
     with mock.patch("solrorbit.client.SolrAdminClient") as admin_client:
         admin_client.return_value.is_cloud_mode.return_value = False

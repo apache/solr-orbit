@@ -381,7 +381,7 @@ def _check_cloud_mode(cfg):
     """Fail fast with a clear error if the target Solr cluster is not in SolrCloud mode."""
     from solrorbit.client import SolrAdminClient, SolrClientError  # local import to avoid circular
 
-    if cfg.opts("solr", "allow.user.managed", mandatory=False, default_value=False):
+    if cfg.opts("solr", "allow.unsupported.user.managed", mandatory=False, default_value=False):
         logging.getLogger(__name__).warning(
             "Skipping SolrCloud-mode requirement check (--allow-unsupported-user-managed). "
             "Some operations may fail if the target is not in SolrCloud mode."
