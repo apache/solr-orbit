@@ -702,6 +702,14 @@ def create_arg_parser():
         help="If any processes is running, it is going to kill them and allow solr-orbit to continue to run."
     )
     test_run_parser.add_argument(
+        "--allow-unsupported-user-managed",
+        action="store_true",
+        default=False,
+        help="Skip the SolrCloud mode requirement check and run against a user-managed "
+             "(non-cloud) target anyway (default: false). Use at your own risk; many operations only "
+             "work in SolrCloud mode."
+    )
+    test_run_parser.add_argument(
         "--latency-percentiles",
         help=f"A comma-separated list of percentiles to report for latency "
              f"(default: {metrics.GlobalStatsCalculator.DEFAULT_LATENCY_PERCENTILES}).",
