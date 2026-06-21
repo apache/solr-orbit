@@ -131,7 +131,7 @@ def test_runs_a_default_pipeline(benchmark_only_pipeline):
 
 
 def test_check_cloud_mode_skipped_when_allow_user_managed():
-    # --allow-user-managed must bypass the check entirely, without touching the network
+    # --allow-unsupported-user-managed must bypass the check entirely, without touching the network
     cfg = config.Config()
     cfg.add(config.Scope.benchmark, "client", "hosts", ["localhost:8983"])
     cfg.add(config.Scope.benchmark, "solr", "allow.user.managed", True)

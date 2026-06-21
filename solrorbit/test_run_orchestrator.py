@@ -383,7 +383,7 @@ def _check_cloud_mode(cfg):
 
     if cfg.opts("solr", "allow.user.managed", mandatory=False, default_value=False):
         logging.getLogger(__name__).warning(
-            "Skipping SolrCloud-mode requirement check (--allow-user-managed). "
+            "Skipping SolrCloud-mode requirement check (--allow-unsupported-user-managed). "
             "Some operations may fail if the target is not in SolrCloud mode."
         )
         return
