@@ -4,13 +4,13 @@ This file provides guidance to AI coding agents working with this repository.
 
 ## Development Setup
 
-Prerequisites: `pyenv`, JDK 21, Docker, `docker-compose`, `jq`
+Prerequisites: `uv`, JDK 21, Docker, `docker-compose`, `jq`
 
 Optional: `pbzip2` (parallel bzip2 — install via `apt install pbzip2` or `brew install pbzip2`).
 Without it, `.bz2` corpus decompression falls back to Python stdlib (slower).
 
 ```bash
-make develop          # Install Python 3.12 via pyenv, create .venv, install all deps
+make develop          # Install Python 3.12 via uv, create .venv, install all deps
 source .venv/bin/activate  # Activate virtual environment
 ```
 

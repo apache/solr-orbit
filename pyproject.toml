@@ -19,6 +19,9 @@
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.uv]
+# uv manages the venv; Python version is controlled by requires-python and .python-version
+
 [project]
 name = "solr-orbit"
 dynamic = ["version"]

@@ -13,12 +13,15 @@ RUN apt-get -y update && \
     apt-get -y upgrade && \
     rm -rf /var/lib/apt/lists/*
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:0.10.2 /uv /uvx /usr/local/bin/
+
 WORKDIR /build/solr-orbit
 COPY . .
 
-# There is no binary package currently available for yappi on ARM.
-RUN make build && \
-    if test "$(uname -m)" = aarch64; then pip wheel yappi && cp yappi-*.whl dist; fi
+# Build the wheel with uv; also build a yappi wheel on ARM where no binary is available
+RUN uv build --wheel && \
+    if test "$(uname -m)" = aarch64; then uv pip install wheel && python -m pip wheel yappi -w dist; fi
 
 
 #
@@ -35,6 +38,7 @@ WORKDIR /solr-orbit
 RUN mkdir -p /solr-orbit/.solr-orbit && \
     chown -R 1000:0 /solr-orbit/.solr-orbit
 
+COPY --from=ghcr.io/astral-sh/uv:0.10.2 /uv /uvx /usr/local/bin/
 COPY --from=build-stage /build/solr-orbit/dist/*.whl ./
 
 # hadolint ignore=DL3008
@@ -43,7 +47,7 @@ RUN set -ex; \
     apt-get install -y --no-install-recommends git pbzip2; \
     apt-get -y upgrade; \
     rm -rf /var/lib/apt/lists/*; \
-    pip install --no-cache-dir ./*.whl; \
+    uv pip install --system --no-cache ./*.whl; \
     rm ./*.whl
 
 USER 1000

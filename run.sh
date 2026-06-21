@@ -34,12 +34,7 @@ install_solrorbit () {
         if [[ -f $1 && -x $1 ]]; then return; fi
     fi
 
-    # Workaround system pip conflicts, https://github.com/pypa/pip/issues/5599
-    if [[ ${IN_VIRTUALENV} == 0 ]]; then
-        python3 -m pip install --quiet --user --upgrade --editable .[develop]
-    else
-        python3 -m pip install --quiet --upgrade --editable .[develop]
-    fi
+    uv sync --extra develop --quiet
 }
 
 # Attempt to update solr-orbit itself by default but allow user to skip it.
@@ -47,15 +42,6 @@ SELF_UPDATE=YES
 # Assume that the "main remote" is called "origin"
 REMOTE="origin"
 
-# While we could also check via the presence of `VIRTUAL_ENV` this is a bit more reliable.
-# Check for both pyvenv and normal venv environments
-# https://www.python.org/dev/peps/pep-0405/
-if python3 -c 'import os, sys; sys.exit(0) if "VIRTUAL_ENV" in os.environ else sys.exit(1)' >/dev/null 2>&1
-then
-    IN_VIRTUALENV=1
-else
-    IN_VIRTUALENV=0
-fi
 
 # Check for parameters that are intended for this script. Note that they only work if they're specified at the beginning (due to how
 # the shell builtin `shift` works. We could make it work for arbitrary positions but that's not worth the complexity for such an
@@ -120,18 +106,5 @@ export THESPLOG_THRESHOLD="INFO"
 
 # Provide a consistent binary name to the user and hide the fact that we call another binary under the hood.
 export BENCHMARK_ALTERNATIVE_BINARY_NAME=$(basename "$0")
-if [[ $IN_VIRTUALENV == 0 ]]
-then
-    BENCHMARK_ROOT=$(python3 -c "import site; print(site.USER_BASE)")
-    BENCHMARK_BIN=${BENCHMARK_ROOT}/bin/${BINARY_NAME}
-    install_solrorbit "${BENCHMARK_BIN}"
-    if [[ -x $BENCHMARK_BIN ]]; then
-        ${BENCHMARK_BIN} "$@"
-    else
-        echo "Cannot execute ${HUMAN_NAME} in ${BENCHMARK_BIN}."
-    fi
-else
-    install_solrorbit "${BINARY_NAME}"
-
-    ${BINARY_NAME} "$@"
-fi
+install_solrorbit
+uv run ${BINARY_NAME} "$@"
