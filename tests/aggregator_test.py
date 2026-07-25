@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import pytest
 from solrorbit import config
 from solrorbit.aggregator import Aggregator, AggregatedResults
@@ -21,7 +21,8 @@ def mock_args():
     return Mock(
         results_file="",
         test_run_id="",
-        workload_repository="default"
+        workload_repository="default",
+        workload_path=None
     )
 
 @pytest.fixture
@@ -119,6 +120,34 @@ def test_calculate_weighted_average(aggregator):
     assert result["throughput"] == 160  # (100*2 + 200*3) / (2+3)
     assert result["latency"]["avg"] == 16  # (10*2 + 20*3) / (2+3)
     assert result["latency"]["unit"] == "ms"
+
+def test_aggregate_names_the_workload_repository(aggregator):
+    aggregator.test_store.find_by_test_run_id.side_effect = None
+    aggregator.test_store.find_by_test_run_id.return_value = Mock(
+        results={}, workload="workload1", test_procedure="test_proc1")
+
+    with patch("solrorbit.workload.load_workload"), patch.object(aggregator, "build_aggregated_results"), \
+            patch("solrorbit.aggregator.FileTestRunStore"):
+        aggregator.aggregate()
+
+    aggregator.config.add.assert_any_call(config.Scope.applicationOverride, "workload",
+                                          "repository.name", "default")
+
+def test_aggregate_leaves_a_workload_path_alone(aggregator):
+    # a workload given as --workload-path is loaded from that path; naming a repository as well would
+    # send the loader to the repository instead
+    aggregator.args.workload_path = "/path/to/geonames"
+    aggregator.test_store.find_by_test_run_id.side_effect = None
+    aggregator.test_store.find_by_test_run_id.return_value = Mock(
+        results={}, workload="workload1", test_procedure="test_proc1")
+
+    with patch("solrorbit.workload.load_workload"), patch.object(aggregator, "build_aggregated_results"), \
+            patch("solrorbit.aggregator.FileTestRunStore"):
+        aggregator.aggregate()
+
+    repository_calls = [call for call in aggregator.config.add.call_args_list
+                        if call.args[2] == "repository.name"]
+    assert repository_calls == []
 
 def test_calculate_rsd(aggregator):
     values = [1, 2, 3, 4, 5]
