@@ -90,7 +90,7 @@ dependencies = [
     "h5py>=3.10.0",
     # License: BSD
     # Required for knnvector workload
-    "numpy>=1.24.2,<=2.4.6",
+    "numpy>=1.24.2,<=2.5.0",
     # License: MIT
     "tqdm",
     # License: MIT
@@ -123,7 +123,7 @@ solr-orbitd = "solrorbit.benchmarkd:main"
 [project.optional-dependencies]
 test = [
     "ujson",
-    "pytest==9.0.3",
+    "pytest==9.1.1",
     # Upgraded from 3.2.2: py.io.TerminalWriter was removed in py 1.11+,
     # making 3.x incompatible with Python 3.12. 4.0+ dropped the py dependency.
     "pytest-benchmark>=4.0.0",
@@ -131,17 +131,17 @@ test = [
 ]
 develop = [
     "ujson",
-    "pytest==9.0.3",
+    "pytest==9.1.1",
     # Upgraded from 3.2.2: py.io.TerminalWriter was removed in py 1.11+,
     # making 3.x incompatible with Python 3.12. 4.0+ dropped the py dependency.
     "pytest-benchmark>=4.0.0",
     "pytest-asyncio==1.4.0",
     "tox>=4.0",
-    "coverage==7.14.1",
+    "coverage==7.14.3",
     "twine==6.2.0",
     "wheel>=0.38.4",
     "github3.py==4.0.1",
-    "ruff==0.15.15",
+    "ruff==0.15.20",
 ]
 
 # ---------------------------------------------------------------------------
