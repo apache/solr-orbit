@@ -14,7 +14,7 @@ RUN apt-get -y update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install uv
-COPY --from=ghcr.io/astral-sh/uv:0.10.2 /uv /uvx /usr/local/bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /uvx /usr/local/bin/
 
 WORKDIR /build/solr-orbit
 COPY . .
@@ -36,7 +36,7 @@ WORKDIR /solr-orbit
 RUN mkdir -p /solr-orbit/.solr-orbit && \
     chown -R 1000:0 /solr-orbit/.solr-orbit
 
-COPY --from=ghcr.io/astral-sh/uv:0.10.2 /uv /uvx /usr/local/bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /uvx /usr/local/bin/
 COPY --from=build-stage /build/solr-orbit/dist/*.whl ./
 
 # hadolint ignore=DL3008
