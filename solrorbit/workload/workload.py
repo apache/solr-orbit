@@ -283,7 +283,8 @@ class DocumentCorpus:
             return self
         else:
             return DocumentCorpus(name=self.name,
-                                  documents=list(set(self.documents).union(other.documents)),
+                                  # sort by repr so the result is deterministic regardless of hash randomization
+                                  documents=sorted(set(self.documents).union(other.documents), key=repr),
                                   streaming_ingestion=self.streaming_ingestion,
                                   meta_data=dict(self.meta_data))
 

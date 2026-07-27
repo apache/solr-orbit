@@ -1978,7 +1978,7 @@ class AsyncExecutorHelperMethodsTests(TestCase):
         self.executor._prepare_context_manager = mock.AsyncMock(return_value=context_manager)
         self.executor.runner = mock.Mock()
 
-        with mock.patch('solrorbit.worker_coordinator.worker_coordinator.execute_single'):
+        with mock.patch('solrorbit.worker_coordinator.worker_coordinator.execute_single', new=mock.Mock()):
             with mock.patch('asyncio.wait_for') as wait_for_mock:
                 wait_for_mock.return_value = (100, "docs", {"success": True})
 
@@ -2010,7 +2010,8 @@ class AsyncExecutorHelperMethodsTests(TestCase):
         self.executor._prepare_context_manager = mock.AsyncMock(return_value=context_manager)
         self.executor.runner = mock.Mock()
 
-        with mock.patch('time.perf_counter', side_effect=[10.0, 10.5, 13.0]):
+        with mock.patch('solrorbit.worker_coordinator.worker_coordinator.execute_single', new=mock.Mock()), \
+                mock.patch('time.perf_counter', side_effect=[10.0, 10.5, 13.0]):
             with mock.patch('asyncio.sleep') as sleep_mock:
                 with mock.patch('asyncio.wait_for') as wait_for_mock:
                     wait_for_mock.return_value = (50, "docs", {"success": True})
