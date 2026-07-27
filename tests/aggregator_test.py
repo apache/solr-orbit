@@ -2,6 +2,7 @@ from unittest.mock import Mock, patch
 import pytest
 from solrorbit import config
 from solrorbit.aggregator import Aggregator, AggregatedResults
+from solrorbit import metrics
 
 @pytest.fixture
 def mock_config():
@@ -148,6 +149,21 @@ def test_aggregate_leaves_a_workload_path_alone(aggregator):
     repository_calls = [call for call in aggregator.config.add.call_args_list
                         if call.args[2] == "repository.name"]
     assert repository_calls == []
+
+def test_update_config_object_reads_attributes_that_test_runs_actually_have(aggregator):
+    # a real TestRun, not a Mock: a Mock creates whatever attribute is asked of it, so it cannot
+    # tell us whether update_config_object reads attributes that a test run really carries
+    test_run = metrics.TestRun(
+        benchmark_version="1.0.0", benchmark_revision="abc123", environment_name="unit-test",
+        test_run_id="test1", test_run_timestamp="20250101T000000Z", pipeline="docker", user_tags={},
+        workload="workload1", workload_params={}, test_procedure="test_proc1",
+        cluster_config=["vanilla"], cluster_config_params={"heap_size": "6g"}, plugin_params={},
+        meta_data={})
+
+    aggregator.update_config_object(test_run)
+
+    aggregator.config.add.assert_any_call(config.Scope.applicationOverride, "builder",
+                                          "cluster_config.params", {"heap_size": "6g"})
 
 def test_calculate_rsd(aggregator):
     values = [1, 2, 3, 4, 5]
