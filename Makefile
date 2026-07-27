@@ -38,9 +38,9 @@ develop: check-uv
 build: check-uv
 	uv build
 
-# Builds a wheel from source, then installs it.
+# Builds a wheel from source, then installs it as a uv tool (isolated env, binaries on PATH).
 install: build
-	uv pip install dist/*.whl
+	uv tool install --force --reinstall dist/*.whl
 	rm -rf dist
 
 clean:
