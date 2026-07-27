@@ -19,9 +19,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.10.2 /uv /uvx /usr/local/bin/
 WORKDIR /build/solr-orbit
 COPY . .
 
-# Build the wheel with uv; also build a yappi wheel on ARM where no binary is available
-RUN uv build --wheel && \
-    if test "$(uname -m)" = aarch64; then uv pip wheel -w dist; fi
+# Build the wheel with uv
+RUN uv build --wheel
 
 #
 # Stage 2: create image
