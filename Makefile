@@ -16,7 +16,6 @@
 # under the License.
 
 SHELL = /bin/bash
-VERSIONS = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d')
 UV_ERROR = "\033[0;31mIMPORTANT\033[0m: Please install uv — see https://docs.astral.sh/uv/getting-started/installation/\n"
 
 all: develop
@@ -34,7 +33,7 @@ check-java:
 	fi
 
 develop: check-uv
-	UV_CONSTRAINT_BINARY=h5py uv sync --extra develop
+	uv sync --extra develop
 
 build: check-uv
 	uv build

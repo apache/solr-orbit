@@ -21,7 +21,7 @@ COPY . .
 
 # Build the wheel with uv; also build a yappi wheel on ARM where no binary is available
 RUN uv build --wheel && \
-    if test "$(uname -m)" = aarch64; then uv pip install --system wheel && python -m pip wheel yappi -w dist; fi
+    if test "$(uname -m)" = aarch64; then uv pip wheel -w dist; fi
 
 #
 # Stage 2: create image

@@ -107,4 +107,4 @@ export THESPLOG_THRESHOLD="INFO"
 # Provide a consistent binary name to the user and hide the fact that we call another binary under the hood.
 export BENCHMARK_ALTERNATIVE_BINARY_NAME=$(basename "$0")
 install_solrorbit
-uv run ${BINARY_NAME} "$@"
+uv run "${BINARY_NAME}" "$@"
