@@ -32,6 +32,7 @@ import unittest.mock as mock
 import pytest
 
 from solrorbit import config, exceptions, test_run_orchestrator
+from solrorbit.utils import opts
 
 
 @pytest.fixture
@@ -127,3 +128,26 @@ def test_runs_a_default_pipeline(benchmark_only_pipeline):
     test_run_orchestrator.run(cfg)
 
     benchmark_only_pipeline.target.assert_called_once_with(cfg)
+
+
+def test_check_cloud_mode_skipped_when_allow_unsupported_user_managed():
+    # --allow-unsupported-user-managed must bypass the check entirely, without touching the network
+    cfg = config.Config()
+    cfg.add(config.Scope.benchmark, "client", "hosts", ["localhost:8983"])
+    cfg.add(config.Scope.benchmark, "solr", "allow.unsupported.user.managed", True)
+
+    with mock.patch("solrorbit.client.SolrAdminClient") as admin_client:
+        test_run_orchestrator._check_cloud_mode(cfg)
+
+    admin_client.assert_not_called()
+
+
+def test_check_cloud_mode_raises_for_standalone_solr():
+    cfg = config.Config()
+    cfg.add(config.Scope.benchmark, "client", "hosts", opts.TargetHosts("localhost:8983"))
+    cfg.add(config.Scope.benchmark, "solr", "allow.unsupported.user.managed", False)
+
+    with mock.patch("solrorbit.client.SolrAdminClient") as admin_client:
+        admin_client.return_value.is_cloud_mode.return_value = False
+        with pytest.raises(exceptions.SystemSetupError, match="not running in SolrCloud"):
+            test_run_orchestrator._check_cloud_mode(cfg)
