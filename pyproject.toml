@@ -140,6 +140,8 @@ develop = [
     "pytest-benchmark>=4.0.0",
     "pytest-asyncio==1.4.0",
     "tox>=4.0",
+    # tox plugin: create tox envs with uv and auto-download missing Python interpreters
+    "tox-uv>=1.11",
     "coverage==7.14.1",
     "twine==6.2.0",
     "wheel>=0.38.4",
