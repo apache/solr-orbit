@@ -1,9 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
-#
-# Originally developed by OpenSearch Contributors; licensed under the Apache License, Version 2.0.
-# License header was absent in the original source; added when adopted into Apache Solr Orbit.
-# Modified by Apache Solr contributors; see git log for details.
-#
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -20,22 +15,22 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-from dataclasses import dataclass
-from typing import List
 
-from solrorbit.telemetry import Telemetry
+set -euo pipefail
+cd "$(dirname "$0")/.."
 
+release_version=${1:-}
+next_version=${2:-}
 
-@dataclass
-class Node:
-    """A representation of a node within a host"""
+if [ -z "$release_version" ] || [ -z "$next_version" ]; then
+    echo "Usage: $0 <release_version> <next_version>"
+    echo "  e.g. $0 0.9.2 0.9.3"
+    exit 1
+fi
 
-    name: str
-    port: int
-    pid: int
-    root_dir: str
-    binary_path: str
-    log_path: str
-    heap_dump_path: str
-    data_paths: List[str]
-    telemetry: Telemetry
+echo "Running release checks for version ${release_version} (next: ${next_version})"
+
+echo "--- Apache RAT license audit ---"
+make rat
+
+echo "All release checks passed for version ${release_version}."

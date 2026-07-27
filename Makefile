@@ -22,6 +22,10 @@ VERSIONS = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d'
 VERSION312 = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d' | grep 3\.12)
 PYENV_ERROR = "\033[0;31mIMPORTANT\033[0m: Please install pyenv and run \033[0;31meval \"\$$(pyenv init -)\"\033[0m.\n"
 
+RAT_VERSION = 0.18
+RAT_JAR_DIR = $(HOME)/.solr-orbit/cache/apache-rat
+RAT_JAR = $(RAT_JAR_DIR)/apache-rat-$(RAT_VERSION).jar
+
 all: develop
 
 pyinst:
@@ -98,11 +102,18 @@ coverage:
 	coverage run -m pytest tests/
 	coverage html
 
+$(RAT_JAR):
+	$(PYTHON) scripts/download-rat.py $(RAT_VERSION) $(RAT_JAR)
+
+rat: $(RAT_JAR)
+	@java -version > /dev/null 2>&1 || { echo "ERROR: java not found on PATH; install a JDK to run Apache RAT"; exit 1; }
+	java -jar $(RAT_JAR) --input-exclude-file .rat-excludes -- .
+
 release-checks:
-	./release-checks.sh $(release_version) $(next_version)
+	./scripts/release-checks.sh $(release_version) $(next_version)
 
 # usage: e.g. make release release_version=0.9.2 next_version=0.9.3
 release: release-checks clean it
 	./release.sh $(release_version) $(next_version)
 
-.PHONY: install clean python-caches-clean tox-env-clean test it it312 benchmark coverage release release-checks pyinst
+.PHONY: install clean python-caches-clean tox-env-clean lint format test it it312 benchmark coverage rat release release-checks pyinst

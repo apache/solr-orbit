@@ -1,0 +1,107 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# ---------------------------------------------------------------------------
+# Apache RAT exclusion list
+# Patterns are Ant-style globs; one per line.
+# Files listed here legitimately carry no Apache license header.
+# ---------------------------------------------------------------------------
+
+# Python bytecode and tool caches
+**/__pycache__/**
+**/*.pyc
+**/*.pyo
+.pytest_cache/**
+.ruff_cache/**
+*.egg-info/**
+
+# Truly empty __init__.py namespace markers (0 bytes, no content to annotate).
+# Non-empty __init__.py files carry a full license header and are checked by RAT.
+solrorbit/builder/**/__init__.py
+solrorbit/tools/__init__.py
+solrorbit/visualizations/__init__.py
+tests/builder/**/__init__.py
+tests/unit/__init__.py
+
+# Version / lock / pin files (no meaningful content to annotate)
+version.txt
+.python-version
+docs/Gemfile.lock
+docs/.ruby-version
+
+# Configuration and data resource files shipped with the package
+# (ASF policy does not require headers in pure config/data files)
+**/*.ini
+**/*.json
+**/*.yml
+**/*.yaml
+**/*.j2
+**/*.properties
+**/*.options
+**/*.xml
+
+# Test fixtures and binary test data
+tests/builder/data/**
+tests/utils/resources/**
+it/resources/**
+
+# Binary and image files
+**/*.svg
+**/*.png
+**/*.tar
+**/*.tar.gz
+**/*.tar.bz2
+**/*.tgz
+**/*.bz2
+**/*.gz
+**/*.zip
+**/*.zst
+**/*.crt
+**/*.key
+
+# Documentation (Markdown source and Jekyll-generated output)
+**/*.md
+docs/_site/**
+docs/_includes/**
+docs/_layouts/**
+docs/_sass/**
+docs/assets/**
+docs/Gemfile
+
+# GitHub and CI metadata files
+.github/**
+.ci/variables.json
+
+# IDE project files
+.idea/**
+
+# Root-level project metadata
+# (LICENSE and NOTICE are already excluded by RAT by default)
+Makefile
+pyproject.toml
+MANIFEST.in
+
+# Tool and infrastructure config files (no license header required)
+.coveragerc
+**/.gitignore
+.asf.yaml
+.fossa.yml
+docker/Dockerfile
+docker/.dockerignore
+
+# Version files
+solrorbit/min-version.txt
