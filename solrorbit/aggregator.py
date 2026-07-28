@@ -1,6 +1,6 @@
 import os
 import statistics
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 import uuid
 
 from solrorbit.metrics import FileTestRunStore, TestRun
@@ -238,7 +238,8 @@ class Aggregator:
         return weighted_metrics
 
     @staticmethod
-    def weighted_mean(values: List[Any], iterations_per_run: List[int]) -> Any:
+    def weighted_mean(values: List[Optional[Union[int, float]]],
+                      iterations_per_run: List[int]) -> Optional[float]:
         """
         Weights each test run's value by that run's iteration count.
         Operations that produced no valid samples report their metrics as None; those are left out
@@ -252,7 +253,8 @@ class Aggregator:
             return None
         return sum(value * iterations for value, iterations in contributions) / total_iterations
 
-    def calculate_rsd(self, values: List[Union[int, float]], metric_name: str) -> Union[float, str]:
+    def calculate_rsd(self, values: List[Optional[Union[int, float]]],
+                      metric_name: str) -> Union[float, str]:
         if not values:
             raise ValueError(f"Cannot calculate RSD for metric '{metric_name}': empty list of values")
         # operations that produced no valid samples report None, which cannot contribute to a deviation
