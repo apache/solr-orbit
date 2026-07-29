@@ -27,6 +27,13 @@
 
 readonly BINARY_NAME="${__BENCHMARK_INTERNAL_BINARY_NAME}"
 readonly HUMAN_NAME="${__BENCHMARK_INTERNAL_HUMAN_NAME}"
+# This script is sourced with the working directory set to the project root; capture it before the popd below.
+readonly BENCHMARK_HOME="$(pwd -P)"
+
+if ! command -v uv >/dev/null 2>&1; then
+    >&2 echo "uv is required to run ${HUMAN_NAME}. Install it from https://docs.astral.sh/uv/getting-started/installation/"
+    exit 1
+fi
 
 install_solrorbit () {
     # Check if optional parameter with benchmark binary path, points to an existing executable file.
@@ -34,12 +41,7 @@ install_solrorbit () {
         if [[ -f $1 && -x $1 ]]; then return; fi
     fi
 
-    if ! command -v uv >/dev/null 2>&1; then
-        >&2 echo "uv is required to run ${HUMAN_NAME}. Install it from https://docs.astral.sh/uv/getting-started/installation/"
-        exit 1
-    fi
-
-    uv sync --extra develop --quiet
+    uv sync --project "${BENCHMARK_HOME}" --extra develop --quiet
 }
 
 # Attempt to update solr-orbit itself by default but allow user to skip it.
@@ -111,5 +113,7 @@ export THESPLOG_THRESHOLD="INFO"
 
 # Provide a consistent binary name to the user and hide the fact that we call another binary under the hood.
 export BENCHMARK_ALTERNATIVE_BINARY_NAME=$(basename "$0")
-install_solrorbit
-uv run "${BINARY_NAME}" "$@"
+# Skip the (comparatively slow) sync if the venv already provides the binary; the self-update path above
+# still syncs unconditionally so a just-updated checkout gets fresh dependencies.
+install_solrorbit "${BENCHMARK_HOME}/.venv/bin/${BINARY_NAME}"
+uv run --project "${BENCHMARK_HOME}" --no-sync "${BINARY_NAME}" "$@"
