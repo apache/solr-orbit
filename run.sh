@@ -34,6 +34,11 @@ install_solrorbit () {
         if [[ -f $1 && -x $1 ]]; then return; fi
     fi
 
+    if ! command -v uv >/dev/null 2>&1; then
+        >&2 echo "uv is required to run ${HUMAN_NAME}. Install it from https://docs.astral.sh/uv/getting-started/installation/"
+        exit 1
+    fi
+
     uv sync --extra develop --quiet
 }
 
