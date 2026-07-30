@@ -58,6 +58,9 @@ solr-orbit aggregate --test-runs ID1,ID2[,...] [OPTIONS]
 | `--test-runs` | Comma-separated list of test run IDs to aggregate |
 | `--test-runs-id` | Custom ID for the aggregated result (auto-generated if omitted) |
 | `--results-file` | Path to write the aggregated results JSON |
+| `--workload-path` | Path to a local workload directory |
+| `--workload-repository` | Git URL for the workloads repository (default: `"default"`, resolved from `benchmark.ini`) |
+| `--workload-revision` | Git revision (branch, tag, or commit) of the workloads repository; optional, uses the repository's default branch if omitted |
 
 ## Output
 
