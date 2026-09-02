@@ -114,6 +114,8 @@ class MockPopen:
         # mocking them as their optional functionality is disabled.
         self.returncode = 1
         self.stdout = io.StringIO()
+        # subprocess.run() reads this when it builds the CompletedProcess it returns.
+        self.args = args[0] if args else kwargs.get("args")
 
     def communicate(self, input=None, timeout=None):
         return [b"", b""]
