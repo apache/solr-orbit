@@ -209,11 +209,24 @@ class TestTranslateToSolrJsonDsl(unittest.TestCase):
         result = translate_to_solr_json_dsl(body)
         self.assertIn("vendor_id", result["query"])
 
+    def _range(self, bounds):
+        return translate_to_solr_json_dsl(
+            {"query": {"range": {"fare_amount": bounds}}})["query"]
+
     def test_range_query(self):
-        body = {"query": {"range": {"fare_amount": {"gte": 5, "lte": 100}}}}
-        result = translate_to_solr_json_dsl(body)
-        self.assertIn("fare_amount", result["query"])
-        self.assertIn("TO", result["query"])
+        self.assertEqual("fare_amount:[5 TO 100]", self._range({"gte": 5, "lte": 100}))
+
+    def test_exclusive_bounds_use_curly_brackets(self):
+        self.assertEqual("fare_amount:[5 TO 100}", self._range({"gte": 5, "lt": 100}))
+        self.assertEqual("fare_amount:{5 TO 100]", self._range({"gt": 5, "lte": 100}))
+        self.assertEqual("fare_amount:{5 TO 100}", self._range({"gt": 5, "lt": 100}))
+
+    def test_a_missing_bound_is_open_and_inclusive(self):
+        # An absent bound is `*`, which has nothing to exclude.
+        self.assertEqual("fare_amount:[5 TO *]", self._range({"gte": 5}))
+        self.assertEqual("fare_amount:{5 TO *]", self._range({"gt": 5}))
+        self.assertEqual("fare_amount:[* TO 100}", self._range({"lt": 100}))
+        self.assertEqual("fare_amount:[* TO 100]", self._range({"lte": 100}))
 
     def test_bool_with_filter_goes_to_fq(self):
         body = {
