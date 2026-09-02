@@ -171,7 +171,9 @@ These flags enable automated load-ramp and redline testing to find a cluster's p
 | `--test-runs` | Comma-separated test run IDs to aggregate |
 | `--test-runs-id` | Custom ID for the aggregated result |
 | `--results-file` | Path to write the aggregated results JSON |
+| `--workload-path` | Local workload directory |
 | `--workload-repository` | Git URL for the workloads repository |
+| `--workload-revision` | Git revision of the workloads repository |
 
 ## download flags
 

@@ -22,14 +22,8 @@ Use the following table to estimate the minimum free space required (compressed 
 
 | Workload name | Document count | Compressed size | Uncompressed size |
 | :----: | :----: | :----: | :----: |
-| eventdata | 20,000,000 | 756.0 MB | 15.3 GB |
 | geonames | 11,396,503 | 252.9 MB | 3.3 GB |
-| geopoint | 60,844,404 | 482.1 MB | 2.3 GB |
-| http_logs | 247,249,096 | 1.2 GB | 31.1 GB |
-| noaa | 33,659,481 | 949.4 MB | 9.0 GB |
 | nyc_taxis | 165,346,692 | 4.5 GB | 74.3 GB |
-| pmc | 574,199 | 5.5 GB | 21.7 GB |
-| so | 36,062,278 | 8.9 GB | 33.1 GB |
 
 Your Solr Orbit host should use solid-state drives (SSDs) for storage. Spinning-disk hard
 drives introduce performance bottlenecks that make benchmark results unreliable.
