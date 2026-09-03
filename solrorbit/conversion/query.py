@@ -181,13 +181,24 @@ def _translate_query_node(node: dict, fq_list: list = None) -> str:
     if "range" in node:
         for field, bounds in node["range"].items():
             field = normalize_field_name(field)
-            lo = bounds.get("gte", bounds.get("gt", "*"))
-            hi = bounds.get("lte", bounds.get("lt", "*"))
+            # gt/lt are exclusive; Solr spells that with a curly bracket.
+            if "gte" in bounds:
+                lo, lo_bracket = bounds["gte"], "["
+            elif "gt" in bounds:
+                lo, lo_bracket = bounds["gt"], "{"
+            else:
+                lo, lo_bracket = "*", "["
+            if "lte" in bounds:
+                hi, hi_bracket = bounds["lte"], "]"
+            elif "lt" in bounds:
+                hi, hi_bracket = bounds["lt"], "}"
+            else:
+                hi, hi_bracket = "*", "]"
             # Convert dates if format is specified (common for date fields)
             os_format = bounds.get("format")
             lo = _convert_date_to_solr_format(lo, os_format)
             hi = _convert_date_to_solr_format(hi, os_format)
-            return f"{field}:[{lo} TO {hi}]"
+            return f"{field}:{lo_bracket}{lo} TO {hi}{hi_bracket}"
 
     if "exists" in node:
         field = node["exists"].get("field", "*")
