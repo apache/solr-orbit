@@ -281,9 +281,17 @@ def cluster_distribution_version(cfg, client_factory=client.ClientFactory):
     hosts = cfg.opts("client", "hosts").default
     client_options = cfg.opts("client", "options").default
     client_instance = client_factory(hosts, client_options).create()
-    if isinstance(client_instance, client.SolrClient):
-        return "9.10.1"
-    return None
+    if not isinstance(client_instance, client.SolrClient):
+        return None
+    try:
+        return client_instance.get_version()
+    except Exception as e:
+        # This version selects the workload branch (WorkloadRepository.update -> versions.best_match),
+        # so falling back to a default would silently benchmark the cluster with another major's workloads.
+        raise exceptions.SystemSetupError(
+            f"Could not determine the distribution version of the cluster at {hosts}. Specify it with "
+            f"--distribution-version. Cause: {e}"
+        ) from e
 
 
 def to_ip_port(hosts):
