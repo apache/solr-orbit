@@ -28,8 +28,9 @@
 import unittest.mock as mock
 from unittest import TestCase
 
-from solrorbit import config, exceptions
+from solrorbit import client, config, exceptions
 from solrorbit.builder import builder
+from solrorbit.utils import opts, versions
 
 
 class HostHandlingTests(TestCase):
@@ -140,3 +141,50 @@ class BuilderTests(TestCase):
         m.stop_engine()
         self.assertFalse(launcher.started)
         self.assertEqual(cleanup.call_count, 2)
+
+
+class ClusterDistributionVersionTests(TestCase):
+    @staticmethod
+    def cfg_for(hosts="localhost:8983"):
+        cfg = config.Config()
+        cfg.add(config.Scope.application, "client", "hosts", opts.TargetHosts(hosts))
+        cfg.add(config.Scope.application, "client", "options", opts.ClientOptions("timeout:60"))
+        return cfg
+
+    @staticmethod
+    def factory_returning(client_instance):
+        return lambda hosts, client_options: mock.Mock(create=lambda: client_instance)
+
+    def test_reads_the_version_from_the_cluster(self):
+        solr_client = mock.create_autospec(client.SolrClient, instance=True)
+        solr_client.get_version.return_value = "10.0.0"
+
+        version = builder.cluster_distribution_version(self.cfg_for(), client_factory=self.factory_returning(solr_client))
+
+        self.assertEqual("10.0.0", version)
+        solr_client.get_version.assert_called_once_with()
+
+    def test_selects_the_workload_branch_of_the_actual_major(self):
+        # The version is not informational: WorkloadRepository.update feeds it to versions.best_match,
+        # so a wrong value benchmarks the cluster with another major's workloads.
+        solr_client = mock.create_autospec(client.SolrClient, instance=True)
+        solr_client.get_version.return_value = "10.0.0"
+
+        version = builder.cluster_distribution_version(self.cfg_for(), client_factory=self.factory_returning(solr_client))
+
+        self.assertEqual("10", versions.best_match(["main", "9", "10"], version))
+
+    def test_fails_instead_of_guessing_when_the_cluster_cannot_be_reached(self):
+        solr_client = mock.create_autospec(client.SolrClient, instance=True)
+        solr_client.get_version.side_effect = client.SolrClientError("connection refused")
+
+        with self.assertRaises(exceptions.SystemSetupError) as ctx:
+            builder.cluster_distribution_version(self.cfg_for(), client_factory=self.factory_returning(solr_client))
+
+        self.assertIn("--distribution-version", str(ctx.exception))
+        self.assertIn("connection refused", str(ctx.exception))
+
+    def test_returns_none_for_a_non_solr_client(self):
+        self.assertIsNone(
+            builder.cluster_distribution_version(self.cfg_for(), client_factory=self.factory_returning(mock.Mock()))
+        )
