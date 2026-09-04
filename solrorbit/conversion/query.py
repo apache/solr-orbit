@@ -26,6 +26,7 @@ Native Solr workloads should not go through this translation layer.
 """
 
 import logging
+import re
 from datetime import datetime
 
 from .field import normalize_field_name
@@ -448,12 +449,7 @@ def _convert_single_agg(agg_name: str, agg_def: dict):
         if not field:
             logger.warning("date_histogram agg '%s' has no field — skipping", agg_name)
             return None
-        interval = (
-            dh_conf.get("calendar_interval")
-            or dh_conf.get("fixed_interval")
-            or dh_conf.get("interval", "month")
-        )
-        gap = _calendar_interval_to_solr_gap(interval)
+        gap = _date_histogram_gap(dh_conf, agg_name)
         facet_def = {
             "type": "range",
             "field": field,
@@ -508,25 +504,82 @@ def _convert_single_agg(agg_name: str, agg_def: dict):
     return None
 
 
-def _calendar_interval_to_solr_gap(interval: str) -> str:
-    """Convert an OpenSearch calendar_interval or fixed_interval to a Solr range gap string."""
-    mapping = {
-        "minute": "+1MINUTE",
-        "1m": "+1MINUTE",
-        "hour": "+1HOUR",
-        "1h": "+1HOUR",
-        "day": "+1DAY",
-        "1d": "+1DAY",
-        "week": "+7DAYS",
-        "1w": "+7DAYS",
-        "month": "+1MONTH",
-        "1m_month": "+1MONTH",  # avoid conflict with 1m (minute)
-        "quarter": "+3MONTHS",
-        "1q": "+3MONTHS",
-        "year": "+1YEAR",
-        "1y": "+1YEAR",
-    }
-    return mapping.get(str(interval).lower(), "+1MONTH")
+CALENDAR_INTERVAL_NAMES = {
+    "minute": "+1MINUTE",
+    "hour": "+1HOUR",
+    "day": "+1DAY",
+    "week": "+7DAYS",
+    "month": "+1MONTH",
+    "quarter": "+3MONTHS",
+    "year": "+1YEAR",
+}
+
+CALENDAR_INTERVAL_ABBREVIATIONS = {
+    "1m": "+1MINUTE",
+    "1h": "+1HOUR",
+    "1d": "+1DAY",
+    "1w": "+7DAYS",
+    "1M": "+1MONTH",
+    "1q": "+3MONTHS",
+    "1y": "+1YEAR",
+}
+
+FIXED_INTERVAL_UNITS = {
+    "ms": "MILLI",
+    "s": "SECOND",
+    "m": "MINUTE",
+    "h": "HOUR",
+    "d": "DAY",
+}
+
+FIXED_INTERVAL_PATTERN = re.compile(r"^(\d+)(ms|s|m|h|d)$")
+
+DEFAULT_GAP = "+1MONTH"
+
+
+def _date_histogram_gap(dh_conf: dict, agg_name: str | None = None) -> str:
+    """
+    Solr range gap for an OpenSearch date_histogram.
+
+    The key the interval arrives under decides how it reads: ``calendar_interval: 1m``
+    is one minute and ``calendar_interval: 1M`` is one month, while a fixed_interval is
+    a multiple of a fixed unit and takes no calendar names at all. The deprecated
+    ``interval`` key accepts either form, so both are tried.
+
+    An interval that is neither is logged and falls back to DEFAULT_GAP.
+    """
+    if "calendar_interval" in dh_conf:
+        interval = dh_conf["calendar_interval"]
+        gap = _calendar_interval_to_solr_gap(interval)
+    elif "fixed_interval" in dh_conf:
+        interval = dh_conf["fixed_interval"]
+        gap = _fixed_interval_to_solr_gap(interval)
+    else:
+        interval = dh_conf.get("interval", "month")
+        gap = _calendar_interval_to_solr_gap(interval) or _fixed_interval_to_solr_gap(interval)
+    if gap:
+        return gap
+    logger.warning(
+        "date_histogram agg '%s' has interval '%s', which is neither an OpenSearch "
+        "calendar_interval nor a fixed_interval — using %s, so the buckets will not "
+        "have the width the workload asks for.",
+        agg_name, interval, DEFAULT_GAP,
+    )
+    return DEFAULT_GAP
+
+
+def _calendar_interval_to_solr_gap(interval) -> str | None:
+    """Solr range gap for an OpenSearch calendar_interval, or None if it is not one."""
+    return (CALENDAR_INTERVAL_ABBREVIATIONS.get(str(interval))
+            or CALENDAR_INTERVAL_NAMES.get(str(interval).lower()))
+
+
+def _fixed_interval_to_solr_gap(interval) -> str | None:
+    """Solr range gap for an OpenSearch fixed_interval, or None if it is not one."""
+    match = FIXED_INTERVAL_PATTERN.match(str(interval))
+    if not match:
+        return None
+    return "+{}{}".format(match.group(1), FIXED_INTERVAL_UNITS[match.group(2)])
 
 
 def _convert_date_to_solr_format(date_str, os_format=None) -> str:

@@ -32,6 +32,8 @@ from solrorbit.conversion.query import (
     translate_to_solr_json_dsl,
     _convert_aggregations_to_facets,
     _calendar_interval_to_solr_gap,
+    _date_histogram_gap,
+    _fixed_interval_to_solr_gap,
 )
 
 
@@ -345,12 +347,71 @@ class TestCalendarIntervalToSolrGap(unittest.TestCase):
         self.assertEqual("+1MONTH", _calendar_interval_to_solr_gap("month"))
         self.assertEqual("+1YEAR", _calendar_interval_to_solr_gap("year"))
         self.assertEqual("+1HOUR", _calendar_interval_to_solr_gap("hour"))
+        self.assertEqual("+7DAYS", _calendar_interval_to_solr_gap("week"))
+        self.assertEqual("+3MONTHS", _calendar_interval_to_solr_gap("quarter"))
 
-    def test_unknown_defaults_to_month(self):
-        self.assertEqual("+1MONTH", _calendar_interval_to_solr_gap("fortnight"))
-
-    def test_case_insensitive(self):
+    def test_names_are_case_insensitive(self):
         self.assertEqual("+1MONTH", _calendar_interval_to_solr_gap("MONTH"))
+
+    def test_single_unit_abbreviations_are_case_sensitive(self):
+        """OpenSearch reads 1M as a month and 1m as a minute; both occur in real workloads."""
+        self.assertEqual("+1MONTH", _calendar_interval_to_solr_gap("1M"))
+        self.assertEqual("+1MINUTE", _calendar_interval_to_solr_gap("1m"))
+
+    def test_not_a_calendar_interval(self):
+        self.assertIsNone(_calendar_interval_to_solr_gap("fortnight"))
+        self.assertIsNone(_calendar_interval_to_solr_gap("60d"))
+
+
+class TestFixedIntervalToSolrGap(unittest.TestCase):
+    def test_every_unit_opensearch_accepts(self):
+        self.assertEqual("+2699999MILLI", _fixed_interval_to_solr_gap("2699999ms"))
+        self.assertEqual("+30SECOND", _fixed_interval_to_solr_gap("30s"))
+        self.assertEqual("+90MINUTE", _fixed_interval_to_solr_gap("90m"))
+        self.assertEqual("+3HOUR", _fixed_interval_to_solr_gap("3h"))
+        self.assertEqual("+60DAY", _fixed_interval_to_solr_gap("60d"))
+        self.assertEqual("+2000DAY", _fixed_interval_to_solr_gap("2000d"))
+
+    def test_not_a_fixed_interval(self):
+        self.assertIsNone(_fixed_interval_to_solr_gap("month"))
+        self.assertIsNone(_fixed_interval_to_solr_gap("1M"))
+        self.assertIsNone(_fixed_interval_to_solr_gap("60"))
+
+
+class TestDateHistogramGap(unittest.TestCase):
+    def test_the_key_decides_how_the_interval_reads(self):
+        self.assertEqual("+1MONTH", _date_histogram_gap({"calendar_interval": "1M"}))
+        self.assertEqual("+1MINUTE", _date_histogram_gap({"calendar_interval": "1m"}))
+        self.assertEqual("+60DAY", _date_histogram_gap({"fixed_interval": "60d"}))
+
+    def test_deprecated_interval_key_accepts_either_form(self):
+        self.assertEqual("+1MONTH", _date_histogram_gap({"interval": "1M"}))
+        self.assertEqual("+60DAY", _date_histogram_gap({"interval": "60d"}))
+
+    def test_missing_interval_defaults_to_month(self):
+        self.assertEqual("+1MONTH", _date_histogram_gap({"field": "dropoff_datetime"}))
+
+    def test_unconvertible_interval_warns(self):
+        with self.assertLogs("solrorbit.conversion.query", level="WARNING") as log:
+            gap = _date_histogram_gap({"calendar_interval": "fortnight"}, "dropoffs_over_time")
+        self.assertEqual("+1MONTH", gap)
+        self.assertTrue(any("fortnight" in msg for msg in log.output))
+        self.assertTrue(any("dropoffs_over_time" in msg for msg in log.output))
+
+
+class TestDateHistogramFacetGap(unittest.TestCase):
+    def _gap(self, date_histogram):
+        body = {"aggs": {"dropoffs_over_time": {"date_histogram": date_histogram}}}
+        facets = _convert_aggregations_to_facets(body["aggs"])
+        return facets["dropoffs_over_time"]["gap"]
+
+    def test_fixed_interval_keeps_its_width(self):
+        gap = self._gap({"field": "dropoff_datetime", "fixed_interval": "60d"})
+        self.assertEqual("+60DAY", gap)
+
+    def test_calendar_month_abbreviation_is_not_a_minute(self):
+        gap = self._gap({"field": "dropoff_datetime", "calendar_interval": "1M"})
+        self.assertEqual("+1MONTH", gap)
 
 
 if __name__ == "__main__":
