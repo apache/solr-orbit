@@ -2159,6 +2159,110 @@ class WorkloadRandomizationTests(TestCase):
         geo_point_expected = [("location", ["geo_bounding_box"])]
         self.assertEqual(geo_point_result, geo_point_expected)
 
+    def test_range_finding_function_for_string_queries(self):
+        cfg = config.Config()
+        processor = loader.QueryRandomizerWorkloadProcessor(cfg)
+        default_info = loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO
+
+        query_range = {
+            "name": "range",
+            "operation-type": "search",
+            "body": {
+                "query": "total_amount:[5 TO 15}"
+            }
+        }
+        self.assertEqual(processor.extract_fields_and_paths(query_range, default_info),
+                         [("total_amount", ("query",))])
+
+        filter_range = {
+            "name": "distance_amount_facet",
+            "operation-type": "search",
+            "body": {
+                "query": "*:*",
+                "filter": ["trip_distance:[0 TO 50}"],
+                "limit": 0
+            }
+        }
+        self.assertEqual(processor.extract_fields_and_paths(filter_range, default_info),
+                         [("trip_distance", ("filter", 0))])
+
+        several_terms = {
+            "name": "several",
+            "operation-type": "search",
+            "body": {
+                "query": "*:*",
+                "filter": ["trip_distance:[0 TO 50} AND total_amount:{5 TO 100]", "passenger_count:2"]
+            }
+        }
+        self.assertEqual(processor.extract_fields_and_paths(several_terms, default_info),
+                         [("trip_distance", ("filter", 0)), ("total_amount", ("filter", 0))])
+
+        no_range = {"name": "match-all", "operation-type": "search", "body": {"query": "*:*"}}
+        self.assertEqual(processor.extract_fields_and_paths(no_range, default_info), [])
+
+    def test_set_range_keeps_the_brackets_of_a_string_query(self):
+        cfg = config.Config()
+        processor = loader.QueryRandomizerWorkloadProcessor(cfg)
+        default_info = loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO
+        params = {
+            "body": {
+                "query": "*:*",
+                "filter": ["trip_distance:[0 TO 50} AND total_amount:{5 TO 100]"]
+            }
+        }
+        fields_and_paths = processor.extract_fields_and_paths(params, default_info)
+        result = processor.set_range(params, fields_and_paths,
+                                    [{"gte": 3, "lte": 7}, {"gte": 10.5, "lte": 20.25}], default_info)
+        self.assertEqual(result["body"]["filter"][0], "trip_distance:[3 TO 7} AND total_amount:{10.5 TO 20.25]")
+        self.assertEqual(result["body"]["query"], "*:*")
+
+    def test_get_randomized_values_for_string_queries(self):
+        cfg = config.Config()
+        cfg.add(config.Scope.application, "workload", "randomization.repeat_frequency", 0.0)
+        processor = loader.QueryRandomizerWorkloadProcessor(cfg)
+        default_info = loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO
+        new_value = {"gte": "2015-01-05T00:00:00Z", "lte": "2015-01-09T00:00:00Z", "format": "yyyy-MM-dd"}
+        params = {
+            "index": "nyc_taxis",
+            "body": {
+                "query": "dropoff_datetime:[2015-01-01T00:00:00Z TO 2015-01-22T00:00:00Z}",
+                "limit": 0
+            }
+        }
+        result = processor.get_randomized_values(None, params, default_info,
+                                                 op_name="date_histogram_facet",
+                                                 get_standard_value=lambda op_name, field, index: new_value,
+                                                 get_standard_value_source=lambda op_name, field: lambda: new_value)
+        self.assertEqual(result["body"]["query"], "dropoff_datetime:[2015-01-05T00:00:00Z TO 2015-01-09T00:00:00Z}")
+        self.assertEqual(result["body"]["limit"], 0)
+
+    def test_a_string_range_that_leaves_a_bound_open_is_not_randomized(self):
+        cfg = config.Config()
+        processor = loader.QueryRandomizerWorkloadProcessor(cfg)
+        default_info = loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO
+        for query in ("total_amount:[* TO 15}", "total_amount:[5 TO *]", "total_amount:[* TO *]"):
+            params = {"body": {"query": query}}
+            self.assertEqual(processor.extract_fields_and_paths(params, default_info), [])
+            self.assertEqual(processor.set_range(params, [], [], default_info)["body"]["query"], query)
+
+    def test_a_term_that_is_not_randomized_does_not_take_another_terms_value(self):
+        cfg = config.Config()
+        processor = loader.QueryRandomizerWorkloadProcessor(cfg)
+        default_info = loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO
+        params = {"body": {"query": "total_amount:[* TO 15} AND trip_distance:[1 TO 9}"}}
+        fields_and_paths = processor.extract_fields_and_paths(params, default_info)
+        self.assertEqual(fields_and_paths, [("trip_distance", ("query",))])
+        result = processor.set_range(params, fields_and_paths, [{"gte": 3, "lte": 7}], default_info)
+        self.assertEqual(result["body"]["query"], "total_amount:[* TO 15} AND trip_distance:[3 TO 7}")
+
+    def test_a_value_source_that_omits_a_bound_is_not_silently_ignored(self):
+        cfg = config.Config()
+        processor = loader.QueryRandomizerWorkloadProcessor(cfg)
+        default_info = loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO
+        params = {"body": {"query": "total_amount:[5 TO 15}"}}
+        fields_and_paths = processor.extract_fields_and_paths(params, default_info)
+        with self.assertRaises(KeyError):
+            processor.set_range(params, fields_and_paths, [{"gt": 3, "lt": 7}], default_info)
 
     def test_get_randomized_values(self):
         helper = self.StandardValueHelper()
