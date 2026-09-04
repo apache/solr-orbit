@@ -228,6 +228,58 @@ class TestTranslateToSolrJsonDsl(unittest.TestCase):
         self.assertEqual("fare_amount:[* TO 100}", self._range({"lt": 100}))
         self.assertEqual("fare_amount:[* TO 100]", self._range({"lte": 100}))
 
+    def _date_range(self, bounds):
+        return translate_to_solr_json_dsl(
+            {"query": {"range": {"dropoff_datetime": bounds}}})["query"]
+
+    def test_a_datetime_with_a_space_separator_is_converted(self):
+        self.assertEqual(
+            "dropoff_datetime:[2015-01-01T00:00:00Z TO 2016-01-01T00:00:00Z}",
+            self._date_range({"gte": "2015-01-01 00:00:00", "lt": "2016-01-01 00:00:00"}))
+
+    def test_a_whole_day_lte_covers_that_day(self):
+        self.assertEqual(
+            "dropoff_datetime:[2015-01-01T00:00:00Z TO 2015-01-22T00:00:00Z}",
+            self._date_range({"gte": "01/01/2015", "lte": "21/01/2015",
+                              "format": "dd/MM/yyyy"}))
+
+    def test_a_whole_day_gt_excludes_that_day(self):
+        self.assertEqual(
+            "dropoff_datetime:[2015-01-02T00:00:00Z TO *]",
+            self._date_range({"gt": "01/01/2015", "format": "dd/MM/yyyy"}))
+
+    def test_the_bounds_that_round_down_do_not_move(self):
+        self.assertEqual(
+            "dropoff_datetime:[2015-01-01T00:00:00Z TO *]",
+            self._date_range({"gte": "01/01/2015", "format": "dd/MM/yyyy"}))
+        self.assertEqual(
+            "dropoff_datetime:[* TO 2015-01-01T00:00:00Z}",
+            self._date_range({"lt": "01/01/2015", "format": "dd/MM/yyyy"}))
+
+    def test_only_the_bound_that_is_used_is_rounded(self):
+        self.assertEqual(
+            "dropoff_datetime:[2015-01-01T00:00:00Z TO 2015-01-22T00:00:00Z}",
+            self._date_range({"gte": "01/01/2015", "gt": "05/01/2015",
+                              "lte": "21/01/2015", "lt": "10/01/2015",
+                              "format": "dd/MM/yyyy"}))
+
+    def test_a_bound_that_is_not_a_date_keeps_its_bracket(self):
+        for value in ("0000000010", "not-a-date", "2015-02-30"):
+            self.assertEqual(
+                f"serial_no:[0000000001 TO {value}]",
+                translate_to_solr_json_dsl(
+                    {"query": {"range": {"serial_no": {"gte": "0000000001",
+                                                      "lte": value}}}})["query"])
+
+    def test_an_instant_is_not_rounded(self):
+        self.assertEqual(
+            "dropoff_datetime:[2015-01-01T00:00:00Z TO 2016-01-01T00:00:00Z]",
+            self._date_range({"gte": "2015-01-01T00:00:00Z",
+                              "lte": "2016-01-01T00:00:00Z"}))
+        self.assertEqual(
+            "dropoff_datetime:[* TO 2016-01-01T00:00:00Z]",
+            self._date_range({"lte": "2016-01-01 00:00:00"}))
+
     def test_bool_with_filter_goes_to_fq(self):
         body = {
             "query": {
