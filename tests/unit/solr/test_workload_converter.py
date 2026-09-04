@@ -24,6 +24,9 @@ import unittest
 
 from solrorbit.conversion.workload_converter import (
     CONVERTED_MARKER,
+    _convert_merge_wait,
+    _convert_merge_wait_text,
+    _convert_operation,
     convert_opensearch_workload,
     detect_workload_format_from_file,
     is_already_converted,
@@ -351,6 +354,167 @@ class TestCalendarIntervalToSolrGap(unittest.TestCase):
 
     def test_case_insensitive(self):
         self.assertEqual("+1MONTH", _calendar_interval_to_solr_gap("MONTH"))
+
+
+class TestMergeWaitConversion(unittest.TestCase):
+    """Tests for OpenSearch's index-stats merge wait becoming Solr's wait-for-merges."""
+
+    def _osb_merge_wait(self):
+        return {
+            "name": "wait-until-merges-finish",
+            "operation-type": "index-stats",
+            "index": "_all",
+            "condition": {"path": "_all.total.merges.current", "expected-value": 0},
+            "retry-until-success": True,
+            "include-in-reporting": False,
+        }
+
+    def test_converted_operation_is_the_solr_operation(self):
+        op = self._osb_merge_wait()
+        _convert_merge_wait(op)
+        self.assertEqual({
+            "name": "wait-until-merges-finish",
+            "operation-type": "wait-for-merges",
+            "retry-wait-period": 2.0,
+            "max-wait-seconds": 600,
+            "include-in-reporting": False,
+        }, op)
+
+    def test_convert_operation_leaves_other_index_stats_alone(self):
+        op = {"name": "index-stats", "operation-type": "index-stats"}
+        _convert_operation(op, [], [], "", "")
+        self.assertEqual("index-stats", op["operation-type"])
+
+    def test_convert_operation_leaves_another_condition_path_alone(self):
+        op = self._osb_merge_wait()
+        op["condition"]["path"] = "_all.total.docs.count"
+        _convert_operation(op, [], [], "", "")
+        self.assertEqual("index-stats", op["operation-type"])
+
+    def test_text_conversion_of_a_jinja_fragment(self):
+        raw = """{
+    "operation": {
+        "operation-type": "force-merge",
+        "request-timeout": {{ request_timeout | default(60) | tojson }}
+    }
+},
+{
+    "name": "wait-until-merges-finish",
+    "operation": {
+        "operation-type": "index-stats",
+        "index": "_all",
+        "condition": {
+            "path": "_all.total.merges.current",
+            "expected-value": 0
+        },
+        "retry-until-success": true,
+        "include-in-reporting": false
+    }
+}"""
+        converted = _convert_merge_wait_text(raw)
+        self.assertNotIn("index-stats", converted)
+        self.assertIn('"operation-type": "wait-for-merges"', converted)
+        self.assertIn('"retry-wait-period": 2.0', converted)
+        self.assertIn('"max-wait-seconds": 600', converted)
+        self.assertIn("{{ request_timeout | default(60) | tojson }}", converted)
+
+    def test_text_conversion_follows_the_fragment_indentation(self):
+        template = """{{
+{i}"name": "wait-until-merges-finish",
+{i}"operation": {{
+{i}{i}"operation-type": "index-stats",
+{i}{i}"index": "_all",
+{i}{i}"condition": {{
+{i}{i}{i}"path": "_all.total.merges.current",
+{i}{i}{i}"expected-value": 0
+{i}{i}}},
+{i}{i}"include-in-reporting": false
+{i}}}
+}}"""
+        for indent in ("    ", "  "):
+            with self.subTest(indent=len(indent)):
+                converted = _convert_merge_wait_text(template.format(i=indent))
+                self.assertIn(f'\n{indent * 2}"operation-type": "wait-for-merges",', converted)
+                self.assertIn(f"\n{indent}}}\n}}", converted)
+
+    def test_text_conversion_leaves_another_condition_alone(self):
+        raw = """{
+    "operation": {
+        "operation-type": "index-stats",
+        "index": "_all",
+        "condition": {
+            "path": "_all.total.docs.count",
+            "expected-value": 0
+        }
+    }
+}"""
+        self.assertEqual(raw, _convert_merge_wait_text(raw))
+
+    def test_conversion_of_an_external_fragment_end_to_end(self):
+        """The merge wait reaches the output even from a fragment Jinja2 keeps unparseable."""
+        fragment = """{
+    "operation": {
+        "operation-type": "force-merge",
+        "request-timeout": {{ request_timeout | default(60) | tojson }}{%- if max_num_segments is defined %},
+        "max-num-segments": {{ max_num_segments | tojson }}
+        {%- endif %}
+    }
+},
+{
+    "name": "wait-until-merges-finish",
+    "operation": {
+        "operation-type": "index-stats",
+        "index": "_all",
+        "condition": {
+            "path": "_all.total.merges.current",
+            "expected-value": 0
+        },
+        "retry-until-success": true,
+        "include-in-reporting": false
+    }
+}"""
+        with tempfile.TemporaryDirectory() as tmpdir, tempfile.TemporaryDirectory() as dst:
+            shared = os.path.join(tmpdir, "common_operations")
+            os.makedirs(shared)
+            with open(os.path.join(shared, "force_merge.json"), "w") as f:
+                f.write(fragment)
+
+            src = os.path.join(tmpdir, "my_workload")
+            os.makedirs(os.path.join(src, "test_procedures"))
+            with open(os.path.join(src, "workload.json"), "w") as f:
+                json.dump({"indices": [], "challenges": []}, f)
+            with open(os.path.join(src, "test_procedures", "default.json"), "w") as f:
+                f.write('{\n  "name": "default",\n  "schedule": [\n'
+                        '    {{ benchmark.collect(parts="../../common_operations/force_merge.json") }}\n'
+                        "  ]\n}")
+
+            convert_opensearch_workload(src, dst)
+
+            with open(os.path.join(dst, "common_operations", "force_merge.json")) as f:
+                out = f.read()
+            self.assertNotIn("index-stats", out)
+            self.assertIn('"operation-type": "wait-for-merges"', out)
+            self.assertIn('"max-wait-seconds": 600', out)
+
+    def test_conversion_end_to_end(self):
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
+            with open(os.path.join(src, "workload.json"), "w") as f:
+                json.dump({
+                    "indices": [],
+                    "challenges": [
+                        {
+                            "name": "default",
+                            "schedule": [{"operation": self._osb_merge_wait()}],
+                        }
+                    ],
+                }, f)
+            convert_opensearch_workload(src, dst)
+            with open(os.path.join(dst, "workload.json")) as f:
+                out = json.load(f)
+            op = out["challenges"][0]["schedule"][0]["operation"]
+            self.assertEqual("wait-for-merges", op["operation-type"])
+            self.assertEqual(600, op["max-wait-seconds"])
+            self.assertNotIn("condition", op)
 
 
 if __name__ == "__main__":
