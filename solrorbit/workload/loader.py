@@ -1008,6 +1008,11 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
     DEFAULT_N = 5000
     DEFAULT_ALPHA = 1
     DEFAULT_QUERY_RANDOMIZATION_INFO = QueryRandomizationInfo("range", [["gte", "gt"], ["lte", "lt"]], ["format"])
+    SOLR_RANGE_TERM_PATTERN = re.compile(r"(?P<field>[A-Za-z_][A-Za-z0-9_.]*):"
+                                        r"(?P<lower_bracket>[\[{])(?P<lower>[^\s\[\]{}]+)"
+                                        r"\s+TO\s+"
+                                        r"(?P<upper>[^\s\[\]{}]+)(?P<upper_bracket>[\]}])")
+
     def __init__(self, cfg):
         self.randomization_enabled = cfg.opts("workload", "randomization.enabled", mandatory=False, default_value=False)
         self.rf = float(cfg.opts("workload", "randomization.repeat_frequency", mandatory=False, default_value=self.DEFAULT_RF))
@@ -1076,6 +1081,56 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
             # leaf node
             return []
 
+    def solr_string_paths(self, body):
+        if isinstance(body.get("query"), str):
+            yield ("query",)
+        filters = body.get("filter")
+        if isinstance(filters, str):
+            yield ("filter",)
+        elif isinstance(filters, list):
+            for i, filter_clause in enumerate(filters):
+                if isinstance(filter_clause, str):
+                    yield ("filter", i)
+
+    def solr_range_term_states_both_bounds(self, match):
+        return match.group("lower") != "*" and match.group("upper") != "*"
+
+    def extract_solr_range_terms(self, body):
+        fields_and_paths = []
+        for path in self.solr_string_paths(body):
+            for match in self.SOLR_RANGE_TERM_PATTERN.finditer(self.get_dict_from_previous_path(body, path)):
+                if self.solr_range_term_states_both_bounds(match):
+                    fields_and_paths.append((match.group("field"), path))
+        return fields_and_paths
+
+    def set_solr_range_terms(self, params, fields_and_paths, new_values, query_randomization_info):
+        bound_names = [parameter_name_options[0] for parameter_name_options in query_randomization_info.parameter_name_options_list]
+        if len(bound_names) != 2:
+            return params
+        lower_name, upper_name = bound_names
+        new_values_by_path = {}
+        for field_and_path, new_value in zip(fields_and_paths, new_values):
+            new_values_by_path.setdefault(field_and_path[1], []).append(new_value)
+
+        for path, path_new_values in new_values_by_path.items():
+            remaining = iter(path_new_values)
+
+            def replace(match, remaining=remaining):
+                if not self.solr_range_term_states_both_bounds(match):
+                    return match.group(0)
+                new_value = next(remaining, None)
+                if new_value is None:
+                    return match.group(0)
+                return "{}:{}{} TO {}{}".format(match.group("field"),
+                                                match.group("lower_bracket"),
+                                                new_value[lower_name],
+                                                new_value[upper_name],
+                                                match.group("upper_bracket"))
+
+            parent = self.get_dict_from_previous_path(params["body"], path[:-1])
+            parent[path[-1]] = self.SOLR_RANGE_TERM_PATTERN.sub(replace, parent[path[-1]])
+        return params
+
     def extract_fields_and_paths(self, params, query_randomization_info):
         # Search for fields used in range queries, and the paths to those fields
         # Return pairs of (field, path_to_field)
@@ -1087,11 +1142,15 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
             raise exceptions.SystemSetupError(
                 f"Cannot extract range query fields from these params: {params}\n, missing params[\"body\"][\"query\"]\n"
                 f"Make sure the operation in operations/default.json is well-formed")
+        if isinstance(root, str):
+            return self.extract_solr_range_terms(params["body"])
         fields_and_paths = self.extract_fields_helper(root, [], query_randomization_info)
         return fields_and_paths
 
     def set_range(self, params, fields_and_paths, new_values, query_randomization_info):
         assert len(fields_and_paths) == len(new_values)
+        if isinstance(params["body"].get("query"), str):
+            return self.set_solr_range_terms(params, fields_and_paths, new_values, query_randomization_info)
         for field_and_path, new_value in zip(fields_and_paths, new_values):
             field = field_and_path[0]
             path = field_and_path[1]
