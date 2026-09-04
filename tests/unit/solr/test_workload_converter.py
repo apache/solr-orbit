@@ -24,6 +24,9 @@ import unittest
 
 from solrorbit.conversion.workload_converter import (
     CONVERTED_MARKER,
+    _apply_operation_renames,
+    _collect_operation_renames,
+    _solr_operation_name,
     convert_opensearch_workload,
     detect_workload_format_from_file,
     is_already_converted,
@@ -337,6 +340,155 @@ class TestConvertAggregationsToFacets(unittest.TestCase):
         aggs = {"doc_count": {"value_count": {"field": "vendor_id"}}}
         result = _convert_aggregations_to_facets(aggs)
         self.assertEqual("countvals(vendor_id)", result["doc_count"])
+
+
+class TestSolrOperationName(unittest.TestCase):
+    def test_agg_token_becomes_facet(self):
+        self.assertEqual("date_histogram_facet", _solr_operation_name("date_histogram_agg"))
+        self.assertEqual("country_facet_uncached", _solr_operation_name("country_agg_uncached"))
+        self.assertEqual("distance_amount_facet", _solr_operation_name("distance_amount_agg"))
+
+    def test_hyphenated_names(self):
+        self.assertEqual(
+            "numeric-term-cardinality-facet-high",
+            _solr_operation_name("numeric-term-cardinality-agg-high"),
+        )
+
+    def test_agg_as_a_substring_is_left_alone(self):
+        for name in ("aggs-query-large", "aggregation-heavy", "baggage_claim", "agglomerate"):
+            self.assertEqual(name, _solr_operation_name(name))
+
+
+class TestCollectOperationRenames(unittest.TestCase):
+    def _write(self, root, rel, text):
+        path = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(text)
+
+    def test_reads_operations_directory(self):
+        with tempfile.TemporaryDirectory() as out:
+            self._write(out, "operations/default.json", json.dumps([
+                {"name": "date_histogram_agg", "operation-type": "search"},
+                {"name": "default", "operation-type": "search"},
+            ]))
+            self.assertEqual(
+                {"date_histogram_agg": "date_histogram_facet"},
+                _collect_operation_renames(out),
+            )
+
+    def test_reads_inline_schedule_operations(self):
+        with tempfile.TemporaryDirectory() as out:
+            self._write(out, "workload.json", json.dumps({
+                "collections": [],
+                "test_procedures": [{
+                    "name": "default",
+                    "schedule": [{"operation": {"name": "country_agg", "operation-type": "search"}}],
+                }],
+            }))
+            self.assertEqual({"country_agg": "country_facet"}, _collect_operation_renames(out))
+
+    def test_a_test_procedure_named_after_an_aggregation_is_not_renamed(self):
+        """`streaming-agg-clickbench` is a test procedure, not an operation."""
+        with tempfile.TemporaryDirectory() as out:
+            self._write(out, "operations/default.json", json.dumps(
+                [{"name": "default", "operation-type": "search"}]))
+            self._write(out, "test_procedures/streaming.json", json.dumps(
+                {"name": "streaming-agg-clickbench", "schedule": [{"operation": "default"}]}))
+            self.assertEqual({}, _collect_operation_renames(out))
+
+
+class TestApplyOperationRenames(unittest.TestCase):
+    def _make_workload(self, out):
+        os.makedirs(os.path.join(out, "operations"))
+        os.makedirs(os.path.join(out, "test_procedures"))
+        with open(os.path.join(out, "operations", "default.json"), "w") as f:
+            f.write(json.dumps([
+                {"name": "country_agg", "operation-type": "search"},
+                {"name": "country_agg_cached", "operation-type": "search"},
+            ], indent=2))
+        with open(os.path.join(out, "test_procedures", "default.json"), "w") as f:
+            f.write(
+                '[\n'
+                '  {\n'
+                '    "operation": "country_agg",\n'
+                '    "iterations": {{country_agg_iterations | default(100)}},\n'
+                '    "clients": {{country_agg_search_clients | default(1)}}\n'
+                '  },\n'
+                '  {\n'
+                '    "operation": "country_agg_cached",\n'
+                '    "iterations": {{country_agg_cached_iterations | default(100)}}\n'
+                '  }\n'
+                ']\n'
+            )
+        with open(os.path.join(out, "workload.py"), "w") as f:
+            f.write(
+                'def register(registry):\n'
+                '    registry.register_standard_value_source("country_agg", src)\n'
+            )
+
+    def test_every_reference_is_rewritten(self):
+        with tempfile.TemporaryDirectory() as out:
+            self._make_workload(out)
+            renames = _collect_operation_renames(out)
+            self.assertEqual({
+                "country_agg": "country_facet",
+                "country_agg_cached": "country_facet_cached",
+            }, renames)
+            _apply_operation_renames(out, renames)
+
+            with open(os.path.join(out, "operations", "default.json")) as f:
+                ops = json.load(f)
+            self.assertEqual(["country_facet", "country_facet_cached"],
+                             [op["name"] for op in ops])
+
+            with open(os.path.join(out, "test_procedures", "default.json")) as f:
+                procedure = f.read()
+            self.assertIn('"operation": "country_facet"', procedure)
+            self.assertIn('"operation": "country_facet_cached"', procedure)
+            self.assertIn("country_facet_iterations", procedure)
+            self.assertIn("country_facet_search_clients", procedure)
+            self.assertIn("country_facet_cached_iterations", procedure)
+            self.assertNotIn("agg", procedure)
+
+            with open(os.path.join(out, "workload.py")) as f:
+                self.assertIn('register_standard_value_source("country_facet"', f.read())
+
+    def test_no_renames_leaves_the_tree_untouched(self):
+        with tempfile.TemporaryDirectory() as out:
+            self._make_workload(out)
+            before = os.path.getmtime(os.path.join(out, "operations", "default.json"))
+            self.assertEqual({}, _apply_operation_renames(out, {}))
+            self.assertEqual(before, os.path.getmtime(os.path.join(out, "operations", "default.json")))
+
+
+class TestConvertRenamesOperations(unittest.TestCase):
+    def test_inline_operation_is_renamed_end_to_end(self):
+        with tempfile.TemporaryDirectory() as src, tempfile.TemporaryDirectory() as dst:
+            with open(os.path.join(src, "workload.json"), "w") as f:
+                json.dump({
+                    "indices": [],
+                    "challenges": [{
+                        "name": "default",
+                        "schedule": [{
+                            "operation": {
+                                "name": "date_histogram_agg",
+                                "operation-type": "search",
+                                "body": {"query": {"match_all": {}}},
+                            }
+                        }],
+                    }],
+                }, f)
+            result = convert_opensearch_workload(src, dst)
+            self.assertEqual({"date_histogram_agg": "date_histogram_facet"}, result["renamed"])
+
+            with open(os.path.join(dst, "workload.json")) as f:
+                out = json.load(f)
+            operation = out["challenges"][0]["schedule"][0]["operation"]
+            self.assertEqual("date_histogram_facet", operation["name"])
+
+            with open(os.path.join(dst, CONVERTED_MARKER)) as f:
+                self.assertIn("`date_histogram_agg` → `date_histogram_facet`", f.read())
 
 
 class TestCalendarIntervalToSolrGap(unittest.TestCase):
