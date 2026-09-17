@@ -5,7 +5,7 @@
 #
 # Stage 1: build packages and compile where needed
 #
-FROM python:3.12-slim AS build-stage
+FROM python:3.14-slim AS build-stage
 
 # hadolint ignore=DL3008
 RUN apt-get -y update && \
@@ -25,7 +25,7 @@ RUN uv build --wheel
 #
 # Stage 2: create image
 #
-FROM python:3.12-slim AS image-stage
+FROM python:3.14-slim AS image-stage
 ENV BENCHMARK_RUNNING_IN_DOCKER=True
 
 RUN groupadd --gid 1000 solr-orbit && \
