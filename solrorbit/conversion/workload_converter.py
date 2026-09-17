@@ -209,6 +209,18 @@ _UNSUPPORTED_OPS = {
     "delete-pipeline",
 }
 
+# An index-stats operation polling this condition path is a wait-for-merges in Solr
+_MERGE_WAIT_CONDITION_PATH = "merges.current"
+_MERGE_WAIT_RETRY_WAIT_PERIOD = 2.0
+_MERGE_WAIT_MAX_WAIT_SECONDS = 600
+
+_MERGE_WAIT_OBJECT = re.compile(
+    r'\{[^{}]*?"operation-type"\s*:\s*"index-stats"\s*,'
+    r'[^{}]*?"condition"\s*:\s*\{[^{}]*?"path"\s*:\s*"[^"]*'
+    + re.escape(_MERGE_WAIT_CONDITION_PATH)
+    + r'"[^{}]*?\}[^{}]*?\}'
+)
+
 
 def detect_workload_format_from_file(workload_dir: str) -> bool:
     """
@@ -455,7 +467,12 @@ def _process_collected_files(source_dir: str, output_dir: str, issues: list, ski
                 ops_list, tokens = _parse_jinja_fragment(raw, wrap_array=True)
             except ValueError as exc:
                 issues.append(f"{subdir}/{filename}: cannot parse as JSON fragment ({exc}); copied verbatim")
-                shutil.copy2(src_path, dst_path)
+                merges_converted = _convert_merge_wait_text(raw)
+                if merges_converted == raw:
+                    shutil.copy2(src_path, dst_path)
+                else:
+                    with open(dst_path, "w", encoding="utf-8") as f:
+                        f.write(merges_converted)
                 continue
 
             # Convert each operation in the fragment; filter out skipped ones
@@ -552,6 +569,73 @@ def _has_auto_date_histogram(aggs: dict) -> bool:
     return False
 
 
+def _is_merge_wait(op: dict) -> bool:
+    """
+    Return True if *op* is OpenSearch Benchmark's "wait until merges finish" idiom:
+    an index-stats operation retried until the active merge count reaches zero.
+    """
+    condition = op.get("condition")
+    if not isinstance(condition, dict):
+        return False
+    path = condition.get("path")
+    if not isinstance(path, str) or not path.endswith(_MERGE_WAIT_CONDITION_PATH):
+        return False
+    return condition.get("expected-value") == 0
+
+
+def _convert_merge_wait(op: dict) -> None:
+    """
+    Rewrite *op* in-place as a Solr ``wait-for-merges`` operation.
+
+    The polling OpenSearch expresses with ``condition`` and ``retry-until-success`` is
+    the runner's own loop in Solr, so those keys are replaced by its wait parameters.
+    """
+    converted = {}
+    if "name" in op:
+        converted["name"] = op["name"]
+    converted["operation-type"] = "wait-for-merges"
+    converted["retry-wait-period"] = _MERGE_WAIT_RETRY_WAIT_PERIOD
+    converted["max-wait-seconds"] = _MERGE_WAIT_MAX_WAIT_SECONDS
+    if "include-in-reporting" in op:
+        converted["include-in-reporting"] = op["include-in-reporting"]
+
+    replaced = {"name", "operation-type", "type", "index", "indices", "condition",
+                "retry-until-success", "include-in-reporting"}
+    converted.update({key: value for key, value in op.items() if key not in replaced})
+
+    op.clear()
+    op.update(converted)
+
+
+def _convert_merge_wait_text(text: str) -> str:
+    """
+    Rewrite every merge-wait operation object in *text* as ``wait-for-merges``.
+
+    Used for fragments whose Jinja2 directives keep them from being parsed as JSON,
+    where the operation object itself is still plain JSON.
+    """
+    def replace(match):
+        matched = match.group(0)
+        try:
+            op = json.loads(matched)
+        except json.JSONDecodeError:
+            return matched
+        if not isinstance(op, dict) or not _is_merge_wait(op):
+            return matched
+
+        _convert_merge_wait(op)
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        indent = text[line_start:match.start()]
+        indent = indent[:len(indent) - len(indent.lstrip())]
+
+        first_key = re.match(r"\{\s*\n([ \t]*)", matched)
+        step = len(first_key.group(1)) - len(indent) if first_key else 4
+        rendered = json.dumps(op, indent=max(step, 1))
+        return rendered.replace("\n", "\n" + indent)
+
+    return _MERGE_WAIT_OBJECT.sub(replace, text)
+
+
 def _convert_operation(op, issues, skipped, source_dir, output_dir):
     """Convert an operation definition dict in-place.
 
@@ -559,6 +643,10 @@ def _convert_operation(op, issues, skipped, source_dir, output_dir):
     """
     op_type = op.get("operation-type") or op.get("type", "")
     op_name = op.get("name", op_type)
+
+    if op_type == "index-stats" and _is_merge_wait(op):
+        _convert_merge_wait(op)
+        return True
 
     if op_type in _UNSUPPORTED_OPS:
         logger.warning("Skipping unsupported operation '%s' (type: %s)", op_name, op_type)
@@ -752,7 +840,7 @@ def _process_external_collected_files(source_dir: str, output_dir: str, issues: 
             return _serialise_jinja_fragment(ops_list, tokens, wrap_array=True)
         except ValueError:
             # Complex Jinja2 — fall back to text substitution for known op-type strings
-            result = raw
+            result = _convert_merge_wait_text(raw)
             for old_op, new_op in _OP_MAP.items():
                 if old_op != new_op:
                     result = re.sub(

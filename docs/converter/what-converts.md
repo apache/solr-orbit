@@ -23,6 +23,7 @@ The table below summarizes which OpenSearch Benchmark constructs are automatical
 | `terms` aggregations | Converted to Solr `terms` facet |
 | `date_histogram` aggregations | Converted to Solr `range` facet with calendar gap |
 | `avg` / `sum` / `min` / `max` aggregations | Converted to Solr function query stats |
+| `index-stats` retried until `merges.current` reaches zero | → `wait-for-merges`, with the polling expressed as `retry-wait-period` and `max-wait-seconds` |
 
 ## Requires manual review
 
