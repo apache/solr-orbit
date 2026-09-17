@@ -27,10 +27,12 @@ Usage:
 The converter:
   - Renames ``indices`` → ``collections`` and generates schema.xml files from mappings
   - Renames operation types using the same map as migrate_workload.py
+  - Renames operations named after an aggregation from ``agg`` to ``facet``, Solr's term,
+    and rewrites every reference to them
   - Translates OpenSearch search bodies to Solr JSON Query DSL
   - Preserves ``corpora`` as-is (dataset files are compatible with both formats)
   - Writes a ``CONVERTED.md`` marker file to prevent double-conversion
-  - Returns a summary dict with output_dir, issues, and skipped operations
+  - Returns a summary dict with output_dir, issues, skipped and renamed operations
 """
 
 import json
@@ -209,6 +211,8 @@ _UNSUPPORTED_OPS = {
     "delete-pipeline",
 }
 
+_AGG_TOKEN = re.compile(r"(?<![A-Za-z0-9])agg(?![A-Za-z0-9])")
+
 
 def detect_workload_format_from_file(workload_dir: str) -> bool:
     """
@@ -314,8 +318,12 @@ def convert_opensearch_workload(source_dir: str, output_dir: str) -> dict:
     # --- Follow external benchmark.collect() refs and make the workload self-contained ---
     _process_external_collected_files(source_dir, output_dir, issues, skipped)
 
+    # --- Rename operations to Solr terminology and update every reference ---
+    renamed = _collect_operation_renames(output_dir)
+    _apply_operation_renames(output_dir, renamed)
+
     # --- Write CONVERTED.md marker ---
-    _write_converted_marker(output_dir, source_dir, skipped, issues)
+    _write_converted_marker(output_dir, source_dir, skipped, issues, renamed)
 
     logger.info(
         "Workload conversion complete: %s → %s (%d ops, %d skipped, %d issues)",
@@ -326,6 +334,7 @@ def convert_opensearch_workload(source_dir: str, output_dir: str) -> dict:
         "output_dir": os.path.abspath(output_dir),
         "issues": issues,
         "skipped": skipped,
+        "renamed": renamed,
     }
 
 
@@ -810,7 +819,107 @@ def _process_external_collected_files(source_dir: str, output_dir: str, issues: 
             _process_one_file(out_file, src_file)
 
 
-def _write_converted_marker(output_dir: str, source_dir: str, skipped: list, issues: list):
+def _solr_operation_name(name: str) -> str:
+    """Rename an operation from OpenSearch's ``agg`` to Solr's ``facet``."""
+    return _AGG_TOKEN.sub("facet", name)
+
+
+def _collect_operation_renames(output_dir: str) -> dict:
+    """
+    Map every converted operation name that carries the ``agg`` token to its Solr name.
+
+    Only ``operations/`` files and the operations of ``workload.json`` — the top-level
+    array and the ones defined inline in a schedule — are read, so a test procedure that
+    happens to be named after an aggregation is not mistaken for an operation.
+    """
+    renames = {}
+    candidates = []
+    operations_dir = os.path.join(output_dir, "operations")
+    if os.path.isdir(operations_dir):
+        for entry in sorted(os.listdir(operations_dir)):
+            if entry.endswith(".json"):
+                candidates.append(os.path.join(operations_dir, entry))
+
+    for path in candidates:
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        for name in re.findall(r'"name"\s*:\s*"([^"]+)"', text):
+            solr_name = _solr_operation_name(name)
+            if solr_name != name:
+                renames[name] = solr_name
+
+    workload_json = os.path.join(output_dir, "workload.json")
+    if os.path.isfile(workload_json):
+        with open(workload_json, encoding="utf-8") as f:
+            try:
+                data = _parse_jinja_fragment(f.read())[0]
+            except ValueError:
+                data = None
+        if isinstance(data, dict):
+            inline = list(data.get("operations", []))
+            for procedures in ("challenges", "test_procedures"):
+                for procedure in data.get(procedures, []):
+                    if not isinstance(procedure, dict):
+                        continue
+                    for task in procedure.get("schedule", []):
+                        if isinstance(task, dict) and isinstance(task.get("operation"), dict):
+                            inline.append(task["operation"])
+            for op in inline:
+                name = op.get("name") if isinstance(op, dict) else None
+                if name and _solr_operation_name(name) != name:
+                    renames[name] = _solr_operation_name(name)
+    return renames
+
+
+def _apply_operation_renames(output_dir: str, renames: dict) -> dict:
+    """
+    Rewrite every reference to a renamed operation across the converted workload.
+
+    An operation's name is also the prefix its ``<name>_iterations``-style parameters
+    are built from, the string ``workload.py`` registers a value source under, and the
+    string a test procedure schedules. The rewrite is textual because a test procedure
+    whose Jinja2 cannot be parsed as JSON is copied verbatim, so there is no object to
+    walk; longest name first, so ``x-agg`` cannot be rewritten inside ``x-agg-cached``.
+
+    Returns the number of references rewritten per file, relative to ``output_dir``.
+    """
+    if not renames:
+        return {}
+    ordered = sorted(renames, key=len, reverse=True)
+    touched = {}
+    for root, dirs, files in os.walk(output_dir):
+        dirs[:] = [d for d in dirs if d not in {"__pycache__", ".git", "configsets"}]
+        for entry in sorted(files):
+            if not entry.endswith((".json", ".py")):
+                continue
+            path = os.path.join(root, entry)
+            with open(path, encoding="utf-8") as f:
+                original = f.read()
+            text = original
+            count = 0
+            in_operations = os.path.basename(root) == "operations" or entry == "workload.json"
+            for old in ordered:
+                new = renames[old]
+                quoted = re.escape(old)
+                patterns = [
+                    (rf'("operation"\s*:\s*)"{quoted}"', rf'\1"{new}"'),
+                    (rf'(register_[a-z_]+\(\s*["\']){quoted}(["\'])', rf'\1{new}\2'),
+                    (rf'(?<![A-Za-z0-9_-]){quoted}(?=[_-][A-Za-z0-9])', new),
+                ]
+                if in_operations:
+                    patterns.append((rf'("name"\s*:\s*)"{quoted}"', rf'\1"{new}"'))
+                for pattern, replacement in patterns:
+                    text, hits = re.subn(pattern, replacement, text)
+                    count += hits
+            if count:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(text)
+                touched[os.path.relpath(path, output_dir)] = count
+    return touched
+
+
+def _write_converted_marker(output_dir: str, source_dir: str, skipped: list, issues: list,
+                            renamed: dict = None):
     """Write a CONVERTED.md marker file documenting the conversion."""
     timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     skipped_section = ""
@@ -820,6 +929,16 @@ def _write_converted_marker(output_dir: str, source_dir: str, skipped: list, iss
     issues_section = ""
     if issues:
         issues_section = "\n## Conversion Issues\n\n" + "\n".join(f"- {i}" for i in issues) + "\n"
+
+    renamed_section = ""
+    if renamed:
+        renamed_section = (
+            "\n## Renamed Operations\n\nSolr calls an aggregation a facet, so these "
+            "operations, their `<name>_iterations`-style parameters and every test "
+            "procedure that schedules them were renamed:\n\n"
+            + "\n".join(f"- `{old}` → `{new}`" for old, new in sorted(renamed.items()))
+            + "\n"
+        )
 
     content = f"""# Workload Conversion Record
 
@@ -831,7 +950,7 @@ Solr Orbit format by `solrorbit.conversion.workload_converter`.
 - **Source workload**: `{os.path.abspath(source_dir)}`
 - **Converted at**: `{timestamp}`
 - **Converter version**: solr.conversion.workload_converter v1.0
-{skipped_section}{issues_section}
+{skipped_section}{issues_section}{renamed_section}
 ## Notes
 
 - Search operation bodies have been translated to Solr JSON Query DSL format.
