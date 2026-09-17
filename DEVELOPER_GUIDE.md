@@ -15,21 +15,13 @@ Apache Solr Orbit.
 
 ## Prerequisites
 
-- **Python 3.12+**: Use [pyenv](https://github.com/pyenv/pyenv) to manage
-  Python versions.
+- **uv**: unified Python toolchain (replaces pip, pyenv, and virtualenv).
 
-  Debian/Ubuntu:
   ```bash
-  sudo apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
-    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-    xz-utils tk-dev libffi-dev liblzma-dev git
+  curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
 
-  macOS:
-  ```bash
-  xcode-select --install
-  brew install pyenv jq zlib xz
-  ```
+  Or via Homebrew: `brew install uv`
 
 - **Docker** (optional): required for the `docker` pipeline.
   Install Docker and confirm `docker ps` works.
@@ -45,19 +37,26 @@ cd solr-orbit   # (or your fork directory)
 make develop
 ```
 
+This runs `uv sync --extra develop`, which:
+1. Downloads Python 3.12 automatically if needed.
+2. Creates `.venv` in the project root.
+3. Installs all dependencies (pinned via `uv.lock`).
+
 Activate the virtual environment:
 
-| Platform | Shell | Command |
-|----------|-------|---------|
-| Posix | bash/zsh | `source .venv/bin/activate` |
-| | fish | `source .venv/bin/activate.fish` |
-| | csh/tcsh | `source .venv/bin/activate.csh` |
-| Windows | cmd.exe | `.venv\Scripts\activate.bat` |
-| | PowerShell | `.venv\Scripts\Activate.ps1` |
+```bash
+source .venv/bin/activate
+```
+
+Or prefix any command with `uv run` to use the project's venv without activating it:
+
+```bash
+uv run pytest tests/
+```
 
 ## Importing the Project into an IDE
 
-The project uses a virtualenv created by `make develop`. In PyCharm:
+In PyCharm:
 
 1. Go to *Settings → Python Interpreter*.
 2. Select *Existing Environment*.
@@ -99,7 +98,7 @@ Logs are written to `~/.benchmark/logs/benchmark.log`.
 ```bash
 make test
 # or directly:
-python -m pytest tests/unit/solr/ -v
+uv run pytest tests/ -v
 ```
 
 ### Integration tests
@@ -124,6 +123,17 @@ before the next release and merge at that point.
 
 ## Miscellaneous
 
+### Updating dependencies
+
+To add or change a dependency, edit `pyproject.toml` then run:
+
+```bash
+uv lock          # regenerate uv.lock
+uv sync --extra develop   # update the local venv
+```
+
+Always commit both `pyproject.toml` and `uv.lock` together.
+
 ### Avoiding secrets in commits
 
 Install [git-secrets](https://github.com/awslabs/git-secrets) to prevent
@@ -137,7 +147,7 @@ cd git-secrets && make install
 ### Developer mode (quick iteration)
 
 ```bash
-python3 -m pip install -e .
+uv sync --extra develop
 ```
 
 Changes to source files are reflected immediately on the next run.

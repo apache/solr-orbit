@@ -10,9 +10,6 @@ function setup {
   export TERM=dumb
   export LC_ALL=en_US.UTF-8
 
-  # Init pyenv.
-  PATH=$HOME/.pyenv/shims:$PATH:$HOME/.pyenv/bin
-
   # Solr JDK requirements:
   # - Gradle builds need JDK 21 (from-sources pipeline)
   # - Solr 9.x requires JDK 11+; Solr 10.x requires JDK 17+
@@ -64,4 +61,3 @@ function run_it {
 }
 
 $@
-

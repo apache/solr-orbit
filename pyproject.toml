@@ -19,6 +19,12 @@
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.uv]
+# uv manages the venv; Python version is controlled by requires-python.
+# Keep this floor in sync with the pinned uv version in .github/workflows/unit-test.yml
+# and docker/Dockerfile (the version that generates uv.lock).
+required-version = ">=0.11"
+
 [project]
 name = "solr-orbit"
 dynamic = ["version"]
@@ -137,6 +143,8 @@ develop = [
     "pytest-benchmark>=4.0.0",
     "pytest-asyncio==1.4.0",
     "tox>=4.0",
+    # tox plugin: create tox envs with uv and auto-download missing Python interpreters
+    "tox-uv>=1.11",
     "coverage==7.16.0",
     "twine==7.0.0",
     "wheel>=0.38.4",

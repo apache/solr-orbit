@@ -17,3 +17,9 @@ updates:
       github-actions-dependencies:
         patterns:
           - "*"
+
+  # Keeps the pinned uv image (ghcr.io/astral-sh/uv) in docker/Dockerfile up to date
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "monthly"

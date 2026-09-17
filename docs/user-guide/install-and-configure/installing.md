@@ -33,8 +33,8 @@ drives introduce performance bottlenecks that make benchmark results unreliable.
 
 Before installing Solr Orbit, ensure the following software is available on your host:
 
-- **Python 3.12 or later** — required for all pipelines.
-- **pip** — Python package manager.
+- **[uv](https://docs.astral.sh/uv/)** — Python package and project manager. Installs a
+  suitable Python (3.12 or later) automatically if one is not already present.
 - **Git 2.3 or later** — required to fetch workloads from a remote repository.
 - **Docker** — required for the `--pipeline=docker` pipeline, which starts a Solr cluster
   automatically before the run.
@@ -46,21 +46,20 @@ Before installing Solr Orbit, ensure the following software is available on your
 
 ### Checking software dependencies
 
-Use [pyenv](https://github.com/pyenv/pyenv) to manage multiple versions of Python on your host.
-This is especially useful if your system Python is older than 3.12.
+uv manages Python versions for you — there is no need for a system Python or pyenv.
+It downloads Python 3.12 automatically the first time you sync the project.
 {: .tip}
 
-- Check that Python 3.12 or later is installed:
+- Check that `uv` is installed:
 
   ```bash
-  python3 --version
+  uv --version
   ```
 
-- Check that `pip` is installed and functional:
-
-  ```bash
-  pip --version
-  ```
+  If not, install it with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  or `brew install uv`. See the
+  [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
+  for other options.
 
 - Check that Git 2.3 or later is installed:
 
@@ -74,31 +73,29 @@ Apache Solr Orbit is not yet published on PyPI. Install it directly from the sou
 repository.
 {: .note}
 
-Clone the repository and install in editable mode:
+Clone the repository and sync the project:
 
 ```bash
 git clone https://github.com/apache/solr-orbit.git
 cd solr-orbit
-pip install -e .
+uv sync
 ```
+
+This creates a virtual environment in `.venv`, installs Solr Orbit in editable mode
+along with all its dependencies (pinned via `uv.lock`), and downloads Python 3.12 if
+it is not already available.
 
 After the installation completes, verify it is working:
 
 ```bash
-solr-orbit --version
+uv run solr-orbit --version
 ```
 
-### Virtual environment (recommended)
-
-Install Solr Orbit inside a virtual environment to avoid dependency conflicts with other
-Python packages on your system:
+To use `solr-orbit` without the `uv run` prefix, activate the virtual environment:
 
 ```bash
-git clone https://github.com/apache/solr-orbit.git
-cd solr-orbit
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -e .
+solr-orbit --version
 ```
 
 ### Developer install
@@ -106,17 +103,17 @@ pip install -e .
 To also install development and test dependencies:
 
 ```bash
-pip install -e ".[develop]"
+uv sync --extra develop
 ```
 
 ### Upgrading
 
-To pick up the latest changes, pull from the repository and reinstall:
+To pick up the latest changes, pull from the repository and re-sync:
 
 ```bash
 cd solr-orbit
 git pull
-pip install -e .
+uv sync
 ```
 
 ## Starting a Solr cluster for benchmarking
