@@ -1,6 +1,18 @@
 name: Docker Build
 on:
   pull_request:
+    # The build context is the whole repo, so this is a deny-list of files
+    # that cannot affect the image.
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.github/dependabot.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.asf.yaml'
+      - '.fossa.yml'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'docs/**'
   workflow_dispatch:
     inputs:
       logLevel:

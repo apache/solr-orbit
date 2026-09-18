@@ -6,10 +6,15 @@ on:
     branches:
       - main
     paths:
-      - ".github/**"
+      - ".github/workflows/**"
+      - ".github/actions/**"
   pull_request:
+    # Narrowed from ".github/**": this checks action pinning/compliance, which
+    # only concerns workflow and composite-action files. Editing
+    # dependabot.yml or an issue template no longer triggers it.
     paths:
-      - ".github/**"
+      - ".github/workflows/**"
+      - ".github/actions/**"
 
 permissions:
   contents: read
