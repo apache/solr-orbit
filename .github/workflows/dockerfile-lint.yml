@@ -9,6 +9,13 @@ on:
       - 'docker/*Dockerfile*'
       - '.github/workflows/dockerfile-lint.yml'
 
+concurrency:
+  # Cancel a PR run that has been superseded by a newer push to the same PR.
+  # Pushes to main (and manual dispatches) are never cancelled: they are not
+  # superseded by anything, and a half-finished main build hides breakage.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
