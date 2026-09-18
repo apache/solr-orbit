@@ -1,0 +1,34 @@
+name: Docs Lint
+
+# Split out of unit-test.yml so that documentation changes validate the docs
+# site without also running the full Python test matrix (and vice versa).
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs-lint.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  Docs-Lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          cache-version: 0
+          working-directory: docs
+
+      - name: Build docs (lint check)
+        run: bundle exec jekyll build --baseurl ""

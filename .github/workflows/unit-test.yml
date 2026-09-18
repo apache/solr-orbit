@@ -1,5 +1,21 @@
 name: Run Unit Tests
-on: [workflow_dispatch, pull_request]
+on:
+  workflow_dispatch:
+  pull_request:
+    # Skip the test matrix for changes that cannot affect Python behaviour.
+    # This is a deny-list on purpose: anything not listed here still runs the
+    # tests, so a newly added source directory is never silently skipped.
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - '.github/dependabot.yml'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.asf.yaml'
+      - '.fossa.yml'
+      - 'LICENSE'
+      - 'NOTICE'
+      # The docs site is validated by docs-lint.yml instead.
+      - 'docs/**'
 
 permissions:
   contents: read
@@ -31,23 +47,3 @@ jobs:
 
       - name: Run the CI build script
         run: bash .ci/build.sh build_and_unit_test
-
-  Docs-Lint:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: docs
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Ruby
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1
-        with:
-          ruby-version: "3.3"
-          bundler-cache: true
-          cache-version: 0
-          working-directory: docs
-
-      - name: Build docs (lint check)
-        run: bundle exec jekyll build --baseurl ""

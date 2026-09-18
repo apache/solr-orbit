@@ -3,8 +3,11 @@ name: dockerfile-lint
 
 on:
   pull_request:
+    # hadolint only reads docker/*Dockerfile, so docker/README.md and
+    # docker/.dockerignore need not trigger a lint run.
     paths:
-      - 'docker/**'
+      - 'docker/*Dockerfile*'
+      - '.github/workflows/dockerfile-lint.yml'
 
 permissions:
   contents: read
