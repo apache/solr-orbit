@@ -1,6 +1,7 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
+  # Python dependencies are managed by uv (pyproject.toml + uv.lock)
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "monthly"
