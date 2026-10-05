@@ -31,6 +31,7 @@ The converter produces a copy of the workload in the output directory with the f
 - OpenSearch JSON DSL search bodies translated to Solr JSON query format
 - Date range filters converted from custom formats (e.g., `dd/MM/yyyy`) to ISO 8601
 - Aggregations translated to Solr facet syntax
+- Operations named after an aggregation renamed from `agg` to `facet`, along with every reference to them
 
 A `CONVERTED.md` file is written to the output directory summarizing what was converted and flagging any items that require manual review.
 
