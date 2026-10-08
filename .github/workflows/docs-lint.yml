@@ -1,0 +1,41 @@
+name: Docs Lint
+
+# Split out of unit-test.yml so that documentation changes validate the docs
+# site without also running the full Python test matrix (and vice versa).
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/docs-lint.yml'
+
+concurrency:
+  # Cancel a PR run that has been superseded by a newer push to the same PR.
+  # Pushes to main (and manual dispatches) are never cancelled: they are not
+  # superseded by anything, and a half-finished main build hides breakage.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  Docs-Lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          cache-version: 0
+          working-directory: docs
+
+      - name: Build docs (lint check)
+        run: bundle exec jekyll build --baseurl ""

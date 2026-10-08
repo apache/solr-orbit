@@ -6,10 +6,22 @@ on:
     branches:
       - main
     paths:
-      - ".github/**"
+      - ".github/workflows/**"
+      - ".github/actions/**"
   pull_request:
+    # Narrowed from ".github/**": this checks action pinning/compliance, which
+    # only concerns workflow and composite-action files. Editing
+    # dependabot.yml or an issue template no longer triggers it.
     paths:
-      - ".github/**"
+      - ".github/workflows/**"
+      - ".github/actions/**"
+
+concurrency:
+  # Cancel a PR run that has been superseded by a newer push to the same PR.
+  # Pushes to main (and manual dispatches) are never cancelled: they are not
+  # superseded by anything, and a half-finished main build hides breakage.
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

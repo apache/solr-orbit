@@ -40,12 +40,14 @@ With your cluster running, you can now install Apache Solr Orbit.
 {: .note }
 Apache Solr Orbit is not yet published on PyPI. Install it directly from the source repository.
 
-Clone the repository and install in editable mode:
+Clone the repository and sync the project with [uv](https://docs.astral.sh/uv/)
+(install it with `curl -LsSf https://astral.sh/uv/install.sh | sh` or `brew install uv`):
 
 ```bash
 git clone https://github.com/apache/solr-orbit.git
 cd solr-orbit
-pip install -e .
+uv sync
+source .venv/bin/activate
 ```
 
 After installation completes, verify that Solr Orbit is running:
