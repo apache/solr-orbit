@@ -19,11 +19,12 @@
 
 import socket
 import unittest
+import os
+import tempfile
 from unittest.mock import MagicMock, patch
 
 from solrorbit import exceptions
-from solrorbit.builder.solr_provisioner import SolrProvisioner, SolrDockerLauncher, _assert_port_free
-
+from solrorbit.builder.solr_provisioner import SolrProvisioner, SolrDockerLauncher, _assert_port_free, SolrProvisionerError
 
 def _make_cluster_config(variables: dict):
     """Create a minimal cluster_config mock with the given variables dict."""
@@ -201,7 +202,142 @@ class TestAssertPortFree(unittest.TestCase):
             with patch("subprocess.run", return_value=MagicMock(returncode=0)):
                 with self.assertRaises(exceptions.SystemSetupError):
                     launcher.start(version_tag="9")
+class TestProvisionerDownload(unittest.TestCase):
+    """Tests for Solr download caching and failure handling."""
+    def test_interrupted_download_does_not_cache_partial_file(self):
 
+        with tempfile.TemporaryDirectory() as cache_dir:
+            provisioner = SolrProvisioner(cache_dir=cache_dir)
+            dest = os.path.join(cache_dir, "solr-9.10.1.tgz")
+            self.assertFalse(os.path.exists(dest))
+
+            def fake_download(url, temp_path):
+                with open(temp_path, "wb") as file:
+                    file.write(b"incomplete data")
+
+                    self.assertFalse(os.path.exists(dest))
+
+                    raise KeyboardInterrupt()
+
+            with self.assertRaises(KeyboardInterrupt):
+                with patch(
+                        "solrorbit.builder.solr_provisioner.urllib.request.urlretrieve",
+                        side_effect=fake_download
+                ):
+                    provisioner.download("9.10.1")
+            self.assertFalse(os.path.exists(dest))
+            self.assertFalse(
+                any(name.endswith(".tmp") for name in os.listdir(cache_dir))
+            )
+
+    def test_successful_download_is_cached(self):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            provisioner = SolrProvisioner(cache_dir=cache_dir)
+            dest = os.path.join(cache_dir, "solr-9.10.1.tgz")
+
+            def fake_download(url, temp_path):
+                with open(temp_path, "wb") as file:
+                    file.write(b"complete data")
+
+            with patch(
+                    "solrorbit.builder.solr_provisioner.urllib.request.urlretrieve",
+                    side_effect=fake_download
+            ) as mock_download:
+                result = provisioner.download("9.10.1")
+                second_result = provisioner.download("9.10.1")
+            self.assertEqual(result, dest)
+            self.assertEqual(second_result, dest)
+            mock_download.assert_called_once()
+            self.assertTrue(os.path.exists(dest))
+            with open(dest, "rb") as file:
+                content = file.read()
+            self.assertEqual(content, b"complete data")
+
+    def test_mirror_fallback_after_partial_download(self):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            provisioner = SolrProvisioner(cache_dir=cache_dir)
+            dest = os.path.join(cache_dir, "solr-9.10.1.tgz")
+            attempts = []
+
+            def fake_download(url, temp_path):
+                attempts.append(url)
+
+                if len(attempts) == 1:
+                    with open(temp_path, "wb") as file:
+                        file.write(b"partial data")
+
+                    raise OSError("Simulated network failure")
+                else:
+                    with open(temp_path, "wb") as file:
+                        file.write(b"complete data")
+
+            with patch(
+                    "solrorbit.builder.solr_provisioner.urllib.request.urlretrieve",
+                    side_effect=fake_download
+            ):
+                result = provisioner.download("9.10.1")
+            self.assertEqual(result, dest)
+            self.assertEqual(len(attempts), 2)
+            self.assertTrue(os.path.exists(dest))
+            with open(dest, "rb") as file:
+                content = file.read()
+            self.assertEqual(content, b"complete data")
+            self.assertFalse(any(name.endswith(".tmp") for name in os.listdir(cache_dir)))
+
+    def test_all_mirrors_fail(self):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            provisioner = SolrProvisioner(cache_dir=cache_dir)
+            dest = os.path.join(cache_dir, "solr-9.10.1.tgz")
+            attempts = []
+
+            def fake_download(url, temp_path):
+                attempts.append(url)
+
+                with open(temp_path, "wb") as file:
+                    file.write(b"partial data")
+
+                raise OSError("Simulated network failure")
+
+            with patch(
+                    "solrorbit.builder.solr_provisioner.urllib.request.urlretrieve",
+                    side_effect=fake_download
+            ):
+                with self.assertRaises(SolrProvisionerError):
+                    provisioner.download("9.10.1")
+
+            self.assertEqual(len(attempts), 3)
+
+            self.assertFalse(os.path.exists(dest))
+
+            self.assertFalse(
+                any(name.endswith(".tmp") for name in os.listdir(cache_dir))
+            )
+
+    def test_replace_failure_propagates(self):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            provisioner = SolrProvisioner(cache_dir=cache_dir)
+
+            def fake_download(url, temp_path):
+                with open(temp_path, "wb") as file:
+                    file.write(b"complete data")
+
+            with patch(
+                    "solrorbit.builder.solr_provisioner.urllib.request.urlretrieve",
+                    side_effect=fake_download
+            ):
+                with patch(
+                        "solrorbit.builder.solr_provisioner.os.replace",
+                        side_effect=PermissionError("Permission denied")
+                ):
+                    with self.assertRaises(PermissionError):
+                        provisioner.download("9.10.1")
+            dest = os.path.join(cache_dir, "solr-9.10.1.tgz")
+
+            self.assertFalse(os.path.exists(dest))
+
+            self.assertFalse(
+                any(name.endswith(".tmp") for name in os.listdir(cache_dir))
+            )
 
 if __name__ == "__main__":
     unittest.main()
