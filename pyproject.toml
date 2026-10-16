@@ -96,7 +96,7 @@ dependencies = [
     "h5py>=3.10.0",
     # License: BSD
     # Required for knnvector workload
-    "numpy>=1.24.2,<=2.5.3",
+    "numpy>=1.24.2,<=2.5.4",
     # License: MIT
     "tqdm",
     # License: MIT
@@ -149,7 +149,7 @@ develop = [
     "twine==7.0.0",
     "wheel>=0.38.4",
     "github3.py==4.0.1",
-    "ruff==0.16.9",
+    "ruff==0.17.0",
 ]
 
 # ---------------------------------------------------------------------------
