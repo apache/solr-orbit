@@ -15,4 +15,5 @@ The User Guide covers the core concepts and workflows for using Apache Solr Orbi
 | [Understanding Workloads](understanding-workloads/) | Workload anatomy, available workloads, built-in operations |
 | [Working with Workloads](working-with-workloads/) | Running, fine-tuning, creating, and contributing workloads |
 | [Understanding Results](understanding-results/) | Summary reports, metrics definitions, telemetry |
+| [Continuous Benchmarking](continuous-benchmarking/) | Running benchmarks on a schedule with `launchr`, and publishing a trends site with `reportr` |
 | [Optimizing Benchmarks](optimizing-benchmarks/) | Target throughput, distributed load, best practices, query randomization |

@@ -1,0 +1,182 @@
+# examples/launchr-ec2.yaml -- benchmarking a real 2-node SolrCloud on dedicated EC2.
+#
+#   launchr run --config examples/launchr-ec2.yaml --test-mode
+#   launchr teardown --config examples/launchr-ec2.yaml --dry-run
+#
+# Unlike launchr.yaml (local Docker, a laptop, no cloud) this file spends
+# money: three instances per session, roughly $1.50/hour while a run is in
+# flight. Everything it creates is tagged `project=solr` so it lands in the
+# right budget, and `launchr teardown` reclaims anything a crash leaves
+# behind.
+#
+# ── Two AWS identities, on purpose ──────────────────────────────────────────
+# The results bucket and the EC2 fleet are reached with *different*
+# credentials, and conflating them is the mistake this layout exists to
+# prevent:
+#
+#   storage.options.profile          -> `solr-orbit`: full CRUD on the one
+#                                       bucket, and no other permission in the
+#                                       account. Safe to leave configured.
+#   provisioning.options.aws_profile -> `pulumi`: no permissions of its own;
+#                                       its only privilege is assuming
+#                                       `pulumi-provisioner`, which holds the
+#                                       EC2 rights. Configure it with
+#                                       role_arn + source_profile in ~/.aws/config.
+#
+# Neither is a credential *here*. launchr rejects anything in this file that
+# looks like one; a profile name is a pointer, not a secret.
+
+# Four releases spanning the 9.x line into 10, plus both live development
+# branches. 9.0.0 needs the create-collection compatibility retry from
+# apache/solr-orbit#112; without it Solr Orbit cannot create a collection on
+# 9.0 at all.
+solr_versions:
+  - "9.0.0"
+  - "9.7.0"
+  - "9.11.0"
+  - "10.0.0"
+  # The two live development lines, from nightly_registry. A SNAPSHOT tag is
+  # whatever that branch's version currently is, so both need bumping when the
+  # branches do: 11.0.0-SNAPSHOT is main, 10.2.0-SNAPSHOT is branch_10x.
+  #
+  # Neither is in the Apache release list and neither carries a build
+  # timestamp in solr-impl-version, so both are placed on the x-axis by their
+  # container image's build date.
+  - "10.2.0-SNAPSHOT"
+  - "11.0.0-SNAPSHOT"
+
+registry: "docker.io/library/solr"
+nightly_registry: "docker.io/apache/solr-nightly"
+
+# ── Storage ─────────────────────────────────────────────────────────────────
+# Under `public/`, which is the world-readable prefix of the bucket, so a
+# result is readable by anyone with the link the moment it is written. The
+# site reportr builds lands beside it at `public/`.
+#
+# Nothing secret is ever written here. Solr Orbit reports carry versions,
+# timings and host facts; the ledger carries instance ids and regions.
+storage:
+  backend: s3
+  path: "s3://solr-orbit/public/v1"
+  options:
+    region: eu-north-1
+    profile: solr-orbit
+
+# ── Provisioning profiles ───────────────────────────────────────────────────
+provisioning_profiles:
+  ec2-2node:
+    provisioning: ec2
+    install_method: docker-ssh
+    # Two Solr nodes. The driver is additional and implicit: the ec2 strategy
+    # always creates one, because a driver sharing a machine with Solr makes
+    # its own CPU use part of what the benchmark measures.
+    nodes: 2
+    port: 8983
+    # A cold instance pulls the Solr image before it can start.
+    startup_timeout: 600
+    options:
+      region: eu-north-1
+      aws_profile: pulumi
+      # 8 vCPU / 32 GB per Solr node, and the same for the driver.
+      #
+      # The driver is deliberately not smaller. At full corpus it reads ~74 GB
+      # of JSON, parses it and POSTs 165M documents at two 8-vCPU nodes; on a
+      # 2-vCPU driver it becomes the limiting factor and every Solr version
+      # then measures the same, which is a benchmark that cannot answer the
+      # question it was built for.
+      instance_type: m7i.2xlarge
+      driver_instance_type: m7i.2xlarge
+      ssh_user: ec2-user
+      # Sized for the *full* nyc_taxis corpus, not --test-mode.
+      #
+      # The driver is the one that needs room: Solr Orbit downloads
+      # documents.json.bz2 and decompresses it, so it holds both the archive
+      # and roughly 74 GB of JSON at once. The 50 GB that was fine for a
+      # 1000-document smoke run fills up part-way through the real download,
+      # hours in. The corpus is fetched once and reused by every cell in the
+      # session, because they share one driver instance.
+      #
+      # The Solr nodes hold the index -- two shards, one replica each, so
+      # roughly half the corpus each, plus transient space for merges.
+      volume_gb: 150
+      driver_volume_gb: 300
+      volume_type: gp3
+      # ── Where the index lives ───────────────────────────────────────────
+      # A dedicated EBS volume by default, not the instance root. The root
+      # volume sits at the gp3 baseline of 3000 IOPS and 125 MB/s, and a
+      # merge-heavy indexing run against that is plausibly measuring the disk
+      # rather than Solr -- the one thing a version comparison must not do.
+      #
+      # Deleted with the instance it is attached to, and tagged, so a crash
+      # does not leave it billing.
+      data_volume:
+        mode: ebs             # 'ebs' (default) or 'root' to use the root disk
+        size_gb: 500          # headroom for any current workload
+        type: gp3
+        iops: 16000           # gp3 baseline is 3000
+        throughput_mbps: 1000 # gp3 baseline is 125
+
+      # ── Kernel settings applied before Solr starts ──────────────────────
+      # Chosen to remove variance rather than to maximise a number. launchr
+      # reads these back after boot and records what the machine was actually
+      # doing, which is what lets a future investigator rule them out.
+      # Set any value to null to leave the machine alone.
+      host_tuning:
+        transparent_hugepages: never
+        swappiness: 1
+        cpu_governor: performance   # ignored where the instance exposes no cpufreq
+
+      # ami:        pin this once a Packer image exists; until then the newest
+      #             AL2023 is resolved per run and recorded in the report.
+      # ssh_cidr:   defaults to this machine's public address as a /32. Set it
+      #             explicitly when running from somewhere with a changing IP.
+      # subnet_id:  defaults to the lowest-numbered default-VPC subnet, so
+      #             every run shares one availability zone.
+
+# ── Cluster configs ─────────────────────────────────────────────────────────
+cluster_configs:
+  2shard-1replica:
+    # 8g of a 32g instance: Solr wants the rest for the page cache, and a heap
+    # sized at half of RAM is a classic way to make a benchmark measure GC.
+    heap: "8g"
+    gc: "G1GC"
+    # One shard per node, one replica each -- so indexing actually uses both
+    # machines rather than making the second a standby.
+    shards: 2
+    replicas: 1
+
+defaults:
+  provisioning: ["ec2-2node"]
+  cluster_config: ["2shard-1replica"]
+
+workloads:
+  - name: nyc_taxis
+
+benchmark:
+  iterations: 1
+  aggregate: false
+  # Left false here so the file describes a *real* run. The first round is
+  # expected to pass --test-mode on the command line, which truncates every
+  # corpus to 1000 documents and turns hours into minutes.
+  test_mode: false
+  workload_repository: default
+  user_tags:
+    intention: ec2-benchmark
+
+# ── Solr Orbit's own configuration on the driver ────────────────────────────
+# Left alone, Solr Orbit writes ~/.solr-orbit/benchmark.ini itself on first
+# run and a remote driver always uses stock defaults. launchr writes it
+# instead, merging these over Solr Orbit's bundled template, so a remote run
+# is configured here and nowhere else. Only state what differs.
+#
+# launchr already sets reporting.datastore.type to `filesystem` by default:
+# in-memory keeps every raw metric sample in RAM and discards it when the
+# process exits, which on a throwaway instance means the per-sample data is
+# gone for good. `filesystem` writes it to metrics.jsonl beside the report.
+#
+# Never applied to a local run -- that would rewrite your own config.
+orbit_config: {}
+  # workloads:
+  #   default.url: https://github.com/my-org/my-solr-workloads
+  # reporting:
+  #   datastore.type: in-memory     # back to the Solr Orbit default
