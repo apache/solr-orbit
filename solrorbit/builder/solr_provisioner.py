@@ -28,6 +28,7 @@ import shutil
 import socket
 import subprocess
 import tarfile
+import tempfile
 import time
 import urllib.request
 from pathlib import Path
@@ -128,6 +129,7 @@ class SolrProvisioner:
         """
         tarball = f"solr-{version}.tgz"
         dest = os.path.join(self.cache_dir, tarball)
+
         if os.path.exists(dest):
             logger.info("Solr %s already cached at %s", version, dest)
             return dest
@@ -136,14 +138,22 @@ class SolrProvisioner:
         for base_url in (_DOWNLOADS_URL, _ARCHIVE_9_URL, _ARCHIVE_PRE9_URL):
             url = f"{base_url}/{version}/{tarball}"
             logger.info("Downloading Solr %s from %s", version, url)
-            try:
-                urllib.request.urlretrieve(url, dest)
+
+            with tempfile.TemporaryDirectory(
+                    dir=self.cache_dir,
+                    prefix=f"{tarball}."
+            ) as temp_dir:
+                temp_path = os.path.join(temp_dir, tarball)
+
+                try:
+                    urllib.request.urlretrieve(url, temp_path)
+                except Exception as exc:
+                    logger.warning("Download from %s failed: %s", url, exc)
+                    continue
+
+                os.replace(temp_path, dest)
                 logger.info("Downloaded Solr %s to %s", version, dest)
                 return dest
-            except Exception as exc:
-                logger.warning("Download from %s failed: %s", url, exc)
-                if os.path.exists(dest):
-                    os.remove(dest)
 
         raise SolrProvisionerError(
             f"Could not download Solr {version} from any mirror. "
