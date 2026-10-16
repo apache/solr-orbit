@@ -212,11 +212,7 @@ class SolrAdminClient:
             "pullReplicas": pull_replicas,
             "waitForFinalState": True,
         }
-        resp = self._get_session().post(
-            f"{self.api_url}/collections",
-            json=payload,
-            timeout=self.timeout,
-        )
+        resp = self._post_collection(payload)
         if resp.status_code == 400:
             body = self._try_parse_json(resp)
             if "already exists" in str(body).lower():
@@ -226,6 +222,39 @@ class SolrAdminClient:
         self._raise_for_solr_error(resp, f"create collection '{name}'")
         logger.info("Created collection '%s' (shards=%d, nrt=%d, tlog=%d, pull=%d)",
                     name, num_shards, replication_factor, tlog_replicas, pull_replicas)
+
+    def _post_collection(self, payload: dict):
+        """POST a create-collection body, in whichever shape this Solr takes.
+
+        Solr reworked its V2 API: newer releases take the collection's
+        properties as the request body, older ones take a command envelope,
+        ``{"create": {...}}``. Benchmarking a release line means talking to both
+        -- a 9.0 cluster answers the newer shape with
+        ``Unknown operation 'name', available ops are [... create ...]``, which
+        is Solr telling us exactly which shape it wanted.
+
+        Asking the version instead would mean keeping a table of which release
+        changed, and being wrong about a release nobody tested. Letting Solr
+        say so costs one extra request, once, and only on the clusters that
+        need it.
+        """
+        session = self._get_session()
+        url = f"{self.api_url}/collections"
+        resp = session.post(url, json=payload, timeout=self.timeout)
+        if resp.status_code == 400 and self._wants_command_envelope(resp):
+            logger.debug("Retrying create-collection with the pre-rework V2 command envelope")
+            resp = session.post(url, json={"create": payload}, timeout=self.timeout)
+        return resp
+
+    @staticmethod
+    def _wants_command_envelope(resp) -> bool:
+        """Whether a 400 is Solr saying "that is not how I take commands"."""
+        try:
+            body = resp.json()
+        except ValueError:
+            return False
+        text = str(body).lower()
+        return "unknown operation" in text and "create" in text
 
     def delete_collection(self, name: str) -> None:
         """Delete a Solr collection via DELETE /api/collections/{name}."""
