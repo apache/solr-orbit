@@ -24,6 +24,7 @@ The table below summarizes which OpenSearch Benchmark constructs are automatical
 | `date_histogram` aggregations | Converted to Solr `range` facet with calendar gap |
 | `avg` / `sum` / `min` / `max` aggregations | Converted to Solr function query stats |
 | Operation names containing `agg` | Renamed to `facet`, along with every reference to the operation: the test procedures that schedule it, its `<name>_iterations` and related parameters, and the standard value source `workload.py` registers for it. Listed in `CONVERTED.md` |
+| `index-stats` retried until `merges.current` reaches zero | → `wait-for-merges`, with the polling expressed as `retry-wait-period` and `max-wait-seconds` |
 
 ## Requires manual review
 

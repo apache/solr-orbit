@@ -741,6 +741,7 @@ def create_arg_parser():
         default=workload.loader.QueryRandomizerWorkloadProcessor.DEFAULT_ALPHA)
     test_run_parser.add_argument(
         "--test-iterations",
+        type=positive_number,
         help="The number of times to run the workload (default: 1).",
         default=1)
     test_run_parser.add_argument(
@@ -1272,7 +1273,7 @@ def dispatch_sub_command(arg_parser, args, cfg):
                     test_runs_dict = prepare_test_runs_dict(args, cfg)
                     aggregator_instance = aggregator.Aggregator(cfg, test_runs_dict, args)
                     aggregator_instance.aggregate()
-            elif args.test_iterations == 1:
+            elif iterations == 1:
                 configure_test(arg_parser, args, cfg)
                 run_test(cfg, args.kill_running_processes)
             else:

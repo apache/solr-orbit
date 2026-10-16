@@ -1,6 +1,7 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
+  # Python dependencies are managed by uv (pyproject.toml + uv.lock)
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "monthly"
@@ -17,3 +18,9 @@ updates:
       github-actions-dependencies:
         patterns:
           - "*"
+
+  # Keeps the pinned uv image (ghcr.io/astral-sh/uv) in docker/Dockerfile up to date
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "monthly"

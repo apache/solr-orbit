@@ -26,7 +26,8 @@ Native Solr workloads should not go through this translation layer.
 """
 
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 
 from .field import normalize_field_name
 
@@ -183,21 +184,25 @@ def _translate_query_node(node: dict, fq_list: list = None) -> str:
             field = normalize_field_name(field)
             # gt/lt are exclusive; Solr spells that with a curly bracket.
             if "gte" in bounds:
-                lo, lo_bracket = bounds["gte"], "["
+                lo, lo_bracket, lo_key = bounds["gte"], "[", "gte"
             elif "gt" in bounds:
-                lo, lo_bracket = bounds["gt"], "{"
+                lo, lo_bracket, lo_key = bounds["gt"], "{", "gt"
             else:
-                lo, lo_bracket = "*", "["
+                lo, lo_bracket, lo_key = "*", "[", None
             if "lte" in bounds:
-                hi, hi_bracket = bounds["lte"], "]"
+                hi, hi_bracket, hi_key = bounds["lte"], "]", "lte"
             elif "lt" in bounds:
-                hi, hi_bracket = bounds["lt"], "}"
+                hi, hi_bracket, hi_key = bounds["lt"], "}", "lt"
             else:
-                hi, hi_bracket = "*", "]"
+                hi, hi_bracket, hi_key = "*", "]", None
             # Convert dates if format is specified (common for date fields)
             os_format = bounds.get("format")
-            lo = _convert_date_to_solr_format(lo, os_format)
-            hi = _convert_date_to_solr_format(hi, os_format)
+            lo, lo_is_date_only = _convert_date_to_solr_format(lo, os_format)
+            hi, hi_is_date_only = _convert_date_to_solr_format(hi, os_format)
+            if hi_is_date_only and hi_key == "lte":
+                hi, hi_bracket = _round_date_only_bound(hi), "}"
+            if lo_is_date_only and lo_key == "gt":
+                lo, lo_bracket = _round_date_only_bound(lo), "["
             return f"{field}:{lo_bracket}{lo} TO {hi}{hi_bracket}"
 
     if "exists" in node:
@@ -448,12 +453,7 @@ def _convert_single_agg(agg_name: str, agg_def: dict):
         if not field:
             logger.warning("date_histogram agg '%s' has no field — skipping", agg_name)
             return None
-        interval = (
-            dh_conf.get("calendar_interval")
-            or dh_conf.get("fixed_interval")
-            or dh_conf.get("interval", "month")
-        )
-        gap = _calendar_interval_to_solr_gap(interval)
+        gap = _date_histogram_gap(dh_conf, agg_name)
         facet_def = {
             "type": "range",
             "field": field,
@@ -508,28 +508,96 @@ def _convert_single_agg(agg_name: str, agg_def: dict):
     return None
 
 
-def _calendar_interval_to_solr_gap(interval: str) -> str:
-    """Convert an OpenSearch calendar_interval or fixed_interval to a Solr range gap string."""
-    mapping = {
-        "minute": "+1MINUTE",
-        "1m": "+1MINUTE",
-        "hour": "+1HOUR",
-        "1h": "+1HOUR",
-        "day": "+1DAY",
-        "1d": "+1DAY",
-        "week": "+7DAYS",
-        "1w": "+7DAYS",
-        "month": "+1MONTH",
-        "1m_month": "+1MONTH",  # avoid conflict with 1m (minute)
-        "quarter": "+3MONTHS",
-        "1q": "+3MONTHS",
-        "year": "+1YEAR",
-        "1y": "+1YEAR",
-    }
-    return mapping.get(str(interval).lower(), "+1MONTH")
+CALENDAR_INTERVAL_NAMES = {
+    "minute": "+1MINUTE",
+    "hour": "+1HOUR",
+    "day": "+1DAY",
+    "week": "+7DAYS",
+    "month": "+1MONTH",
+    "quarter": "+3MONTHS",
+    "year": "+1YEAR",
+}
+
+CALENDAR_INTERVAL_ABBREVIATIONS = {
+    "1m": "+1MINUTE",
+    "1h": "+1HOUR",
+    "1d": "+1DAY",
+    "1w": "+7DAYS",
+    "1M": "+1MONTH",
+    "1q": "+3MONTHS",
+    "1y": "+1YEAR",
+}
+
+FIXED_INTERVAL_UNITS = {
+    "ms": "MILLI",
+    "s": "SECOND",
+    "m": "MINUTE",
+    "h": "HOUR",
+    "d": "DAY",
+}
+
+FIXED_INTERVAL_PATTERN = re.compile(r"^(\d+)(ms|s|m|h|d)$")
+
+DEFAULT_GAP = "+1MONTH"
 
 
-def _convert_date_to_solr_format(date_str, os_format=None) -> str:
+def _date_histogram_gap(dh_conf: dict, agg_name: str | None = None) -> str:
+    """
+    Solr range gap for an OpenSearch date_histogram.
+
+    The key the interval arrives under decides how it reads: ``calendar_interval: 1m``
+    is one minute and ``calendar_interval: 1M`` is one month, while a fixed_interval is
+    a multiple of a fixed unit and takes no calendar names at all. The deprecated
+    ``interval`` key accepts either form, so both are tried.
+
+    An interval that is neither is logged and falls back to DEFAULT_GAP.
+    """
+    if "calendar_interval" in dh_conf:
+        interval = dh_conf["calendar_interval"]
+        gap = _calendar_interval_to_solr_gap(interval)
+    elif "fixed_interval" in dh_conf:
+        interval = dh_conf["fixed_interval"]
+        gap = _fixed_interval_to_solr_gap(interval)
+    else:
+        interval = dh_conf.get("interval", "month")
+        gap = _calendar_interval_to_solr_gap(interval) or _fixed_interval_to_solr_gap(interval)
+    if gap:
+        return gap
+    logger.warning(
+        "date_histogram agg '%s' has interval '%s', which is neither an OpenSearch "
+        "calendar_interval nor a fixed_interval — using %s, so the buckets will not "
+        "have the width the workload asks for.",
+        agg_name, interval, DEFAULT_GAP,
+    )
+    return DEFAULT_GAP
+
+
+def _calendar_interval_to_solr_gap(interval) -> str | None:
+    """Solr range gap for an OpenSearch calendar_interval, or None if it is not one."""
+    return (CALENDAR_INTERVAL_ABBREVIATIONS.get(str(interval))
+            or CALENDAR_INTERVAL_NAMES.get(str(interval).lower()))
+
+
+def _fixed_interval_to_solr_gap(interval) -> str | None:
+    """Solr range gap for an OpenSearch fixed_interval, or None if it is not one."""
+    match = FIXED_INTERVAL_PATTERN.match(str(interval))
+    if not match:
+        return None
+    return "+{}{}".format(match.group(1), FIXED_INTERVAL_UNITS[match.group(2)])
+
+
+OS_TO_PYTHON_FORMAT = {
+    "dd/MM/yyyy": ("%d/%m/%Y", False),
+    "MM/dd/yyyy": ("%m/%d/%Y", False),
+    "yyyy-MM-dd": ("%Y-%m-%d", False),
+    "yyyy/MM/dd": ("%Y/%m/%d", False),
+    "dd-MM-yyyy": ("%d-%m-%Y", False),
+    "MM-dd-yyyy": ("%m-%d-%Y", False),
+    "yyyy-MM-dd HH:mm:ss": ("%Y-%m-%d %H:%M:%S", True),
+}
+
+
+def _convert_date_to_solr_format(date_str, os_format=None) -> tuple:
     """
     Convert an OpenSearch date string to Solr ISO 8601 format.
 
@@ -538,50 +606,60 @@ def _convert_date_to_solr_format(date_str, os_format=None) -> str:
         os_format: Optional OpenSearch date format pattern (e.g., "dd/MM/yyyy")
 
     Returns:
-        ISO 8601 date string for Solr (e.g., "2015-01-01T00:00:00Z")
+        (value, is_date_only) — the ISO 8601 date string for Solr
+        (e.g., "2015-01-01T00:00:00Z"), and whether the source named a whole
+        day rather than an instant.
 
     If the date is already in ISO format or conversion fails, returns the
     original string unchanged.
     """
     if not isinstance(date_str, str) or date_str in ("*", "now"):
-        return date_str
-
-    # Map OpenSearch date format patterns to Python strptime format
-    OS_TO_PYTHON_FORMAT = {
-        "dd/MM/yyyy": "%d/%m/%Y",
-        "MM/dd/yyyy": "%m/%d/%Y",
-        "yyyy-MM-dd": "%Y-%m-%d",
-        "yyyy/MM/dd": "%Y/%m/%d",
-        "dd-MM-yyyy": "%d-%m-%Y",
-        "MM-dd-yyyy": "%m-%d-%Y",
-        # Add more as needed
-    }
+        return date_str, False
 
     # If format is provided, use it to parse the date
     if os_format:
-        python_fmt = OS_TO_PYTHON_FORMAT.get(os_format)
-        if python_fmt:
+        pattern = OS_TO_PYTHON_FORMAT.get(os_format)
+        if pattern:
+            python_fmt, has_time = pattern
             try:
                 dt = datetime.strptime(date_str, python_fmt)
-                return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                return dt.strftime("%Y-%m-%dT%H:%M:%SZ"), not has_time
             except ValueError:
                 logger.warning(f"Failed to parse date '{date_str}' with format '{os_format}'")
-                return date_str
+                return date_str, False
         else:
             logger.warning(f"Unknown OpenSearch date format: '{os_format}'")
 
     # Try common patterns if no format specified
-    for python_fmt in OS_TO_PYTHON_FORMAT.values():
+    for python_fmt, has_time in OS_TO_PYTHON_FORMAT.values():
         try:
             dt = datetime.strptime(date_str, python_fmt)
-            return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+            return dt.strftime("%Y-%m-%dT%H:%M:%SZ"), not has_time
         except ValueError:
             continue
 
     # If it's already in ISO-like format, return as-is
     # (handles cases like "2015-01-01T00:00:00Z" or partial ISO)
-    if "T" in date_str or len(date_str) == 10:  # YYYY-MM-DD
-        return date_str
+    if "T" in date_str:
+        return date_str, False
 
     logger.warning(f"Could not parse date '{date_str}', using as-is")
-    return date_str
+    return date_str, False
+
+
+def _round_date_only_bound(value: str) -> str:
+    """
+    Advance a whole-day bound to the start of the following day.
+
+    A date without a time names a day, and OpenSearch rounds it to the edge of
+    that day: `lte` and `gt` go to its LAST millisecond, `gte` and `lt` to its
+    first. Solr rounds nothing, so only the two that move to the end of the day
+    need translating, and naming the next day's first instant says that without
+    depending on how fine Solr's date precision happens to be.
+    """
+    try:
+        dt = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        logger.warning(f"Could not round whole-day bound '{value}', using as-is")
+        return value
+    return (dt + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")

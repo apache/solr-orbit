@@ -8,24 +8,14 @@ minor Python versions in Apache Solr Orbit.
 Make changes to the following files and open a PR titled
 "Update Python versions supported to `<list of versions>`".
 
-* `.ci/variables.json`: Update Python variables and `MIN_PY_VER` as needed.
-  For example: to add Python `3.13`, ensure there is a `PY313` variable set
-  to the latest patch release such as `3.13.1`.
 * `pyproject.toml`: Update `requires-python` and the `classifiers` list under `[project]`.
 * `pyproject.toml`: Update `envlist` in the `[tool.tox]` `legacy_tox_ini` section.
-* `Makefile`: If updating the minimum supported Python version, update the
-  `pyinst<MIN_VERSION>` target and `check-pip`:
-
-  ```makefile
-  VERSION312 = $(shell jq -r '.python_versions | .[]' .ci/variables.json | sed '$$d' | grep 3\.12)
-
-  pyinst312:
-      pyenv install --skip-existing $(VERSION312)
-      pyenv local $(VERSION312)
-
-  check-pip:
-      @if ! $(PIP) > /dev/null 2>&1 || ! $(PIP) install pip > /dev/null 2>&1; then make pyinst312; fi
-  ```
+  Integration test environments are created by [tox-uv](https://github.com/tox-dev/tox-uv),
+  which downloads missing Python interpreters automatically — no further setup is needed.
+* `.python-version`: If updating the default development Python version, update the
+  pinned version (used by `uv` when creating `.venv`).
+* `Makefile`: If adding or removing a version, update the `it<VERSION>` targets
+  (e.g. `it312 it313`).
 
 * `solrorbit/__init__.py`: Update the minimum version in the error message:
 
@@ -36,10 +26,10 @@ Make changes to the following files and open a PR titled
 ## Testing new Python versions
 
 1. Set up a fresh environment on each supported OS: macOS, Ubuntu, Amazon Linux 2.
-2. Install the new Python version (via pyenv or from source). Switch to it:
+2. Create a virtual environment with the new Python version (uv downloads it if missing):
    ```bash
-   pyenv local <PYTHON VERSION>
-   python3 --version   # confirm
+   uv sync --extra develop --python <PYTHON VERSION>
+   uv run python --version   # confirm
    ```
 
 3. Run the following tests:
@@ -72,8 +62,8 @@ solr-orbit run \
 
 4. To test the installed binary path explicitly:
    ```bash
-   which solr-orbit   # e.g. /home/user/.pyenv/shims/solr-orbit
-   bash /home/user/.pyenv/shims/solr-orbit run --pipeline=benchmark-only ...
+   which solr-orbit   # e.g. /path/to/solr-orbit/.venv/bin/solr-orbit
+   .venv/bin/solr-orbit run --pipeline=benchmark-only ...
    ```
 
 ## Creating a pull request
