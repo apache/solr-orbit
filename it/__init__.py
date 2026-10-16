@@ -25,12 +25,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import errno
 import functools
 import json
 import os
 import random
+import shlex
 import socket
+import sys
 import time
 import datetime
 
@@ -40,9 +41,13 @@ from solrorbit import client, config, version, paths
 from solrorbit.utils import process
 
 CONFIG_NAMES = ["in-memory-it"]
-DISTRIBUTIONS = ["9.10.1", "10.1.0"]
+DISTRIBUTIONS = ["9.11.0", "10.0.0"]
 WORKLOADS = ["geonames", "nyc_taxis"]
-BASE_COMMANDS = ["solr-orbit"]
+# Invoke the Solr Orbit under test, not whatever "solr-orbit" happens to be on
+# PATH. A bare command name resolves to a globally installed copy -- a pyenv shim,
+# say -- so the integration tests exercised an installation that had nothing to do
+# with the working tree.
+BASE_COMMANDS = [f"{shlex.quote(sys.executable)} -m solrorbit.benchmark"]
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
@@ -124,24 +129,16 @@ def command_in_docker(command_line, python_version):
     return shell_cmd(docker_command)
 
 
-def wait_until_port_is_free(port_number=39200, timeout=120):
-    start = time.perf_counter()
-    end = start + timeout
-    while time.perf_counter() < end:
-        c = socket.socket()
-        connect_result = c.connect_ex(("127.0.0.1", port_number))
-        # noinspection PyBroadException
-        try:
-            if connect_result == errno.ECONNREFUSED:
-                c.close()
-                return
-            else:
-                c.close()
-                time.sleep(0.5)
-        except Exception:
-            pass
+def free_port():
+    """Pick a free TCP port.
 
-    raise TimeoutError(f"Port [{port_number}] is occupied after [{timeout}] seconds")
+    The integration tests must not assume 8983: a Solr developer very likely has
+    their own Solr listening there, and the pipelines refuse to start when the
+    port is busy.
+    """
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
 
 
 def check_prerequisites():
@@ -173,16 +170,16 @@ class TestCluster:
         self.http_port = http_port
         transport_port = http_port + 100
         try:
-            err, retcode = process.run_subprocess_with_stderr(
-                "solr-orbit install --configuration-name={cfg} --distribution-version={dist} --build-type=tar "
-                "--http-port={http_port} --node={node_name} --master-nodes="
+            err, retcode = process.run_subprocess_with_stderr(solrorbit_command_line_for(
+                self.cfg,
+                "install --distribution-version={dist} --build-type=tar "
+                "--http-port={http_port} --node-name={node_name} --master-nodes="
                 "{node_name} --cluster-config={cluster_config} "
-                "--seed-hosts=\"127.0.0.1:{transport_port}\"".format(cfg=self.cfg,
-                                                                     dist=distribution_version,
-                                                                     http_port=http_port,
-                                                                     node_name=node_name,
-                                                                     cluster_config=cluster_config,
-                                                                     transport_port=transport_port))
+                "--seed-hosts=\"127.0.0.1:{transport_port}\"".format(dist=distribution_version,
+                                                                      http_port=http_port,
+                                                                      node_name=node_name,
+                                                                      cluster_config=cluster_config,
+                                                                      transport_port=transport_port)))
             if retcode != 0:
                 raise AssertionError("Failed to install node {}.".format(distribution_version), err)
             self.installation_id = json.loads(err)["installation-id"]
@@ -190,11 +187,17 @@ class TestCluster:
             raise AssertionError("Failed to install node {}.".format(distribution_version), e)
 
     def start(self, test_run_id):
-        cmd = "start --runtime-jdk=\"bundled\" --installation-id={} --test-run-id={}".format(self.installation_id, test_run_id)
+        # Java 21: "bundled" is an OpenSearch notion (its distributions ship a JDK,
+        # Solr's do not) and resolved to a nonexistent JAVAbundled_HOME. Left to
+        # itself the resolver picks the lowest allowed JDK, which is 11 and cannot
+        # start Solr 10.
+        cmd = "start --runtime-jdk=21 --installation-id={} --test-run-id={}".format(self.installation_id, test_run_id)
         if solrorbit(self.cfg, cmd) != 0:
             raise AssertionError("Failed to start test cluster.")
         solr_client = client.ClientFactory(hosts=[{"host": "127.0.0.1", "port": self.http_port}], client_options={}).create()
-        client.wait_for_rest_layer(solr_client)
+        # client.wait_for_rest_layer was an OpenSearch helper; SolrClient carries its
+        # own readiness check.
+        solr_client.wait_for_cluster_ready()
 
     def stop(self):
         if self.installation_id:
@@ -203,23 +206,6 @@ class TestCluster:
 
     def __str__(self):
         return f"TestCluster[installation-id={self.installation_id}]"
-
-
-class MetricsStore:
-    VERSION = "1.3.9"
-
-    def __init__(self):
-        self.cluster = TestCluster("in-memory-it")
-
-    def start(self):
-        self.cluster.install(distribution_version=MetricsStore.VERSION,
-                             node_name="metrics-store",
-                             cluster_config="defaults",
-                             http_port=10200)
-        self.cluster.start(test_run_id="metrics-store")
-
-    def stop(self):
-        self.cluster.stop()
 
 
 def install_integration_test_config():
@@ -235,9 +221,6 @@ def install_integration_test_config():
 def remove_integration_test_config():
     for config_name in CONFIG_NAMES:
         os.remove(config.ConfigFile(config_name).location)
-
-
-METRICS_STORE = MetricsStore()
 
 
 def get_license():
@@ -263,9 +246,7 @@ def build_docker_image():
 def setup_module():
     check_prerequisites()
     install_integration_test_config()
-    METRICS_STORE.start()
 
 
 def teardown_module():
-    METRICS_STORE.stop()
     remove_integration_test_config()

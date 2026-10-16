@@ -30,20 +30,18 @@ import it
 
 @it.random_benchmark_config
 def test_tar_distributions(cfg):
-    port = 19200
     for dist in it.DISTRIBUTIONS:
         for workload in it.WORKLOADS:
-            it.wait_until_port_is_free(port_number=port)
+            port = it.free_port()
             assert it.run_test(cfg, f"--distribution-version=\"{dist}\" --workload=\"{workload}\" "
-                                f"--test-mode --cluster-config=4gheap --target-hosts=127.0.0.1:{port}") == 0
+                                f"--test-mode --cluster-config=4gheap --solr-port={port}") == 0
 
 
 @it.random_benchmark_config
 def test_docker_distribution(cfg):
-    port = 19200
     # only test the most recent Docker distribution
     dist = it.DISTRIBUTIONS[-1]
-    it.wait_until_port_is_free(port_number=port)
+    port = it.free_port()
     assert it.run_test(cfg, f"--pipeline=\"docker\" --distribution-version=\"{dist}\" "
                         f"--workload=\"geonames\" --test-procedure=\"append-no-conflicts-index-only\" --test-mode "
-                        f"--cluster-config=4gheap --target-hosts=127.0.0.1:{port}") == 0
+                        f"--cluster-config=4gheap --solr-port={port}") == 0

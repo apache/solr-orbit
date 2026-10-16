@@ -596,6 +596,13 @@ def create_arg_parser():
              "Example: --solr-modules=analytics,extraction",
         default="")
     test_run_parser.add_argument(
+        "--solr-port",
+        type=positive_number,
+        help="The HTTP port Solr should listen on for the pipelines that provision it "
+             "(docker, from-distribution, from-sources). Useful when the default is "
+             "already taken (default: 8983).",
+        default=None)
+    test_run_parser.add_argument(
         "--plugin-params",
         help="Define a comma-separated list of key:value pairs that are injected verbatim to all plugins as variables.",
         default=""
@@ -1086,6 +1093,9 @@ def configure_builder_params(args, cfg, command_requires_cluster_config=True):
         "cluster_config.params", opts.to_dict(
             args.cluster_config_params))
         cfg.add(config.Scope.applicationOverride, "solr", "modules", getattr(args, "solr_modules", ""))
+        solr_port = getattr(args, "solr_port", None)
+        if solr_port:
+            cfg.add(config.Scope.applicationOverride, "solr", "port", solr_port)
         pipeline = getattr(args, "pipeline", None)
         if pipeline == "benchmark-only" and args.cluster_config != "defaults":
             raise SystemExit(

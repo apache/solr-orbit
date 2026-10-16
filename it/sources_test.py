@@ -29,13 +29,16 @@ import it
 
 @it.random_benchmark_config
 def test_sources(cfg):
-    port = 19200
-    it.wait_until_port_is_free(port_number=port)
-    assert it.run_test(cfg, f"--pipeline=from-sources --revision=latest \
-                           --workload=geonames --test-mode  --target-hosts=127.0.0.1:{port} "
+    port = it.free_port()
+    # analysis-extras is Solr's home for the ICU analysis components that the
+    # OpenSearch analysis-icu plugin provided, so this keeps the test's intent:
+    # build from source with an extra module enabled.
+    assert it.run_test(cfg, f"--pipeline=from-sources --revision=latest "
+                        f"--workload=geonames --test-mode "
                         f"--test-procedure=append-no-conflicts --cluster-config=4gheap "
-                        f"--opensearch-plugins=analysis-icu") == 0
+                        f"--solr-modules=analysis-extras --solr-port={port}") == 0
 
-    it.wait_until_port_is_free(port_number=port)
-    assert it.run_test(cfg, f"--pipeline=from-sources --workload=geonames --test-mode --target-hosts=127.0.0.1:{port} "
-                        f"--test-procedure=append-no-conflicts-index-only --cluster-config=\"4gheap,ea\"") == 0
+    port = it.free_port()
+    assert it.run_test(cfg, f"--pipeline=from-sources --workload=geonames --test-mode "
+                        f"--test-procedure=append-no-conflicts-index-only --cluster-config=\"4gheap,ea\" "
+                        f"--solr-port={port}") == 0
