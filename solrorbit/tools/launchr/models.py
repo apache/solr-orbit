@@ -16,7 +16,7 @@
 # limitations under the License.
 """The dataclasses launchr's components exchange.
 
-These are the plan's shared contracts in code form. Three groups:
+These are the plan's shared contracts in code form, in groups:
 
 * **Identity and configuration** -- :class:`ProfileSpec`, :class:`ClusterConfigSpec`,
   :class:`WorkloadSpec`, :class:`MatrixCell`.
@@ -301,6 +301,19 @@ class SolrDeployment:
 
     #: Read timeout in seconds for the driver's HTTP calls to Solr.
     client_timeout: int = DEFAULT_CLIENT_TIMEOUT
+
+    #: Where *launchr* reaches Solr, when that differs from where the driver
+    #: does. On EC2 they are different machines on different networks: the
+    #: driver uses the private address, because routing load over the public
+    #: interface would measure the internet gateway rather than Solr, while
+    #: the orchestrator sits outside the VPC entirely and can only use the
+    #: public one. Empty means "the same as endpoints", which is the local case.
+    admin_endpoints: list[SolrEndpoint] = field(default_factory=list)
+
+    @property
+    def probe_endpoints(self) -> list[SolrEndpoint]:
+        """Where to health-check from wherever the orchestrator is running."""
+        return self.admin_endpoints or self.endpoints
 
     @property
     def target_hosts(self) -> str:

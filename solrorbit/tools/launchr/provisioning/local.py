@@ -69,6 +69,7 @@ class LocalProvisioning:
 
     API_VERSION: ClassVar[int] = 1
     name: ClassVar[str] = "local"
+    creates_infrastructure: ClassVar[bool] = False
 
     def provision(self, profile: ProfileSpec, *, nodes: int) -> ProvisionedInfra:
         if nodes != 1:

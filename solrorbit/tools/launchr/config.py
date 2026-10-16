@@ -70,7 +70,7 @@ BUILT_IN: dict[str, Any] = {
     "nightly_registry": "docker.io/apache/solr-nightly",
     # Empty means "decide when the config is loaded", so BENCHMARK_HOME is read
     # at the moment it matters rather than frozen at import.
-    "storage": {"backend": "local", "path": ""},
+    "storage": {"backend": "local", "path": "", "options": {}},
     "provisioning_profiles": {
         "local-docker": {
             "provisioning": "local",
@@ -92,6 +92,11 @@ BUILT_IN: dict[str, Any] = {
         "user_tags": {},
     },
     "versions": {"cache": "~/.launchr/version-cache.json", "offline": False},
+    # Overrides launchr writes into Solr Orbit's own benchmark.ini on a remote
+    # driver, as {section: {key: value}}. Merged over Solr Orbit's bundled
+    # defaults, so only what differs needs stating. Never applied to a local
+    # run: that would rewrite the operator's own configuration.
+    "orbit_config": {},
 }
 
 #: Setting path -> environment variable. Only settings with a CLI flag get one,
@@ -159,8 +164,22 @@ class LaunchrConfig:
         return str(self.data["storage"]["path"])
 
     @property
+    def storage_options(self) -> Mapping[str, Any]:
+        """Backend-specific settings, e.g. an S3 region or credentials profile.
+
+        Never a credential itself -- ``_reject_credentials`` runs over this
+        block like every other, so a secret key pasted here fails the load.
+        """
+        return self.data["storage"].get("options") or {}
+
+    @property
     def benchmark(self) -> Mapping[str, Any]:
         return self.data["benchmark"]
+
+    @property
+    def orbit_config(self) -> Mapping[str, Any]:
+        """Overrides for Solr Orbit's benchmark.ini on a remote driver."""
+        return self.data.get("orbit_config") or {}
 
     @property
     def version_cache_path(self) -> str | None:
@@ -323,6 +342,8 @@ def load(config_path: str | os.PathLike | None = None, *, env: Mapping[str, str]
         data["storage"]["path"] = default_storage_path(environ)
         provenance.record("storage.path", "default")
 
+    _reconcile_storage_scheme(data, provenance)
+
     config = LaunchrConfig(data=data, provenance=provenance, config_path=resolved_path)
     validate(config)
     return config
@@ -421,6 +442,45 @@ def validate(config: LaunchrConfig) -> None:
             "benchmark.aggregate is true, but this phase runs a single iteration "
             "and cannot aggregate. Remove the setting; see the plan's Appendix B."
         )
+
+
+#: Storage path prefix -> the backend that reads it. A URI scheme says which
+#: backend is meant with no ambiguity, so requiring both to be set by hand only
+#: creates a way to set them inconsistently.
+_SCHEMES = {"s3://": "s3"}
+
+
+def _reconcile_storage_scheme(data: dict, provenance: Provenance) -> None:
+    """Infer ``storage.backend`` from the path's URI scheme, or reject a clash.
+
+    ``--storage-path s3://bucket/prefix`` is unambiguous; making the caller also
+    pass ``--storage s3`` would add nothing but a way to contradict themselves.
+    An explicit backend that disagrees with the scheme is an error rather than a
+    silent preference, because either reading could be the intended one.
+    """
+    path = str(data["storage"].get("path") or "")
+    implied = next((backend for prefix, backend in _SCHEMES.items() if path.startswith(prefix)), None)
+    configured = str(data["storage"].get("backend") or "local")
+
+    if implied is None:
+        if configured in _SCHEMES.values():
+            raise ConfigError(
+                f"storage.backend is {configured!r} but storage.path is {path!r}, which is not a "
+                f"{configured} URI. Expected a path starting with "
+                f"{next(p for p, b in _SCHEMES.items() if b == configured)!r}."
+            )
+        return
+
+    if configured == implied:
+        return
+    if provenance.of("storage.backend") == "built-in default":
+        data["storage"]["backend"] = implied
+        provenance.record("storage.backend", f"inferred from the {path.split('://')[0]}:// path")
+        return
+    raise ConfigError(
+        f"storage.backend is {configured!r} but storage.path {path!r} is a {implied} URI. "
+        f"Set one or the other, not both differently."
+    )
 
 
 def _reject_credentials(data: Any, path: str = "") -> None:

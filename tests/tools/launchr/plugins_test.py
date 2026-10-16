@@ -21,6 +21,8 @@ every registered plugin, so a new one cannot quietly break the orchestrator's
 assumptions about teardown and undeploy being safe in any state.
 """
 
+import inspect
+
 import pytest
 
 from solrorbit.tools.launchr import install as install_module
@@ -39,21 +41,36 @@ from solrorbit.tools.launchr.provisioning.base import ProvisioningStrategy
 from solrorbit.tools.launchr.storage.base import StorageBackend
 
 
+#: Strategies a unit test may call provision() on, because doing so creates
+#: nothing. Split by the strategy's own declaration rather than by name, so a
+#: new paid strategy is excluded automatically instead of by remembering.
+FREE_STRATEGIES = [
+    n for n in provisioning_module.available()
+    if not provisioning_module.REGISTRY[n].creates_infrastructure
+]
+PAID_STRATEGIES = [
+    n for n in provisioning_module.available()
+    if provisioning_module.REGISTRY[n].creates_infrastructure
+]
+
+
 class TestRegistries:
-    def test_phase_one_provisioning_strategies(self):
-        assert provisioning_module.available() == ["local", "preconfigured"]
+    def test_registered_provisioning_strategies(self):
+        assert provisioning_module.available() == ["ec2", "local", "preconfigured"]
 
-    def test_phase_one_install_methods(self):
-        assert install_module.available() == ["docker", "none"]
+    def test_registered_install_methods(self):
+        assert install_module.available() == ["docker", "docker-ssh", "none"]
 
-    def test_phase_one_storage_backends(self):
-        assert storage_module.available() == ["local"]
+    def test_registered_storage_backends(self):
+        assert storage_module.available() == ["local", "s3"]
 
     def test_unknown_names_list_the_alternatives(self):
-        with pytest.raises(ConfigError, match="local, preconfigured"):
+        with pytest.raises(ConfigError, match="ec2, local, preconfigured"):
             provisioning_module.get_strategy("pulumi-ec2")
-        with pytest.raises(ConfigError, match="docker, none"):
-            install_module.get_install_method("docker-ssh")
+        with pytest.raises(ConfigError, match="local, s3"):
+            storage_module.get_backend("gcs", "/tmp/x")
+        with pytest.raises(ConfigError, match="docker, docker-ssh, none"):
+            install_module.get_install_method("podman")
 
     def test_install_methods_ignore_keywords_they_do_not_want(self):
         # NoOpInstall takes no registry; passing one must not be an error.
@@ -81,16 +98,30 @@ class TestProtocolConformance:
 
     @pytest.mark.parametrize("name", storage_module.available())
     def test_storage_backends_satisfy_the_protocol(self, name, tmp_path):
-        backend = storage_module.get_backend(name, str(tmp_path))
+        # Each backend needs a path it can actually parse; a bucket URI is not
+        # a filesystem path and vice versa.
+        path = "s3://solr-orbit/prefix" if name == "s3" else str(tmp_path)
+        backend = storage_module.get_backend(name, path)
         assert isinstance(backend, StorageBackend)
         assert backend.name == name
-        assert backend.API_VERSION == 1
+        # Against the Protocol's own number, so bumping the contract does not
+        # mean editing a literal in a test that is checking conformance to it.
+        assert backend.API_VERSION == StorageBackend.API_VERSION
+
+    @pytest.mark.parametrize("name", storage_module.available())
+    def test_storage_backends_accept_a_content_type(self, name, tmp_path):
+        # Part of the v2 contract: a backend serving HTTP needs it, and one
+        # that does not must still accept and ignore it.
+        path = "s3://solr-orbit/prefix" if name == "s3" else str(tmp_path)
+        backend = storage_module.get_backend(name, path)
+        signature = inspect.signature(backend.write)
+        assert "content_type" in signature.parameters
 
 
 class TestTeardownSafety:
     """Teardown runs in a ``finally``; it must never raise, in any state."""
 
-    @pytest.mark.parametrize("name", provisioning_module.available())
+    @pytest.mark.parametrize("name", FREE_STRATEGIES)
     def test_teardown_is_idempotent(self, name):
         strategy = provisioning_module.get_strategy(name)
         profile = ProfileSpec(name="p", provisioning=name, install_method="none",
@@ -98,6 +129,26 @@ class TestTeardownSafety:
         infra = strategy.provision(profile, nodes=1)
         strategy.teardown(infra)
         strategy.teardown(infra)  # twice is fine
+
+    @pytest.mark.parametrize("name", PAID_STRATEGIES)
+    def test_teardown_of_never_provisioned_infrastructure_is_a_no_op(self, name):
+        # The paid strategies cannot have provision() called in a unit test,
+        # so their teardown is exercised against infrastructure that was never
+        # built -- which is also the real case this must survive: a crash
+        # between config load and the first API call.
+        strategy = provisioning_module.get_strategy(name)
+        profile = ProfileSpec(name="p", provisioning=name, install_method="none")
+        infra = ProvisionedInfra(profile=profile, strategy=name, install_method="none")
+        strategy.teardown(infra)
+        strategy.teardown(infra)
+
+    def test_every_strategy_declares_whether_it_spends_money(self):
+        # The parametrised tests above split on this flag, so a new strategy
+        # that forgets it would silently join the free group and have
+        # provision() called on it by the test suite.
+        for name in provisioning_module.available():
+            strategy = provisioning_module.get_strategy(name)
+            assert isinstance(strategy.creates_infrastructure, bool), name
 
     @pytest.mark.parametrize("name", install_module.available())
     def test_undeploy_without_a_deploy_is_a_no_op(self, name):

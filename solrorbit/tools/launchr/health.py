@@ -37,19 +37,29 @@ from solrorbit.tools.launchr.models import SolrEndpoint, SystemInfo
 
 logger = logging.getLogger(__name__)
 
-#: ``solr-impl-version`` looks like::
+#: ``solr-impl-version`` comes in two shapes. A release build::
 #:
 #:     9.11.0 abc1234def - jenkins - 2026-02-14 11:02:31
 #:     ^^^^^^ ^^^^^^^^^^   ^^^^^^^   ^^^^^^^^^^^^^^^^^^^
 #:     version  commit     builder    build timestamp
 #:
+#: and a nightly, which stops after the commit::
+#:
+#:     11.0.0-SNAPSHOT 714d6ceff852e6dc... [snapshot build, details omitted]
+#:
+#: Everything after the commit is therefore optional. It has to be: an
+#: all-or-nothing pattern threw away the nightly's commit hash as well as its
+#: absent timestamp, and the commit is the single most useful thing to know
+#: about a nightly -- it is what says *which* main this was.
+#:
 #: The builder field is free text, so it is matched non-greedily and the
-#: timestamp is anchored to the end.
+#: timestamp is anchored to the end of that optional group.
 _IMPL_VERSION = re.compile(
     r"^(?P<version>\S+)\s+"
-    r"(?P<commit>[0-9a-fA-F]{7,40})\s+-\s+"
-    r"(?P<builder>.*?)\s+-\s+"
-    r"(?P<timestamp>\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})\s*$"
+    r"(?P<commit>[0-9a-fA-F]{7,40})\b"
+    r"(?:\s+-\s+(?P<builder>.*?)\s+-\s+"
+    r"(?P<timestamp>\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})\s*)?"
+    r".*$"
 )
 
 SYSTEM_INFO_PATH = "/solr/admin/info/system"
@@ -58,20 +68,24 @@ SYSTEM_INFO_PATH = "/solr/admin/info/system"
 def parse_impl_version(impl_version: str) -> tuple[str | None, datetime | None]:
     """Pull the commit hash and build timestamp out of ``solr-impl-version``.
 
-    Returns ``(None, None)`` for a string that does not match -- a locally built
-    image may carry anything here, and that is not a reason to fail a benchmark.
+    Either half may be absent and the other still useful: a nightly carries a
+    commit but no timestamp. Returns ``(None, None)`` only for a string that
+    does not match at all -- a locally built image may carry anything here,
+    and that is not a reason to fail a benchmark.
     """
     match = _IMPL_VERSION.match(impl_version.strip()) if impl_version else None
     if not match:
         logger.debug("Could not parse solr-impl-version %r", impl_version)
         return None, None
-    raw = match.group("timestamp").replace(" ", "T")
-    try:
-        # Solr writes this in UTC without a zone designator.
-        stamp = datetime.fromisoformat(raw).replace(tzinfo=timezone.utc)
-    except ValueError:
-        logger.debug("Could not parse build timestamp out of %r", impl_version)
-        stamp = None
+
+    stamp = None
+    raw = match.group("timestamp")
+    if raw:
+        try:
+            # Solr writes this in UTC without a zone designator.
+            stamp = datetime.fromisoformat(raw.replace(" ", "T")).replace(tzinfo=timezone.utc)
+        except ValueError:
+            logger.debug("Could not parse build timestamp out of %r", impl_version)
     return match.group("commit"), stamp
 
 
@@ -136,3 +150,65 @@ def probe(endpoint: SolrEndpoint, *, timeout: float = 120.0, interval: float = 2
     logger.info("Solr at %s is ready: version=%s commit=%s mode=%s",
                 endpoint, info.solr_version or "?", info.commit or "?", info.mode)
     return info
+
+
+#: Where SolrCloud reports which nodes are currently in the cluster.
+CLUSTER_STATUS_PATH = "/solr/admin/collections?action=CLUSTERSTATUS&wt=json"
+
+
+def live_nodes(endpoint: SolrEndpoint, *, timeout: float = 10.0) -> list[str]:
+    """The nodes SolrCloud currently considers live, as ``host:port_solr``."""
+    url = f"{endpoint.base_url}{CLUSTER_STATUS_PATH}"
+    response = requests.get(url, timeout=timeout, verify=endpoint.verify_certs)
+    response.raise_for_status()
+    cluster = response.json().get("cluster") or {}
+    return [str(n) for n in cluster.get("live_nodes") or []]
+
+
+def probe_cluster(endpoints: list[SolrEndpoint], *, expected_nodes: int | None = None,
+                  timeout: float = 120.0, interval: float = 2.0,
+                  require_cloud: bool = True) -> SystemInfo:
+    """Wait for every node to answer, and for the cluster to have formed.
+
+    Probing only the first endpoint is not enough once a profile asks for more
+    than one node. A second Solr that failed to reach ZooKeeper leaves the
+    first one perfectly healthy and alone, and the benchmark would then run
+    against a one-node cluster while the report claimed two -- a wrong number
+    that looks entirely plausible, which is the worst kind.
+
+    Returns the first node's :class:`SystemInfo`, which is what the report
+    records: the nodes are identical by construction, so one answer describes
+    the cluster.
+    """
+    if not endpoints:
+        raise DeployError("No Solr endpoints to probe")
+
+    deadline = time.monotonic() + timeout
+    info = probe(endpoints[0], timeout=timeout, interval=interval, require_cloud=require_cloud)
+    for endpoint in endpoints[1:]:
+        remaining = max(10.0, deadline - time.monotonic())
+        probe(endpoint, timeout=remaining, interval=interval, require_cloud=require_cloud)
+
+    wanted = expected_nodes if expected_nodes is not None else len(endpoints)
+    if wanted < 2:
+        return info
+
+    last_seen: list[str] = []
+    while True:
+        try:
+            last_seen = live_nodes(endpoints[0])
+            if len(last_seen) >= wanted:
+                logger.info("Cluster has formed with %d live node(s): %s",
+                            len(last_seen), ", ".join(sorted(last_seen)))
+                return info
+        except Exception as exc:  # noqa: BLE001 - not formed yet, or an older API
+            logger.debug("Could not read live nodes: %s", exc)
+        if time.monotonic() >= deadline:
+            raise DeployError(
+                f"Solr answered on every node, but the cluster reported "
+                f"{len(last_seen)} live node(s) rather than {wanted} within {timeout:.0f}s "
+                f"(saw: {', '.join(sorted(last_seen)) or 'none'}). A node that cannot reach "
+                f"ZooKeeper leaves the others healthy and alone, so benchmarking now would "
+                f"measure a smaller cluster than the report claims."
+            )
+        time.sleep(interval)

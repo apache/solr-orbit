@@ -89,9 +89,19 @@ class TestConfig:
         assert config.storage_backend == "local"
         assert "throughput.mean" in config.metrics
 
-    def test_a_cloud_backend_is_refused_for_now(self, tmp_path, monkeypatch):
+    def test_s3_is_accepted(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
-        with pytest.raises(ConfigError, match="local filesystem only"):
+        config = config_module.load(None, overrides={"storage.path": "s3://solr-orbit/v1"})
+        assert (config.storage_backend, config.storage_path) == ("s3", "s3://solr-orbit/v1")
+
+    def test_an_unknown_backend_lists_the_alternatives(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(ConfigError, match="local, s3"):
+            config_module.load(None, overrides={"storage.backend": "gcs"})
+
+    def test_a_backend_contradicting_the_path_is_rejected(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(ConfigError, match="not a s3 URI"):
             config_module.load(None, overrides={"storage.backend": "s3"})
 
     def test_an_unlisted_workload_charts_every_task(self, tmp_path, monkeypatch):

@@ -96,8 +96,17 @@ class FakeStrategy:
         invocation.log_path.write_bytes(b"solr-orbit output\n")
         report = self.orbit_report
         if report is None and self.orbit_returncode == 0:
+            # op_metrics must be non-empty: a report without any is a skeleton
+            # Solr Orbit writes when a run dies early, and the orchestrator
+            # rejects it. An empty one here made the whole harness exercise a
+            # shape that is never a successful cell in reality.
             report = {"workload": "w", "test-run-id": invocation.test_run_id,
-                      "workload-revision": "0b99cd0", "results": {"op_metrics": []}}
+                      "workload-revision": "0b99cd0",
+                      "results": {"op_metrics": [
+                          {"task": "index", "operation": "index",
+                           "throughput": {"mean": 1000.0},
+                           "service_time": {"mean": 1.0, "50_0": 1.0}},
+                      ]}}
         return OrbitResult(
             returncode=self.orbit_returncode,
             test_run_id=invocation.test_run_id,
@@ -168,7 +177,11 @@ def harness(monkeypatch, journal, tmp_path):
               benchmark=None):
         strategy = FakeStrategy(journal, **(strategy_kwargs or {}))
         install = FakeInstall(journal, **(install_kwargs or {}))
-        monkeypatch.setattr(orchestrator, "get_strategy", lambda name: strategy)
+        # **kw, because the orchestrator passes storage and session_id so a
+        # strategy that creates billable infrastructure can record a ledger
+        # entry. A fake that refuses them would make this harness the only
+        # caller with a different contract.
+        monkeypatch.setattr(orchestrator, "get_strategy", lambda name, **kw: strategy)
         monkeypatch.setattr(orchestrator, "get_install_method", lambda name, **kw: install)
 
         document = {
@@ -251,7 +264,9 @@ class TestHappyPath:
         assert block["solr"]["commit"] == "abc1234"
         assert block["solr"]["version_timestamp_source"] == "apache-releases"
         assert block["cluster_config"]["applied_env"]["SOLR_HEAP"] == "1g"
-        assert document["results"]["op_metrics"] == []
+        # Solr Orbit's own results pass through untouched; launchr only adds
+        # its block alongside them.
+        assert [m["task"] for m in document["results"]["op_metrics"]] == ["index"]
 
     def test_infrastructure_is_provisioned_once_for_many_cells(self, harness, journal):
         session, _, _ = harness(versions=("9.0.0", "9.7.0", "9.11.0"))
@@ -420,3 +435,30 @@ class TestTeardownRobustness:
 
         install.undeploy = angry_undeploy
         assert session.run() == 0
+
+
+class TestEmptyReports:
+    """A report with no task metrics is a skeleton, not a result.
+
+    Solr Orbit writes one when a run dies early: the file exists, parses, and
+    carries the cluster's version, so every structural check passes and the
+    cell looks completed. It reaches storage, reportr skips it for having
+    nothing to plot, and the published benchmark has an unexplained hole.
+    """
+
+    def test_a_report_with_no_op_metrics_is_rejected(self):
+        from solrorbit.tools.launchr.errors import BenchmarkError
+
+        raw = b'{"workload": "nyc_taxis", "results": {"op_metrics": []}}'
+        with pytest.raises(BenchmarkError, match="no task metrics"):
+            orchestrator._parse_report(raw)
+
+    def test_a_report_with_no_results_block_is_rejected(self):
+        from solrorbit.tools.launchr.errors import BenchmarkError
+
+        with pytest.raises(BenchmarkError, match="no task metrics"):
+            orchestrator._parse_report(b'{"workload": "nyc_taxis"}')
+
+    def test_a_report_with_metrics_is_accepted(self):
+        raw = b'{"workload": "nyc_taxis", "results": {"op_metrics": [{"task": "index"}]}}'
+        assert orchestrator._parse_report(raw)["workload"] == "nyc_taxis"

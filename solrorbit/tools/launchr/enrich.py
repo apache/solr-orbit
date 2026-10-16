@@ -96,9 +96,10 @@ def build_block(*, cell: MatrixCell, outcome: RunOutcome, cluster_config: Resolv
     if infra_metadata:
         infra.update(infra_metadata)
     # What the *install method* recorded, as opposed to what provisioning did:
-    # the image, and on a multi-node cluster which node is also running
-    # ZooKeeper -- an asymmetry a reader comparing nodes should not have to
-    # discover by reading launchr's source.
+    # the image, the network mode, and on a multi-node cluster which node is
+    # also running ZooKeeper. That last one is an asymmetry between otherwise
+    # identical nodes, and a reader comparing them should not have to discover
+    # it by reading launchr's source.
     if deployment is not None and deployment.metadata:
         infra["deployment"] = dict(deployment.metadata)
 

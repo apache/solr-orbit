@@ -4,9 +4,11 @@
 # Docker container, results under ~/.solr-orbit, three versions of one
 # workload so the resulting chart has a real trend line rather than a dot.
 #
-# It is deliberately NOT the production configuration. The nightly benchmark
+# It is deliberately NOT the production configuration. A scheduled benchmark
 # passes its own file with --config: cloud storage, dedicated hardware
-# profiles, and repeated iterations for statistical confidence.
+# profiles, and repeated iterations for statistical confidence. See
+# examples/launchr-ec2.yaml for one, and examples/README.md for what to change
+# in it.
 #
 # Every value here can be overridden from the command line or the environment,
 # with CLI flags winning over environment variables winning over this file.

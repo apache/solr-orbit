@@ -69,7 +69,8 @@ class Session:
         self.config = config
         self.session_id = session_id or new_session_id()
         self.started_at = datetime.now(timezone.utc)
-        self.storage = get_backend(config.storage_backend, config.storage_path)
+        self.storage = get_backend(config.storage_backend, config.storage_path,
+                                   dict(config.storage_options))
         self.timeline = VersionTimeline(
             VersionCache(config.version_cache_path), offline=config.offline
         )
@@ -115,7 +116,15 @@ class Session:
         return 0
 
     def _run_group(self, group: ProfileGroup, *, start_index: int, total: int) -> int:
-        strategy = get_strategy(group.profile.provisioning)
+        # A strategy that creates billable infrastructure needs both: the
+        # session id names its resources, and storage holds the ledger that
+        # makes a leak findable later. Strategies that create nothing ignore
+        # them.
+        strategy = get_strategy(
+            group.profile.provisioning, storage=self.storage, session_id=self.session_id,
+            orbit_config=dict(self.config.orbit_config),
+            workloads=sorted({c.workload for c in group.cells}),
+        )
         index = start_index
         infra: ProvisionedInfra | None = None
 
@@ -173,8 +182,10 @@ class Session:
                 lambda: install.deploy(infra, cell.solr_version, None, cluster_config),
                 what=f"deploying Solr {cell.solr_version}",
             )
-            system_info = health.probe(
-                deployment.endpoints[0], timeout=float(infra.profile.startup_timeout)
+            system_info = health.probe_cluster(
+                deployment.probe_endpoints,
+                expected_nodes=len(deployment.endpoints),
+                timeout=float(infra.profile.startup_timeout),
             )
             deployment.system_info = system_info
             self._check_version(cell, system_info, managed=infra.install_method != "none")
@@ -413,6 +424,29 @@ def _json_bytes(document: dict) -> bytes:
     return json.dumps(document, indent=2, sort_keys=False, default=str).encode("utf-8")
 
 
+def _image_timestamp(deployment: SolrDeployment | None) -> datetime | None:
+    """When the deployed container image was built, if the install method said.
+
+    The last-resort x-axis position, and the only one a nightly has.
+    """
+    raw = (deployment.metadata or {}).get("image_created") if deployment else None
+    if not raw:
+        return None
+    try:
+        # Docker reports RFC-3339 with nanoseconds, which fromisoformat
+        # rejects before 3.11 and tolerates after; truncate to microseconds so
+        # the behaviour does not depend on the interpreter.
+        text = str(raw).replace("Z", "+00:00")
+        if "." in text:
+            head, _, tail = text.partition(".")
+            fraction, sign, offset = tail.partition("+")
+            text = f"{head}.{fraction[:6]}" + (f"{sign}{offset}" if sign else "")
+        return datetime.fromisoformat(text)
+    except ValueError:
+        logger.debug("Could not parse the container image build date %r", raw)
+        return None
+
+
 def _parse_report(raw: bytes | None) -> dict:
     import json
 
@@ -424,6 +458,22 @@ def _parse_report(raw: bytes | None) -> dict:
         raise BenchmarkError(f"Solr Orbit's report is not valid JSON: {exc}") from exc
     if not isinstance(report, dict):
         raise BenchmarkError("Solr Orbit's report is not a JSON object")
+
+    # A report with no task metrics is a skeleton, not a result. Solr Orbit
+    # writes one when a run dies early -- the file exists, parses, and carries
+    # the cluster's version, so every structural check passes and the cell
+    # looks completed. It then reaches storage, and reportr quietly skips it
+    # for having nothing to plot, which is the point at which somebody has to
+    # work out why a published benchmark has a hole in it.
+    #
+    # Failing here instead means the cell is recorded as failed, with its logs
+    # kept beside the report, which is what a reader needs.
+    metrics = ((report.get("results") or {}).get("op_metrics")) or []
+    if not metrics:
+        raise BenchmarkError(
+            "Solr Orbit's report contains no task metrics, so the benchmark did not run. "
+            "Its output is in the stored logs/ directory."
+        )
     return report
 
 

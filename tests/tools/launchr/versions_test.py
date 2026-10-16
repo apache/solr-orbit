@@ -187,3 +187,68 @@ class TestOfflineBehaviour:
                             lambda **kw: (_ for _ in ()).throw(ConnectionError("down")))
         timeline = versions.VersionTimeline(versions.VersionCache(cache_path))
         assert timeline.resolve("9.11.0", system_info()).source == versions.SOURCE_INFO_SYSTEM
+
+
+class TestContainerImageFallback:
+    """A nightly has no other x-axis position.
+
+    It is not in the Apache release list, and its solr-impl-version reads
+    "[snapshot build, details omitted]" with no date. Before this fallback a
+    nightly cell simply failed, which is what the first real SNAPSHOT run on
+    EC2 hit.
+    """
+
+    @pytest.fixture
+    def timeline(self, tmp_path):
+        return versions.VersionTimeline(
+            versions.VersionCache(str(tmp_path / "cache.json")), offline=True)
+
+    @staticmethod
+    def _snapshot_info():
+        return SystemInfo(
+            solr_version="11.0.0",
+            solr_impl_version="11.0.0-SNAPSHOT 714d6cef [snapshot build, details omitted]",
+            commit="714d6cef", build_timestamp=None, mode="solrcloud",
+        )
+
+    def test_a_snapshot_is_placed_at_its_image_build_date(self, timeline):
+        built = datetime(2026, 10, 16, 3, 12, 44, tzinfo=timezone.utc)
+        info = timeline.resolve("11.0.0-SNAPSHOT", self._snapshot_info(), image_timestamp=built)
+        assert info.timestamp == built
+        assert info.source == versions.SOURCE_IMAGE
+
+    def test_the_source_is_recorded_so_a_reader_can_tell(self, timeline):
+        # A chart point derived from an image build date is a weaker claim
+        # than one from the release list, and the report has to say which.
+        info = timeline.resolve("11.0.0-SNAPSHOT", self._snapshot_info(),
+                                image_timestamp=datetime(2026, 10, 16, tzinfo=timezone.utc))
+        assert info.source == "container-image"
+        assert info.kind == versions.KIND_SNAPSHOT
+        assert info.commit == "714d6cef"
+
+    def test_a_naive_timestamp_is_treated_as_utc(self, timeline):
+        info = timeline.resolve("11.0.0-SNAPSHOT", self._snapshot_info(),
+                                image_timestamp=datetime(2026, 10, 16, 3, 12, 44))
+        assert info.timestamp.tzinfo is not None
+
+    def test_the_build_timestamp_still_wins_when_there_is_one(self, timeline):
+        built = datetime(2026, 2, 14, 11, 2, 31, tzinfo=timezone.utc)
+        info = timeline.resolve(
+            "9.99.0-SNAPSHOT",
+            SystemInfo(solr_version="9.99.0", solr_impl_version="x", commit="c",
+                       build_timestamp=built, mode="solrcloud"),
+            image_timestamp=datetime(2026, 10, 16, tzinfo=timezone.utc),
+        )
+        assert info.timestamp == built
+        assert info.source == versions.SOURCE_INFO_SYSTEM
+
+    def test_an_explicit_override_still_beats_everything(self, timeline):
+        forced = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        info = timeline.resolve("11.0.0-SNAPSHOT", self._snapshot_info(),
+                                override_timestamp=forced,
+                                image_timestamp=datetime(2026, 10, 16, tzinfo=timezone.utc))
+        assert (info.timestamp, info.source) == (forced, versions.SOURCE_EXPLICIT)
+
+    def test_without_any_source_it_still_fails_loudly(self, timeline):
+        with pytest.raises(versions.VersionResolutionError, match="container image build date"):
+            timeline.resolve("11.0.0-SNAPSHOT", self._snapshot_info())

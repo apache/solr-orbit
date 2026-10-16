@@ -28,10 +28,10 @@ import argparse
 import json
 import logging
 import sys
-from pathlib import Path
 
+from solrorbit.tools.launchr import storage
 from solrorbit.tools.launchr.errors import LaunchrError
-from solrorbit.tools.reportr import __version__, builder, extract, serve
+from solrorbit.tools.reportr import __version__, builder, extract, publish as publish_module, serve
 from solrorbit.tools.reportr import config as config_module
 
 PROGRAM = "reportr"
@@ -58,6 +58,16 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--port", type=int, default=8080, help="Port for --serve (default: 8080).")
     build.add_argument("--open", dest="open_browser", action="store_true",
                        help="Open the site in a browser after building.")
+    build.add_argument("--publish", metavar="DEST", nargs="?", const="",
+                       help="Publish the site after building, to DEST or to site.publish_to.")
+
+    publish = sub.add_parser("publish", help="Upload an already-built site")
+    _add_common(publish)
+    publish.add_argument("--out", metavar="DIR", help="The built site to upload (default: ./site-output).")
+    publish.add_argument("--to", metavar="DEST",
+                         help="s3://bucket/prefix or a directory (default: site.publish_to).")
+    publish.add_argument("--dry-run", action="store_true",
+                         help="List what would be uploaded, upload nothing.")
 
     metrics = sub.add_parser("metrics", help="List the metric keys the reports could supply")
     _add_common(metrics)
@@ -71,8 +81,10 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
                         help=f"Config file (default: ./{config_module.DEFAULT_CONFIG_FILE} if present).")
     parser.add_argument("--local", metavar="DIR",
                         help="Read reports from this directory (shorthand for a local storage path).")
-    parser.add_argument("--storage", dest="storage_backend", help="Storage backend (local).")
-    parser.add_argument("--storage-path", help="Storage root.")
+    parser.add_argument("--storage", dest="storage_backend",
+                        help=f"Storage backend ({', '.join(storage.available())}). "
+                             f"Inferred from an s3:// storage path.")
+    parser.add_argument("--storage-path", help="Storage root, e.g. s3://bucket/prefix.")
 
 
 def _overrides(args: argparse.Namespace) -> dict:
@@ -113,11 +125,58 @@ def cmd_build(args: argparse.Namespace) -> int:
         import webbrowser
 
         webbrowser.open(url)
+    destination = getattr(args, "publish", None)
+    if destination is not None:
+        code = _publish(config, result.out_dir, destination or config.publish_to)
+        if code:
+            return code
+
     if args.serve:
         serve.serve(result.out_dir, port=args.port)
     elif result.points:
         print(f"\nOpen it with:  reportr build --local {config.storage_path} --serve")
     return 0
+
+
+def _publish(config, site_dir, destination: str, *, dry_run: bool = False) -> int:
+    """Shared by `build --publish` and `publish`."""
+    if not destination:
+        print("Nothing to publish to: pass --to, or set site.publish_to in reportr.yaml.",
+              file=sys.stderr)
+        return 2
+    try:
+        store = storage.backend_for(destination, options=dict(config.storage_options))
+        written = publish_module.publish(site_dir, destination, backend=store, dry_run=dry_run)
+    except Exception as exc:  # noqa: BLE001 - the CLI reports, it does not traceback
+        print(f"Could not publish to {destination}: {exc}", file=sys.stderr)
+        return 1
+
+    verb = "Would publish" if dry_run else "Published"
+    print(f"\n{verb} {len(written)} file(s) to {destination}")
+    url = publish_module.entry_url(destination, _region_of(store, config))
+    if url and not dry_run:
+        print(f"Open it at:    {url}")
+    return 0
+
+
+def _region_of(store, config) -> str | None:
+    """The region to build a URL from.
+
+    Preferring the client's resolved region over the configured one matters:
+    the cross-region S3 endpoint answers a GET with a 307 to the regional one,
+    so a URL without the region works in a browser but not in `curl` or a
+    `fetch` that does not follow redirects.
+    """
+    configured = config.storage_options.get("region")
+    if configured:
+        return configured
+    client = getattr(store, "client", None)
+    return getattr(getattr(client, "meta", None), "region_name", None)
+
+
+def cmd_publish(args: argparse.Namespace) -> int:
+    config = config_module.load(args.config, overrides=_overrides(args))
+    return _publish(config, config.out_dir, args.to or config.publish_to, dry_run=args.dry_run)
 
 
 def cmd_metrics(args: argparse.Namespace) -> int:
@@ -128,21 +187,23 @@ def cmd_metrics(args: argparse.Namespace) -> int:
     and ``p100`` but no ``p99``.
     """
     config = config_module.load(args.config, overrides=_overrides(args))
-    reports = builder.find_reports(Path(config.storage_path).expanduser())
+    store = storage.backend_for(config.storage_path, config.storage_backend,
+                                dict(config.storage_options))
+    reports = builder.find_reports(store)
     if not reports:
-        print(f"No reports under {config.storage_path}/runs/.")
+        print(f"No reports under {store.location}/runs/.")
         return 0
 
     available: dict[str, int] = {}
     for path in reports:
         try:
-            report = json.loads(path.read_text(encoding="utf-8"))
-        except ValueError:
+            report = json.loads(store.read(path).decode("utf-8"))
+        except (ValueError, UnicodeDecodeError, LaunchrError):
             continue
         for metric in extract.metrics_in(report):
             available[metric] = available.get(metric, 0) + 1
 
-    print(f"{len(reports)} report(s) under {config.storage_path}/runs/\n")
+    print(f"{len(reports)} report(s) under {store.location}/runs/\n")
     print(f"{'metric':34s} present in")
     for metric, count in sorted(available.items()):
         marker = " *" if metric in config.metrics else ""
@@ -158,6 +219,7 @@ def cmd_version(_: argparse.Namespace) -> int:
 
 COMMANDS = {
     "build": cmd_build,
+    "publish": cmd_publish,
     "metrics": cmd_metrics,
     "version": cmd_version,
 }

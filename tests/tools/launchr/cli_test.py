@@ -125,8 +125,9 @@ class TestList:
     def test_plugins(self, capsys):
         assert cli.main(["list", "plugins"]) == 0
         out = capsys.readouterr().out
-        assert "local, preconfigured" in out
-        assert "docker, none" in out
+        assert "ec2, local, preconfigured" in out
+        assert "docker, docker-ssh, none" in out
+        assert "local, s3" in out
 
     def test_profiles_marks_the_defaults(self, workspace, capsys):
         cli.main(["list", "profiles"])

@@ -49,6 +49,14 @@ class ProvisioningStrategy(Protocol):
     #: The name this strategy is configured by, e.g. ``local``.
     name: ClassVar[str]
 
+    #: Whether :meth:`provision` creates real, billable resources.
+    #:
+    #: Declared rather than inferred so tests can refuse to call ``provision``
+    #: on a strategy that would spend money. A test suite that launches EC2
+    #: instances because someone parametrised over the registry is a mistake
+    #: worth making impossible rather than remembering not to make.
+    creates_infrastructure: ClassVar[bool] = False
+
     def provision(self, profile: ProfileSpec, *, nodes: int) -> ProvisionedInfra:
         """Create infrastructure for ``nodes`` Solr nodes.
 

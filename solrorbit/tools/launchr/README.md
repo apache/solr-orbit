@@ -11,34 +11,12 @@ website is `reportr`.
 
 Tracking issue: [apache/solr-orbit#98](https://github.com/apache/solr-orbit/issues/98).
 
-## Quick start
-
-Docker is the only prerequisite beyond a Solr Orbit install.
-
-```bash
-# See what would run, without running it. Offline and instant.
-launchr run --dry-run
-
-# A fast smoke run: 1000 documents per corpus instead of the full dataset.
-launchr run --versions 9.0.0,9.7.0,9.11.0 --workloads nyc_taxis --test-mode
-
-# The real thing. The full nyc_taxis corpus is 165 million documents, so this
-# takes hours per version and downloads tens of gigabytes the first time.
-launchr run --versions 9.0.0,9.7.0,9.11.0 --workloads nyc_taxis
-```
-
-Results land under `~/.solr-orbit/benchmark-results/`:
-
-```
-~/.solr-orbit/benchmark-results/
-├── runs/nyc_taxis/2026-10-15/run-a1b2c3/results.json
-├── runs/nyc_taxis/2026-10-15/run-d4e5f6/results.json
-├── runs/nyc_taxis/2026-10-15/run-g7h8i9/results.json
-└── summaries/2026-10-15-session-f00ba7.yaml
-```
-
-Three versions give three reports — and a chart with an actual slope rather than
-a single dot.
+> **User documentation lives in the docs site**, not here:
+> [Continuous Benchmarking](https://apache.github.io/solr-orbit/user-guide/continuous-benchmarking/)
+> for the guide, and the
+> [launchr Command Reference](https://apache.github.io/solr-orbit/reference/launchr-cli.html)
+> for flags and options. This file keeps only the design notes that are useful when reading the
+> source, and is deliberately not a second copy of the documentation.
 
 ## What a run does
 
@@ -55,74 +33,6 @@ each cell in the group:
 
 A cell that fails produces a report with `"status": "failed"` and its logs, and
 does not stop the next cell. Infrastructure is torn down whatever happens.
-
-## Commands
-
-| Command | What it does |
-|---------|--------------|
-| `launchr run` | Walk the matrix |
-| `launchr run --dry-run` | Print the plan and the exact `solr-orbit` command lines; run nothing |
-| `launchr validate-config` | Print the resolved configuration and where each value came from |
-| `launchr list profiles` | Configured provisioning profiles |
-| `launchr list cluster-configs` | Configured cluster configs, with the environment each applies |
-| `launchr list plugins` | Available provisioning strategies, install methods and storage backends |
-
-`--solr-port PORT` overrides the port on every provisioning profile, for when the
-default is taken by a Solr of your own:
-
-```bash
-launchr run --versions 9.11.0 --workloads nyc_taxis --solr-port 19983
-```
-
-## Configuration
-
-`launchr.yaml` in the working directory, or `--config FILE`. Precedence is
-**CLI flag > environment variable > `launchr.yaml` > built-in default**, and
-`validate-config` shows which won:
-
-```
-storage.path = '~/.solr-orbit/benchmark-results'            <- launchr.yaml
-solr_versions = ['9.11.0']                                  <- $SOLR_VERSIONS
-benchmark.test_mode = True                                  <- CLI flag
-registry = 'docker.io/library/solr'                         <- built-in default
-```
-
-| Setting | Flag | Environment variable |
-|---------|------|----------------------|
-| Solr versions | `--versions` | `SOLR_VERSIONS` |
-| Workloads | `--workloads` | `LAUNCHR_WORKLOADS` |
-| Provisioning profiles | `--provisioning` | `LAUNCHR_PROVISIONING` |
-| Cluster configs | `--cluster-config` | `LAUNCHR_CLUSTER_CONFIG` |
-| Storage backend | `--storage` | `LAUNCHR_STORAGE_BACKEND` |
-| Storage path | `--storage-path` | `LAUNCHR_STORAGE_PATH` |
-| Image repository | `--registry` | `LAUNCHR_REGISTRY` |
-
-Credentials are never read from a config file. A key that looks like one is
-rejected — launchr uses the ambient credential chain.
-
-### Cluster configs
-
-A cluster config mixes two mechanisms, and launchr sends each to the right
-place:
-
-| Key | Where it goes |
-|-----|---------------|
-| `heap: "4g"` | `SOLR_HEAP` on the Solr process |
-| `gc: "G1GC"` | `GC_TUNE` — the same flags as Solr Orbit's `g1gc` mixin |
-| `solr_opts` | `SOLR_OPTS` |
-| `shards: 3` | workload parameter `num_shards` |
-| `replicas: 2` | workload parameter `replication_factor` |
-
-Shards and replicas are workload parameters because that is what the workloads
-repository's shared `create_collection.json` operation reads. The exact
-environment applied is recorded in every report as
-`launchr.cluster_config.applied_env`, so a reader never has to guess what
-`"G1GC"` meant on the day.
-
-Note that launchr does **not** pass `--cluster-config` to Solr Orbit. Solr Orbit
-only applies a cluster config on its own local pipelines; under
-`benchmark-only` it would record the name without acting on it, which would put
-a claim in the report that nothing honoured.
 
 ## The stored report
 

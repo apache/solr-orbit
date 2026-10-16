@@ -16,7 +16,7 @@
 # limitations under the License.
 """The ``launchr`` command line.
 
-Four subcommands:
+Subcommands:
 
 ``run``
     Walk the matrix. ``--dry-run`` prints the plan and the exact Solr Orbit
@@ -26,6 +26,9 @@ Four subcommands:
     Print the resolved configuration with the provenance of every value.
 ``list``
     Inventory of profiles, cluster configs and plugins.
+``teardown``
+    Reclaim infrastructure a crashed session left behind, reconciling cloud
+    tags against the ledger. ``--dry-run`` first, always.
 ``version``
     What launchr this is.
 """
@@ -34,14 +37,15 @@ import argparse
 import logging
 import signal
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from solrorbit.tools.launchr import __version__, matrix, orbit, translate
+from solrorbit.tools.launchr import __version__, ledger, matrix, orbit, translate
+from solrorbit.tools.launchr import teardown as teardown_module
 from solrorbit.tools.launchr import config as config_module
 from solrorbit.tools.launchr import install as install_module
 from solrorbit.tools.launchr import provisioning as provisioning_module
 from solrorbit.tools.launchr import storage as storage_module
-from solrorbit.tools.launchr.errors import LaunchrError
+from solrorbit.tools.launchr.errors import ConfigError, LaunchrError
 from solrorbit.tools.launchr.models import (
     NodeHandle,
     ProvisionedInfra,
@@ -98,6 +102,22 @@ def build_parser() -> argparse.ArgumentParser:
                          choices=["all", "profiles", "cluster-configs", "plugins"])
     _add_config_args(listing)
 
+    down = sub.add_parser("teardown", help="Reclaim infrastructure a run left behind")
+    _add_config_args(down)
+    down.add_argument("--storage", dest="storage_backend",
+                      help="Storage backend holding the infrastructure ledger.")
+    down.add_argument("--storage-path", help="Storage root.")
+    down.add_argument("--region", action="append", dest="regions", metavar="REGION",
+                      help="Region to sweep. Repeatable. Regions named by the ledger are "
+                           "always swept as well.")
+    down.add_argument("--aws-profile", help="AWS credentials profile to sweep with.")
+    down.add_argument("--stack", dest="stack_id", help="Reclaim one stack only.")
+    down.add_argument("--older-than", metavar="DURATION",
+                      help="Only touch stacks older than this, e.g. 6h or 30m. Without it a "
+                           "concurrent run's instances look exactly like a leak.")
+    down.add_argument("--dry-run", action="store_true",
+                      help="Report what would be reclaimed; destroy nothing.")
+
     sub.add_parser("version", help="Print the launchr version")
     return parser
 
@@ -137,6 +157,20 @@ def _configure_logging(args: argparse.Namespace) -> None:
         level = logging.WARNING
     logging.basicConfig(level=level, format="%(asctime)s %(levelname)-7s %(message)s",
                         datefmt="%H:%M:%S", stream=sys.stderr)
+    _quiet_noisy_libraries(level)
+
+
+#: Libraries whose DEBUG output is either useless here or actively unsafe.
+#:
+#: botocore logs the full body of every API response, which for AssumeRole is
+#: a temporary access key and secret in plain text. `launchr -v` would then
+#: print credentials to the terminal and into any captured CI log.
+_NOISY = ("botocore", "boto3", "s3transfer", "urllib3")
+
+
+def _quiet_noisy_libraries(level: int) -> None:
+    for name in _NOISY:
+        logging.getLogger(name).setLevel(max(level, logging.INFO))
 
 
 # ---------------------------------------------------------------------------
@@ -272,6 +306,70 @@ def cmd_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_teardown(args: argparse.Namespace) -> int:
+    config = config_module.load(args.config, overrides=_overrides(args))
+    store = storage_module.get_backend(
+        config.storage_backend, config.storage_path, dict(config.storage_options),
+    )
+    window = _parse_duration(args.older_than) if args.older_than else None
+    regions, aws_profile = _sweep_targets(config, args)
+
+    outstanding = ledger.leaked(store)
+    if outstanding:
+        print(f"Ledger reports {len(outstanding)} stack(s) never released:")
+        for entry in outstanding:
+            print(f"  {entry.describe()}")
+        print()
+
+    result = teardown_module.reconcile(
+        store,
+        regions=regions,
+        aws_profile=aws_profile,
+        older_than=window,
+        stack_id=args.stack_id,
+        dry_run=args.dry_run,
+    )
+    print(result.describe(dry_run=args.dry_run))
+    if args.dry_run and result.instance_count:
+        print("\nNothing was destroyed (--dry-run).")
+    return 0
+
+
+def _sweep_targets(config, args) -> tuple[list[str], str | None]:
+    """Where to sweep and with which credentials.
+
+    Taken from the configured provisioning profiles unless overridden. Without
+    this the sweep runs with whatever ambient credentials happen to be set --
+    which on this project is the *storage* key, scoped to one S3 bucket and
+    powerless over EC2. It then fails with AuthFailure and reports finding
+    nothing, which reads exactly like success.
+    """
+    regions = list(args.regions or [])
+    aws_profile = args.aws_profile
+    for name in config.profile_names:
+        options = dict(config.profile(name).options or {})
+        if config.profile(name).provisioning != "ec2":
+            continue
+        if options.get("region") and options["region"] not in regions:
+            regions.append(options["region"])
+        if aws_profile is None and options.get("aws_profile"):
+            aws_profile = options["aws_profile"]
+    return regions, aws_profile
+
+
+def _parse_duration(text: str) -> timedelta:
+    """Parse ``30m``, ``6h`` or ``2d`` into a timedelta."""
+    raw = text.strip().lower()
+    units = {"m": "minutes", "h": "hours", "d": "days"}
+    if len(raw) < 2 or raw[-1] not in units:
+        raise ConfigError(f"Could not read --older-than {text!r}. Use e.g. 30m, 6h or 2d.")
+    try:
+        amount = float(raw[:-1])
+    except ValueError:
+        raise ConfigError(f"Could not read --older-than {text!r}. Use e.g. 30m, 6h or 2d.") from None
+    return timedelta(**{units[raw[-1]]: amount})
+
+
 def cmd_version(_: argparse.Namespace) -> int:
     print(f"{PROGRAM} {__version__}")
     return 0
@@ -279,6 +377,7 @@ def cmd_version(_: argparse.Namespace) -> int:
 
 COMMANDS = {
     "run": cmd_run,
+    "teardown": cmd_teardown,
     "validate-config": cmd_validate_config,
     "list": cmd_list,
     "version": cmd_version,

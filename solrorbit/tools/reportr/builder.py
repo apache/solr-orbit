@@ -28,6 +28,12 @@ Reads every stored report, extracts the configured metrics, and writes:
     The full enriched report behind each plotted point, so clicking a point can
     show what produced it. Copied into the site rather than linked, so the site
     is self-contained and works from any file server with no bucket exposure.
+
+Reports are read through a :class:`~solrorbit.tools.launchr.storage.base.StorageBackend`,
+so a build from a laptop directory and a build from a bucket run the same code
+over the same layout. The site itself is always written to a local directory;
+publishing it onwards is a separate step, which keeps ``--serve`` honest and
+means a failed upload never leaves a half-built site live.
 """
 
 import json
@@ -39,6 +45,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from solrorbit.tools.launchr.storage import StorageBackend, backend_for
 from solrorbit.tools.reportr import extract, series
 from solrorbit.tools.reportr.config import ReportrConfig
 from solrorbit.tools.reportr.models import DataPoint
@@ -75,23 +82,35 @@ class BuildResult:
         return "\n".join(lines)
 
 
-def find_reports(storage_path: Path) -> list[Path]:
-    """Every stored report, in a stable order."""
-    return sorted(storage_path.glob("runs/*/*/*/results.json"))
+#: Depth of a stored report path: runs/<workload>/<date>/<run-id>/results.json.
+#: Matching on shape rather than globbing keeps the backends interchangeable --
+#: S3 has no glob, only a prefix listing.
+_REPORT_DEPTH = 5
+_REPORT_NAME = "results.json"
+
+
+def find_reports(storage: StorageBackend) -> list[str]:
+    """Every stored report, as storage paths, in a stable order."""
+    return sorted(
+        path for path in storage.list("runs")
+        if path.endswith(f"/{_REPORT_NAME}") and len(path.split("/")) == _REPORT_DEPTH
+    )
 
 
 def build(config: ReportrConfig) -> BuildResult:
     """Build the whole site. Returns what it produced."""
-    storage = Path(config.storage_path).expanduser()
+    storage = backend_for(config.storage_path, config.storage_backend,
+                          dict(config.storage_options))
     out = config.out_dir
     result = BuildResult(out_dir=out)
 
     reports = find_reports(storage)
     if not reports:
-        logger.warning("No reports found under %s/runs/ -- the site will be empty", storage)
+        logger.warning("No reports found under %s/runs/ -- the site will be empty",
+                       storage.location)
 
     by_workload: dict[str, list[DataPoint]] = {}
-    charted: dict[str, Path] = {}
+    charted: dict[str, bytes] = {}
     #: What each workload says about itself, newest report winning, so a
     #: workload that starts declaring hints takes effect on the next run.
     hints: dict[str, dict] = {}
@@ -101,25 +120,31 @@ def build(config: ReportrConfig) -> BuildResult:
 
     for path in reports:
         result.reports_read += 1
+        run_dir = path.split("/")[-2]
         try:
-            report = json.loads(path.read_text(encoding="utf-8"))
-        except ValueError as exc:
-            result.skipped.append(f"{path.name}: not valid JSON ({exc})")
+            raw = storage.read(path)
+        except Exception as exc:  # noqa: BLE001 - one unreadable report must not sink the build
+            result.skipped.append(f"{run_dir}: could not be read ({exc})")
+            continue
+        try:
+            report = json.loads(raw.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            result.skipped.append(f"{run_dir}: not valid JSON ({exc})")
             continue
 
         workload = str(report.get("workload") or "unknown")
         try:
             points = extract.extract(
-                report, config.metrics, tasks=config.tasks_for(workload), source=str(path),
+                report, config.metrics, tasks=config.tasks_for(workload), source=path,
             )
         except extract.SchemaTooNew as exc:
             # One report from a newer launchr must not abort a build over a
             # whole bucket: SchemaTooNew is not a LaunchrError, so cli.py does
             # not catch it either.
-            result.skipped.append(f"{path.parent.name}: {exc}")
+            result.skipped.append(f"{run_dir}: {exc}")
             continue
         if not points:
-            result.skipped.append(f"{path.parent.name}: no plottable points")
+            result.skipped.append(f"{run_dir}: no plottable points")
             continue
 
         hints[workload] = extract.hints(report)
@@ -127,8 +152,8 @@ def build(config: ReportrConfig) -> BuildResult:
         by_workload.setdefault(workload, []).extend(points)
         result.reports_charted += 1
         result.points += len(points)
-        run_id = points[0].run_id or path.parent.name
-        charted[run_id] = path
+        run_id = points[0].run_id or run_dir
+        charted[run_id] = raw
         notes_by_run[run_id] = extract.notes(report)
 
     _write_site(out, config, by_workload, charted, hints, measures, notes_by_run)
@@ -137,7 +162,7 @@ def build(config: ReportrConfig) -> BuildResult:
 
 
 def _write_site(out: Path, config: ReportrConfig, by_workload: dict[str, list[DataPoint]],
-                charted: dict[str, Path], hints: dict[str, dict] | None = None,
+                charted: dict[str, bytes], hints: dict[str, dict] | None = None,
                 measures: dict[str, dict] | None = None,
                 notes_by_run: dict[str, dict] | None = None) -> None:
     out.mkdir(parents=True, exist_ok=True)
@@ -177,9 +202,9 @@ def _write_site(out: Path, config: ReportrConfig, by_workload: dict[str, list[Da
 
     reports_dir = out / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
-    for run_id, path in sorted(charted.items()):
+    for run_id, raw in sorted(charted.items()):
         _write_json(reports_dir / f"{_slug(run_id)}.json",
-                    _publishable(json.loads(path.read_text(encoding="utf-8"))))
+                    _publishable(json.loads(raw.decode("utf-8"))))
 
 
 def workload_payload(workload: str, points: list[DataPoint], *,

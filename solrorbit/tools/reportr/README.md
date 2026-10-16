@@ -7,29 +7,12 @@ operate — the output is HTML, CSS, JS and JSON behind any file server.
 
 Tracking issue: [apache/solr-orbit#99](https://github.com/apache/solr-orbit/issues/99).
 
-## Quick start
-
-```bash
-launchr run --versions 9.9.0,9.10.1,9.11.0 --workloads nyc_taxis --test-mode
-reportr build --serve
-```
-
-That opens a page at `http://127.0.0.1:8080/` with a chart per metric, a point
-per run, and the full report one click away.
-
-## Commands
-
-| Command | What it does |
-|---------|--------------|
-| `reportr build` | Read the reports and write the site |
-| `reportr build --serve [--port N]` | …then serve it on localhost |
-| `reportr build --out DIR` | Write somewhere other than `./site-output` |
-| `reportr metrics` | List the metric keys the stored reports could chart |
-
-`reportr metrics` is worth knowing about: which percentiles exist depends on
-`--latency-percentiles` and on how many samples a run produced, so a test-mode
-run may offer `p50` and `p100` but no `p99`. The command shows what is actually
-available and marks what is currently charted.
+> **User documentation lives in the docs site**, not here:
+> [Continuous Benchmarking](https://apache.github.io/solr-orbit/user-guide/continuous-benchmarking/)
+> for the guide, and the
+> [reportr Command Reference](https://apache.github.io/solr-orbit/reference/reportr-cli.html)
+> for flags and options. This file keeps only the design notes that are useful when reading the
+> source, and is deliberately not a second copy of the documentation.
 
 ## What the site shows
 
@@ -125,49 +108,6 @@ Runs are labelled honestly. A test-mode run says it indexed 1000 documents; a
 local run says the load driver shared a machine with Solr and is development
 data, not a published result.
 
-## Configuration
-
-`reportr.yaml` in the working directory, or `--config FILE`:
-
-```yaml
-storage:
-  backend: local
-  path: "~/.solr-orbit/benchmark-results"
-site:
-  out: "./site-output"
-  title: "Apache Solr Benchmarks"
-metrics:
-  - throughput.mean
-  - service_time.mean
-  - service_time.p50
-  - service_time.p90
-  - service_time.p99
-  - error_rate
-workloads:
-  nyc_taxis:
-    description: "165 million taxi rides, and what they exercise."
-    tasks: [index, match-all, range]        # optional; unlisted means every task
-    default_tasks: [index, range]           # charted before the reader picks
-    featured_tasks: [range]                 # each gets a chart of its own
-```
-
-Every per-workload key is optional, and every one of them is something the
-workload can say about itself instead. Its `description` field travels with each
-result; a workload wanting more than the one line that field is specified for,
-or wanting to nominate tasks, uses the `meta` block Solr Orbit already attaches
-to every operation:
-
-```json
-{ "meta": { "reportr.description": "165 million taxi rides, and what they exercise." } }
-{ "name": "range", "operation": "range", "meta": { "reportr.chart": "own" } }
-```
-
-`reportr.yaml` wins over all of it. The workload suggests; whoever runs the site
-decides, because they know which comparison this particular site is for.
-
-A workload with no entry charts every task, so a new workload appears without a
-config change and can be trimmed later.
-
 ## No third-party requests
 
 Apache ECharts is vendored at `site/vendor/echarts.min.js` (Apache-2.0), and the
@@ -181,5 +121,6 @@ curated annotations, the cross-workload dashboard, and deployment to
 `nightlies.apache.org`. The site is rebuilt from scratch each time, which is
 fast enough until there are thousands of runs.
 
-Cloud storage is not here either: this reads the local filesystem, and a cloud
-backend arrives with the storage plugin work.
+S3 storage *is* implemented: `reportr` reads reports from, and publishes the site
+to, either a local directory or a bucket, through the same storage backends
+`launchr` uses.

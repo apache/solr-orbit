@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class LocalStorageBackend:
     """Stores reports under a local directory."""
 
-    API_VERSION: ClassVar[int] = 1
+    API_VERSION: ClassVar[int] = 2
     name: ClassVar[str] = "local"
 
     def __init__(self, path: str | os.PathLike):
@@ -58,7 +58,11 @@ class LocalStorageBackend:
             raise StorageError(f"Storage path {path!r} escapes the storage root {self.root}")
         return target
 
-    def write(self, path: str, data: bytes, *, overwrite: bool = False) -> None:
+    def write(self, path: str, data: bytes, *, overwrite: bool = False,
+              content_type: str | None = None) -> None:
+        # content_type is accepted and ignored: a filesystem has no such
+        # concept, and whatever serves this directory infers it from the
+        # extension anyway.
         target = self._resolve(path)
         if target.exists() and not overwrite:
             raise StorageError(

@@ -34,14 +34,25 @@ class StorageBackend(Protocol):
 
     #: Bumped when this Protocol changes incompatibly, so a plugin built against
     #: an older contract is rejected with a clear message instead of mis-binding.
-    API_VERSION: ClassVar[int] = 1
+    #:
+    #: 2: ``write`` gained ``content_type``. Additive for callers, but an
+    #: implementation written against version 1 raises on the new keyword, so
+    #: this is a breaking change for backends rather than for their users.
+    API_VERSION: ClassVar[int] = 2
 
     #: The name this backend is configured by, e.g. ``local``.
     name: ClassVar[str]
 
-    def write(self, path: str, data: bytes, *, overwrite: bool = False) -> None:
+    def write(self, path: str, data: bytes, *, overwrite: bool = False,
+              content_type: str | None = None) -> None:
         """Store ``data`` at ``path``. Raises :class:`~solrorbit.tools.launchr.errors.StorageError`
-        if ``path`` exists and ``overwrite`` is false."""
+        if ``path`` exists and ``overwrite`` is false.
+
+        ``content_type`` matters only where the store is also a web server: S3
+        labels an object ``binary/octet-stream`` unless told otherwise, and a
+        browser will download such an object rather than render it. A backend
+        serving no HTTP traffic may ignore it.
+        """
         ...
 
     def read(self, path: str) -> bytes:

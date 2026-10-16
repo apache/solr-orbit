@@ -16,16 +16,16 @@
 # limitations under the License.
 """The local storage backend.
 
-These assertions are written to be reusable: when a cloud backend arrives, the
-same suite should run against it, which is what makes "identical layout,
-identical code paths" a tested claim rather than an aspiration.
+The shared behavioural contract lives in ``storage_contract.py`` and runs here
+and against S3 unchanged. What is left in this file is what only a filesystem
+can be asked about.
 """
 
 import pytest
 
-from solrorbit.tools.launchr.errors import StorageError
-from solrorbit.tools.launchr.storage import get_backend
-from solrorbit.tools.launchr.storage.local import LocalStorageBackend
+from solrorbit.tools.launchr.errors import ConfigError, StorageError
+from solrorbit.tools.launchr.storage import LocalStorageBackend, S3StorageBackend, backend_for, get_backend
+from tests.tools.launchr.storage_contract import StorageContract
 
 
 @pytest.fixture
@@ -33,72 +33,24 @@ def storage(tmp_path):
     return LocalStorageBackend(tmp_path / "results")
 
 
-class TestRoundTrip:
-    def test_write_then_read(self, storage):
-        storage.write("a.json", b"{}")
-        assert storage.read("a.json") == b"{}"
-
-    def test_creates_intermediate_directories(self, storage):
-        storage.write("runs/nyc_taxis/2026-10-15/run-a1b2c3/results.json", b"{}")
-        assert storage.exists("runs/nyc_taxis/2026-10-15/run-a1b2c3/results.json")
-
-    def test_exists_is_false_before_writing(self, storage):
-        assert storage.exists("nope.json") is False
-
-    def test_reading_something_absent_is_an_error(self, storage):
-        with pytest.raises(StorageError, match="Could not read"):
-            storage.read("nope.json")
+class TestLocalContract(StorageContract):
+    """The shared suite, against the local filesystem."""
 
 
-class TestImmutability:
-    def test_overwrite_is_refused_by_default(self, storage):
-        # Silently replacing a stored report is a data-integrity bug that is
-        # nearly impossible to notice afterwards.
-        storage.write("a.json", b"first")
-        with pytest.raises(StorageError, match="immutable"):
-            storage.write("a.json", b"second")
-        assert storage.read("a.json") == b"first"
-
-    def test_overwrite_is_possible_when_asked_explicitly(self, storage):
-        storage.write("a.json", b"first")
-        storage.write("a.json", b"second", overwrite=True)
-        assert storage.read("a.json") == b"second"
-
-
-class TestListing:
-    def test_lists_recursively_and_sorted(self, storage):
-        storage.write("runs/w/d/run-2/results.json", b"{}")
-        storage.write("runs/w/d/run-1/results.json", b"{}")
-        storage.write("summaries/s.yaml", b"{}")
-        assert storage.list("runs") == [
-            "runs/w/d/run-1/results.json", "runs/w/d/run-2/results.json",
-        ]
-
-    def test_empty_prefix_lists_everything(self, storage):
-        storage.write("a.json", b"{}")
-        storage.write("b/c.json", b"{}")
-        assert storage.list("") == ["a.json", "b/c.json"]
-
-    def test_absent_prefix_lists_nothing(self, storage):
-        assert storage.list("runs") == []
-
-    def test_partial_writes_are_not_listed(self, storage, tmp_path):
+class TestFilesystemSpecifics:
+    def test_partial_writes_are_not_listed(self, storage):
         # An atomic write uses a .tmp file; a crashed run must not leave
         # something reportr would try to parse.
         storage.write("a.json", b"{}")
         (storage.root / "leftover.json.tmp").write_bytes(b"half")
         assert storage.list("") == ["a.json"]
 
+    def test_expands_a_user_relative_path(self):
+        assert str(LocalStorageBackend("~/x").root).startswith("/")
 
-class TestPathSafety:
-    @pytest.mark.parametrize("path", ["/etc/passwd", "../outside.json", "a/../../outside.json"])
-    def test_paths_cannot_escape_the_root(self, storage, path):
-        with pytest.raises(StorageError):
-            storage.write(path, b"{}")
-
-    def test_empty_path_is_rejected(self, storage):
-        with pytest.raises(StorageError, match="relative"):
-            storage.write("", b"{}")
+    def test_write_is_atomic_leaving_no_temp_file(self, storage):
+        storage.write("a.json", b"{}")
+        assert [p.name for p in storage.root.rglob("*.tmp")] == []
 
     @pytest.mark.parametrize("prefix", ["/etc", "../outside", "runs/../../outside"])
     def test_a_list_prefix_cannot_escape_the_root_either(self, storage, prefix):
@@ -119,10 +71,26 @@ class TestRegistry:
     def test_get_backend_by_name(self, tmp_path):
         assert isinstance(get_backend("local", str(tmp_path)), LocalStorageBackend)
 
-    def test_unknown_backend_lists_the_alternatives(self, tmp_path):
-        from solrorbit.tools.launchr.errors import ConfigError
-        with pytest.raises(ConfigError, match="local"):
-            get_backend("s3", str(tmp_path))
+    def test_s3_is_registered(self, tmp_path):
+        assert isinstance(get_backend("s3", "s3://bucket/prefix"), S3StorageBackend)
 
-    def test_expands_a_user_relative_path(self):
-        assert str(LocalStorageBackend("~/x").root).startswith("/")
+    def test_unknown_backend_lists_the_alternatives(self, tmp_path):
+        with pytest.raises(ConfigError, match="local, s3"):
+            get_backend("gcs", str(tmp_path))
+
+    def test_a_scheme_selects_its_backend(self):
+        assert isinstance(backend_for("s3://bucket/prefix"), S3StorageBackend)
+
+    def test_a_plain_path_selects_local(self, tmp_path):
+        assert isinstance(backend_for(str(tmp_path)), LocalStorageBackend)
+
+    def test_options_the_backend_does_not_take_are_an_error(self, tmp_path):
+        # Silently dropping a setting someone wrote down is worse than failing.
+        with pytest.raises(ConfigError, match="does not accept storage.options"):
+            get_backend("local", str(tmp_path), {"region": "eu-north-1"})
+
+    def test_storage_error_is_not_swallowed_as_a_config_error(self, storage):
+        # get_backend maps TypeError to ConfigError; a StorageError raised for
+        # a real reason must still surface as one.
+        with pytest.raises(StorageError):
+            storage.read("missing.json")

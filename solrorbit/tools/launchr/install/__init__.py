@@ -16,24 +16,27 @@
 # limitations under the License.
 """Solr install methods.
 
-Phase 1 ships ``docker`` (one container on this machine) and ``none`` (an
-externally managed cluster). The registry becomes Python entry points in the
-phase that adds a remote install method.
+``docker`` runs one container on this machine, ``docker-ssh`` runs a container
+per remote node with an external ZooKeeper, and ``none`` benchmarks a cluster
+launchr does not own.
 """
 
 from solrorbit.tools.launchr.errors import ConfigError
 from solrorbit.tools.launchr.install.base import SolrInstallMethod
 from solrorbit.tools.launchr.install.docker import DockerInstall
+from solrorbit.tools.launchr.install.docker_ssh import DockerSshInstall
 from solrorbit.tools.launchr.install.none import NoOpInstall
 
 REGISTRY: dict[str, type] = {
     DockerInstall.name: DockerInstall,
+    DockerSshInstall.name: DockerSshInstall,
     NoOpInstall.name: NoOpInstall,
 }
 
 __all__ = [
     "SolrInstallMethod",
     "DockerInstall",
+    "DockerSshInstall",
     "NoOpInstall",
     "REGISTRY",
     "get_install_method",

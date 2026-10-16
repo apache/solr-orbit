@@ -50,6 +50,7 @@ class PreconfiguredProvisioning:
 
     API_VERSION: ClassVar[int] = 1
     name: ClassVar[str] = "preconfigured"
+    creates_infrastructure: ClassVar[bool] = False
 
     def provision(self, profile: ProfileSpec, *, nodes: int) -> ProvisionedInfra:
         if not profile.solr_url:

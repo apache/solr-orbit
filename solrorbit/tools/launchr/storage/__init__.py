@@ -16,19 +16,26 @@
 # limitations under the License.
 """Storage backends.
 
-Phase 1 ships ``local`` only. The registry becomes Python entry points in the
-phase that adds the second backend, with no change to this module's interface.
+``local`` and ``s3``. The registry becomes Python entry points in the phase
+that adds a third, with no change to this module's interface.
 """
+
+from typing import Any
 
 from solrorbit.tools.launchr.errors import ConfigError
 from solrorbit.tools.launchr.storage.base import StorageBackend
 from solrorbit.tools.launchr.storage.local import LocalStorageBackend
+from solrorbit.tools.launchr.storage.s3 import S3StorageBackend
 
 REGISTRY: dict[str, type] = {
     LocalStorageBackend.name: LocalStorageBackend,
+    S3StorageBackend.name: S3StorageBackend,
 }
 
-__all__ = ["StorageBackend", "LocalStorageBackend", "REGISTRY", "get_backend", "available"]
+__all__ = [
+    "StorageBackend", "LocalStorageBackend", "S3StorageBackend",
+    "REGISTRY", "get_backend", "available", "backend_for",
+]
 
 
 def available() -> list[str]:
@@ -36,10 +43,35 @@ def available() -> list[str]:
     return sorted(REGISTRY)
 
 
-def get_backend(name: str, path: str) -> StorageBackend:
-    """Instantiate a storage backend by name."""
+def get_backend(name: str, path: str, options: dict[str, Any] | None = None) -> StorageBackend:
+    """Instantiate a storage backend by name.
+
+    ``options`` is the backend-specific ``storage.options`` block. The local
+    backend takes none, so passing any is a configuration error rather than
+    something to drop on the floor.
+    """
     try:
         cls = REGISTRY[name]
     except KeyError:
         raise ConfigError(f"Unknown storage backend {name!r}. Available: {', '.join(available())}") from None
-    return cls(path)
+    if not options:
+        return cls(path)
+    try:
+        return cls(path, **options)
+    except TypeError as exc:
+        raise ConfigError(
+            f"The {name!r} storage backend does not accept storage.options "
+            f"({', '.join(sorted(options))}): {exc}"
+        ) from exc
+
+
+def backend_for(path: str, name: str | None = None,
+                options: dict[str, Any] | None = None) -> StorageBackend:
+    """Instantiate the backend a path implies, or the one named.
+
+    A ``s3://`` path is unambiguous, so ``reportr build --storage s3://bucket``
+    needs no second flag saying what everyone can already see.
+    """
+    if name is None:
+        name = "s3" if str(path).startswith("s3://") else "local"
+    return get_backend(name, path, options)

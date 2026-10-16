@@ -29,6 +29,7 @@ from typing import Any, Mapping
 import yaml
 
 from solrorbit.tools.launchr import config as launchr_config
+from solrorbit.tools.launchr import storage
 from solrorbit.tools.launchr.errors import ConfigError
 
 DEFAULT_CONFIG_FILE = "reportr.yaml"
@@ -52,8 +53,10 @@ BUILT_IN: dict[str, Any] = {
     # Empty means "decide when the config is loaded": the same store launchr
     # writes to, so `reportr build` with no arguments reads what the last run
     # produced. --local or reportr.yaml points it elsewhere.
-    "storage": {"backend": "local", "path": ""},
-    "site": {"out": "./site-output", "title": "Apache Solr Benchmarks"},
+    "storage": {"backend": "local", "path": "", "options": {}},
+    # Where `reportr publish` uploads the built site. Empty means "nowhere":
+    # publishing is always an explicit act, never a side effect of a build.
+    "site": {"out": "./site-output", "title": "Apache Solr Benchmarks", "publish_to": ""},
     "metrics": DEFAULT_METRICS,
     "workloads": {},
     # Curated notes about a particular Solr build: what a release fixed, what it
@@ -80,6 +83,14 @@ class ReportrConfig:
     @property
     def storage_path(self) -> str:
         return str(self.data["storage"]["path"])
+
+    @property
+    def storage_options(self) -> dict:
+        return self.data["storage"].get("options") or {}
+
+    @property
+    def publish_to(self) -> str:
+        return str(self.data["site"].get("publish_to") or "")
 
     @property
     def out_dir(self) -> Path:
@@ -147,6 +158,7 @@ def load(config_path: str | os.PathLike | None = None, *,
         _set(data, key, value)
     if not str(data["storage"].get("path") or "").strip():
         data["storage"]["path"] = launchr_config.default_storage_path()
+    launchr_config._reconcile_storage_scheme(data, launchr_config.Provenance())
 
     config = ReportrConfig(data=data, config_path=resolved)
     _validate(config)
@@ -154,10 +166,15 @@ def load(config_path: str | os.PathLike | None = None, *,
 
 
 def _validate(config: ReportrConfig) -> None:
-    if config.storage_backend != "local":
+    known = storage.available()
+    if config.storage_backend not in known:
         raise ConfigError(
-            f"Unknown storage backend {config.storage_backend!r}. This phase reads the local "
-            f"filesystem only; cloud backends arrive with the storage plugin work."
+            f"Unknown storage backend {config.storage_backend!r}. Available: {', '.join(known)}."
+        )
+    if config.publish_to and not config.publish_to.startswith(("s3://", "/", "./", "~")):
+        raise ConfigError(
+            f"site.publish_to is {config.publish_to!r}, which is neither an s3:// URI nor a "
+            f"filesystem path."
         )
     if not config.metrics:
         raise ConfigError("metrics is empty; name at least one, e.g. throughput.mean")

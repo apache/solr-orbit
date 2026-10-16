@@ -274,3 +274,55 @@ class TestDefaultStorageLocation:
         loaded = config_module.load(None)
         assert not loaded.storage_path.startswith("./")
         assert ".solr-orbit" in loaded.storage_path
+
+
+class TestStorageScheme:
+    """An ``s3://`` path and ``storage.backend`` must agree, or say so."""
+
+    def test_an_s3_path_selects_the_s3_backend(self, tmp_path):
+        path = write(tmp_path, {"storage": {"path": "s3://solr-orbit/v1"}})
+        config = config_module.load(path, env={})
+        assert (config.storage_backend, config.storage_path) == ("s3", "s3://solr-orbit/v1")
+
+    def test_the_inference_is_recorded_in_the_provenance(self, tmp_path):
+        # validate-config prints where every value came from; an inferred one
+        # must not claim to be a built-in default.
+        path = write(tmp_path, {"storage": {"path": "s3://solr-orbit/v1"}})
+        config = config_module.load(path, env={})
+        assert "inferred" in config.provenance.of("storage.backend")
+
+    def test_an_explicit_matching_backend_is_fine(self, tmp_path):
+        path = write(tmp_path, {"storage": {"backend": "s3", "path": "s3://solr-orbit/v1"}})
+        assert config_module.load(path, env={}).storage_backend == "s3"
+
+    def test_a_contradiction_is_rejected(self, tmp_path):
+        path = write(tmp_path, {"storage": {"backend": "local", "path": "s3://solr-orbit/v1"}})
+        with pytest.raises(ConfigError, match="not both differently"):
+            config_module.load(path, env={})
+
+    def test_s3_backend_with_a_filesystem_path_is_rejected(self, tmp_path):
+        path = write(tmp_path, {"storage": {"backend": "s3", "path": "/srv/results"}})
+        with pytest.raises(ConfigError, match="not a s3 URI"):
+            config_module.load(path, env={})
+
+    def test_a_cli_override_can_switch_to_s3(self, tmp_path):
+        path = write(tmp_path, {"storage": {"path": "/srv/results"}})
+        config = config_module.load(path, env={}, overrides={"storage.path": "s3://solr-orbit/v1"})
+        assert config.storage_backend == "s3"
+
+    def test_options_round_trip(self, tmp_path):
+        path = write(tmp_path, {
+            "storage": {"path": "s3://solr-orbit/v1", "options": {"region": "eu-north-1"}},
+        })
+        assert config_module.load(path, env={}).storage_options == {"region": "eu-north-1"}
+
+    def test_a_secret_in_storage_options_is_rejected(self, tmp_path):
+        # The whole point of naming a profile is that the key never lands here.
+        path = write(tmp_path, {
+            "storage": {
+                "path": "s3://solr-orbit/v1",
+                "options": {"aws_secret_access_key": "AKIAnope"},
+            },
+        })
+        with pytest.raises(ConfigError, match="looks like a credential"):
+            config_module.load(path, env={})

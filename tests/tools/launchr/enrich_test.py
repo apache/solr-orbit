@@ -225,3 +225,36 @@ class TestFailedCells:
 def test_workload_revision_of_handles_a_missing_report():
     assert enrich.workload_revision_of(None) is None
     assert enrich.workload_revision_of({}) is None
+
+
+class TestDeploymentMetadata:
+    """What the install method recorded has to reach the report.
+
+    Provisioning metadata (region, AMI, instance types) already did. The
+    install method's own notes did not, which made the multi-node ZooKeeper
+    placement -- an asymmetry between two otherwise identical Solr nodes --
+    something a reader could only discover by reading launchr's source.
+    """
+
+    def test_install_method_metadata_is_recorded(self, outcome, cluster_config, deployment):
+        deployment.metadata = {
+            "install_method": "docker-ssh",
+            "network": "host",
+            "zookeeper": {"colocated_with": "solr-1", "host": "10.0.0.1:2181"},
+        }
+        infra = block(outcome, cluster_config, deployment=deployment)["infra"]
+        assert infra["deployment"]["zookeeper"]["colocated_with"] == "solr-1"
+        assert infra["deployment"]["network"] == "host"
+
+    def test_provisioning_metadata_still_wins_the_top_level(self, outcome, cluster_config,
+                                                            deployment):
+        # The two must not collide: provisioning describes the machines,
+        # the deployment block describes what was put on them.
+        deployment.metadata = {"provider": "should-not-overwrite"}
+        infra = block(outcome, cluster_config, deployment=deployment)["infra"]
+        assert infra["provider"] == "local"
+        assert infra["deployment"]["provider"] == "should-not-overwrite"
+
+    def test_an_empty_deployment_metadata_adds_no_key(self, outcome, cluster_config, deployment):
+        deployment.metadata = {}
+        assert "deployment" not in block(outcome, cluster_config, deployment=deployment)["infra"]
