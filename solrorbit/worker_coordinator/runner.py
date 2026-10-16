@@ -1333,16 +1333,34 @@ class SolrOptimize(SolrRunner):
     Force-merge Solr segments (optimize).
 
     Params:
-      - ``collection``, ``max-segments`` (int, default 1)
+      - ``collection``
+      - ``max-segments`` (int, optional). Omitted by default.
+
+    **The default is Solr's own, which is no longer "one segment".** Modern
+    Solr honours the merge policy's ``maxSegmentSizeMB`` when ``maxSegments``
+    is not given, merging down to as few segments as that ceiling allows
+    rather than to a single one. Forcing ``maxSegments=1`` instead produces an
+    index shape that no production system would ever hold -- a single
+    enormous segment -- and costs a full rewrite of the entire index to get
+    there, which on a 165M-document corpus is the longest single operation in
+    a benchmark run by a wide margin.
+
+    Passing the parameter explicitly still forces the old behaviour, for a
+    workload that wants exactly one segment and is willing to pay for it.
     """
 
     async def __call__(self, client, params):
         collection = _get_collection(params)
         sc = client
-        max_segments = params.get("max-segments", 1)
+        max_segments = params.get("max-segments")
+
+        # Only forward the argument when the workload actually asked for it:
+        # pysolr sends a bare `<optimize />` when it is absent, which is what
+        # lets Solr apply maxSegmentSizeMB.
+        kwargs = {} if max_segments in (None, "") else {"maxSegments": int(max_segments)}
 
         start = time.perf_counter()
-        await _run_in_executor(sc.optimize, collection, maxSegments=max_segments)
+        await _run_in_executor(sc.optimize, collection, **kwargs)
         elapsed = time.perf_counter() - start
 
         return {"weight": 1, "unit": "ops", "took": elapsed}
