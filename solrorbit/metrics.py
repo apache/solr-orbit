@@ -74,6 +74,15 @@ def calculate_system_results(store, node_name):
     return calc()
 
 
+def metrics_store_class(cfg):
+    """
+    :param cfg: Config object.
+    :return: The metrics store class selected by the ``datastore.type`` reporting option.
+    """
+    store_type = cfg.opts("reporting", "datastore.type", mandatory=False, default_value="in-memory")
+    return FilesystemMetricsStore if store_type == "filesystem" else InMemoryMetricsStore
+
+
 def metrics_store(cfg, read_only=True, workload=None, test_procedure=None, cluster_config=None, meta_info=None):
     """
     Creates a proper metrics store based on the current configuration.
@@ -82,8 +91,7 @@ def metrics_store(cfg, read_only=True, workload=None, test_procedure=None, clust
     :param read_only: Whether to open the metrics store only for reading (Default: True).
     :return: A metrics store implementation.
     """
-    store_type = cfg.opts("reporting", "datastore.type", mandatory=False, default_value="in-memory")
-    cls = FilesystemMetricsStore if store_type == "filesystem" else InMemoryMetricsStore
+    cls = metrics_store_class(cfg)
     store = cls(cfg=cfg, meta_info=meta_info)
     logging.getLogger(__name__).info("Creating %s", str(store))
 
