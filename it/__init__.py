@@ -41,9 +41,20 @@ from solrorbit import client, config, exceptions, paths, version
 from solrorbit.utils import docker, process
 
 CONFIG_NAMES = ["in-memory-it"]
-# Overridable so a CI run can pin a single version without a code change.
+#: Overridable so a CI run can pin a single version without a code change.
+#: "or" rather than a get() default: a workflow passes the variable through
+#: whether or not its input was filled in, so the key is present and empty
+#: rather than absent, and a get() default never applies.
+DEFAULT_DISTRIBUTIONS = "9.11.0,10.0.0"
 DISTRIBUTIONS = [v.strip() for v in
-                 os.environ.get("IT_DISTRIBUTIONS", "9.11.0,10.0.0").split(",") if v.strip()]
+                 (os.environ.get("IT_DISTRIBUTIONS") or DEFAULT_DISTRIBUTIONS).split(",")
+                 if v.strip()]
+if not DISTRIBUTIONS:
+    # Never silently empty: test_tar_distributions loops over this list, so an
+    # empty one passes without testing anything at all.
+    raise AssertionError(
+        f"IT_DISTRIBUTIONS={os.environ.get('IT_DISTRIBUTIONS')!r} names no usable version."
+    )
 WORKLOADS = ["geonames", "nyc_taxis"]
 # Invoke the Solr Orbit under test, not whatever "solr-orbit" happens to be on
 # PATH. A bare command name resolves to a globally installed copy -- a pyenv shim,
