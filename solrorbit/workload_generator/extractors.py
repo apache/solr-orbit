@@ -31,23 +31,13 @@ def _cursor_scan(client, collection, batch_size=1000):
     Each yielded document is a plain dict with Solr internal fields (``_version_``) removed.
     """
     cursor = "*"
-    session = client._get_session()  # pylint: disable=protected-access
-    url = f"{client.base_url}/solr/{collection}/select"
     while True:
-        resp = session.get(
-            url,
-            params={"q": "*:*", "rows": batch_size, "sort": "id asc",
-                    "cursorMark": cursor, "wt": "json"},
-            timeout=client.timeout,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        docs = data["response"]["docs"]
-        if not docs:
+        results = client.search(collection, "*:*", rows=batch_size, sort="id asc", cursorMark=cursor)
+        if not results.docs:
             break
-        for doc in docs:
+        for doc in results.docs:
             yield {k: v for k, v in doc.items() if k not in _SOLR_INTERNAL_FIELDS}
-        next_cursor = data.get("nextCursorMark", cursor)
+        next_cursor = results.nextCursorMark or cursor
         if next_cursor == cursor:
             break
         cursor = next_cursor
