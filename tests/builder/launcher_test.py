@@ -365,6 +365,14 @@ class TestClock:
 
 
 class DockerLauncherTests(TestCase):
+    def setUp(self):
+        # Pin the Compose flavour so these assertions do not depend on which
+        # Compose is installed on the machine running the tests.
+        composer = mock.patch("solrorbit.utils.docker.compose_command",
+                              return_value="docker compose")
+        self.addCleanup(composer.stop)
+        composer.start()
+
     @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
     @mock.patch("solrorbit.utils.process.run_subprocess_with_output")
     def test_starts_container_successfully(self, run_subprocess_with_output, run_subprocess_with_logging):
@@ -390,9 +398,9 @@ class DockerLauncherTests(TestCase):
         self.assertEqual("testnode", node.node_name)
         self.assertIsNotNone(node.telemetry)
 
-        run_subprocess_with_logging.assert_called_once_with("docker-compose -f /bin/docker-compose.yml up -d")
+        run_subprocess_with_logging.assert_called_once_with("docker compose -f /bin/docker-compose.yml up -d")
         run_subprocess_with_output.assert_has_calls([
-            mock.call("docker-compose -f /bin/docker-compose.yml ps -q"),
+            mock.call("docker compose -f /bin/docker-compose.yml ps -q"),
             mock.call('docker ps -a --filter "id=de604d0d" --filter "status=running" --filter "health=healthy" -q')
         ])
 
@@ -432,7 +440,7 @@ class DockerLauncherTests(TestCase):
 
         add_metadata_for_node.assert_called_once_with(metrics_store, "testnode", "127.0.0.1")
 
-        run_subprocess_with_logging.assert_called_once_with("docker-compose -f /bin/docker-compose.yml down")
+        run_subprocess_with_logging.assert_called_once_with("docker compose -f /bin/docker-compose.yml down")
 
     @mock.patch("solrorbit.telemetry.add_metadata_for_node")
     @mock.patch("solrorbit.utils.process.run_subprocess_with_logging")
@@ -447,4 +455,4 @@ class DockerLauncherTests(TestCase):
 
         self.assertEqual(0, add_metadata_for_node.call_count)
 
-        run_subprocess_with_logging.assert_called_once_with("docker-compose -f /bin/docker-compose.yml down")
+        run_subprocess_with_logging.assert_called_once_with("docker compose -f /bin/docker-compose.yml down")

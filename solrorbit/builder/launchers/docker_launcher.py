@@ -4,6 +4,7 @@ import os
 from solrorbit import telemetry, time
 from solrorbit.builder import cluster
 from solrorbit.builder.launchers.launcher import Launcher
+from solrorbit.utils import docker
 from solrorbit.utils.periodic_waiter import PeriodicWaiter
 
 
@@ -46,7 +47,7 @@ class DockerLauncher(Launcher):
     def _docker_compose(self, compose_config, cmd):
         docker_compose_file = self._get_docker_compose_file(compose_config)
 
-        return f"docker-compose -f {docker_compose_file} {cmd}"
+        return f"{docker.compose_command()} -f {docker_compose_file} {cmd}"
 
     def _get_docker_compose_file(self, compose_config):
         return os.path.join(compose_config, "docker-compose.yml")

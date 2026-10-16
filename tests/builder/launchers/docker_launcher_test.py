@@ -11,6 +11,13 @@ from solrorbit.builder.provisioner import NodeConfiguration
 
 class DockerLauncherTests(TestCase):
     def setUp(self):
+        # Pin the Compose flavour so these assertions do not depend on which
+        # Compose is installed on the machine running the tests.
+        composer = mock.patch("solrorbit.utils.docker.compose_command",
+                              return_value="docker compose")
+        self.addCleanup(composer.stop)
+        composer.start()
+
         self.shell_executor = Mock()
         self.metrics_store = Mock()
 
@@ -40,8 +47,8 @@ class DockerLauncherTests(TestCase):
         self.assertIsNotNone(node.telemetry)
 
         self.shell_executor.execute.assert_has_calls([
-            mock.call(self.host, "docker-compose -f /bin/docker-compose.yml up -d"),
-            mock.call(self.host, "docker-compose -f /bin/docker-compose.yml ps -q", output=True),
+            mock.call(self.host, "docker compose -f /bin/docker-compose.yml up -d"),
+            mock.call(self.host, "docker compose -f /bin/docker-compose.yml ps -q", output=True),
         ])
 
     def test_container_not_started(self):
@@ -58,7 +65,7 @@ class DockerLauncherTests(TestCase):
         self.launcher.stop(self.host, nodes)
 
         add_metadata_for_node.assert_called_once_with(self.metrics_store, "testnode", "127.0.0.1")
-        self.shell_executor.execute.assert_called_once_with(self.host, "docker-compose -f /bin/docker-compose.yml down")
+        self.shell_executor.execute.assert_called_once_with(self.host, "docker compose -f /bin/docker-compose.yml down")
 
     @mock.patch("solrorbit.telemetry.add_metadata_for_node")
     def test_stops_container_when_no_metrics_store_is_provided(self, add_metadata_for_node):
@@ -68,7 +75,7 @@ class DockerLauncherTests(TestCase):
         self.launcher.stop(self.host, nodes)
 
         self.assertEqual(0, add_metadata_for_node.call_count)
-        self.shell_executor.execute.assert_called_once_with(self.host, "docker-compose -f /bin/docker-compose.yml down")
+        self.shell_executor.execute.assert_called_once_with(self.host, "docker compose -f /bin/docker-compose.yml down")
 
     def test_container_not_healthy(self):
         self.shell_executor.execute.return_value = []

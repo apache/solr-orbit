@@ -60,6 +60,9 @@ jobs:
         run: |
           java -version
           docker --version
+          # Which Compose is present decides how the launchers invoke it, and
+          # its absence is not otherwise visible until a test fails.
+          docker compose version || docker-compose version || echo "no Docker Compose found"
           uv --version
 
       - name: Run the integration suite
