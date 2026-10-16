@@ -41,7 +41,9 @@ from solrorbit import client, config, version, paths
 from solrorbit.utils import process
 
 CONFIG_NAMES = ["in-memory-it"]
-DISTRIBUTIONS = ["9.11.0", "10.0.0"]
+# Overridable so a CI run can pin a single version without a code change.
+DISTRIBUTIONS = [v.strip() for v in
+                 os.environ.get("IT_DISTRIBUTIONS", "9.11.0,10.0.0").split(",") if v.strip()]
 WORKLOADS = ["geonames", "nyc_taxis"]
 # Invoke the Solr Orbit under test, not whatever "solr-orbit" happens to be on
 # PATH. A bare command name resolves to a globally installed copy -- a pyenv shim,
