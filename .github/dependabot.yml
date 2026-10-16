@@ -24,3 +24,8 @@ updates:
     directory: "/docker"
     schedule:
       interval: "monthly"
+    ignore:
+      # The base image must stay within requires-python in pyproject.toml;
+      # move it together with that marker, not on its own.
+      - dependency-name: "python"
+        versions: [">=3.14"]
