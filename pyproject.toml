@@ -127,6 +127,8 @@ solr-orbit = "solrorbit.benchmark:main"
 solr-orbitd = "solrorbit.benchmarkd:main"
 solr-orbit-launchr = "solrorbit.tools.launchr.cli:main"
 launchr = "solrorbit.tools.launchr.cli:main"
+solr-orbit-reportr = "solrorbit.tools.reportr.cli:main"
+reportr = "solrorbit.tools.reportr.cli:main"
 
 [project.optional-dependencies]
 test = [
