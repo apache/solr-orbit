@@ -34,7 +34,7 @@ import psutil
 
 from solrorbit import time, exceptions, telemetry
 from solrorbit.builder import cluster, java_resolver
-from solrorbit.utils import io, opts, process
+from solrorbit.utils import docker, io, opts, process
 
 
 class DockerLauncher:
@@ -76,7 +76,8 @@ class DockerLauncher:
         self._wait_for_healthy_running_container(container_id, DockerLauncher.PROCESS_WAIT_TIMEOUT_SECONDS)
 
     def _docker_compose(self, compose_config, cmd):
-        return "docker-compose -f {} {}".format(os.path.join(compose_config, "docker-compose.yml"), cmd)
+        return "{} -f {} {}".format(docker.compose_command(),
+                                    os.path.join(compose_config, "docker-compose.yml"), cmd)
 
     def _get_container_id(self, compose_config):
         compose_ps_cmd = self._docker_compose(compose_config, "ps -q")

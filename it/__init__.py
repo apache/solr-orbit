@@ -37,8 +37,8 @@ import datetime
 
 import pytest
 
-from solrorbit import client, config, version, paths
-from solrorbit.utils import process
+from solrorbit import client, config, exceptions, paths, version
+from solrorbit.utils import docker, process
 
 CONFIG_NAMES = ["in-memory-it"]
 # Overridable so a CI run can pin a single version without a code change.
@@ -146,8 +146,12 @@ def free_port():
 def check_prerequisites():
     if process.run_subprocess_with_logging("docker ps") != 0:
         raise AssertionError("Docker must be installed and the daemon must be up and running to run integration tests.")
-    if process.run_subprocess_with_logging("docker-compose --help") != 0:
-        raise AssertionError("Docker Compose is required to run integration tests.")
+    try:
+        # Compose v2 is a "docker compose" subcommand; the standalone binary is
+        # v1 and is absent from current CI images.
+        docker.compose_command()
+    except exceptions.SystemSetupError as exc:
+        raise AssertionError(str(exc)) from exc
 
 
 class ConfigFile:
