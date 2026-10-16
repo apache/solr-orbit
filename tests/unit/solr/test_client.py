@@ -294,3 +294,47 @@ class TestSolrAdminClientIsCloudMode(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClientFactoryTimeout(unittest.TestCase):
+    """--client-options=timeout:N has to reach the client that uses it.
+
+    It used to be dropped in ClientFactory.create(), so every data operation
+    ran on the 30-second constructor default. Survivable for searches and
+    bulk updates; fatal for optimize, which is one HTTP request that
+    force-merges the whole index. A full nyc_taxis run indexed 165,346,692
+    documents over 86 minutes and then failed there at 30 seconds, having
+    already done the work.
+    """
+
+    @staticmethod
+    def _factory(**options):
+        from solrorbit.client import ClientFactory
+        return ClientFactory([{"host": "localhost", "port": 8983}], options)
+
+    def test_the_configured_timeout_reaches_the_client(self):
+        assert self._factory(timeout=7200).create()._timeout == 7200
+
+    def test_it_also_reaches_the_pysolr_data_client(self):
+        # optimize goes through pysolr, not the admin client, which is why
+        # dropping it here was invisible until a force-merge took minutes.
+        client = self._factory(timeout=1234).create()
+        assert client._get_pysolr("c").timeout == 1234
+
+    def test_and_the_admin_client(self):
+        assert self._factory(timeout=1234).create()._admin.timeout == 1234
+
+    def test_a_string_is_accepted(self):
+        # client_options arrive parsed from a comma-separated CLI string.
+        assert self._factory(timeout="900").create()._timeout == 900
+
+    def test_the_default_applies_when_unset(self):
+        from solrorbit.client import DEFAULT_CLIENT_TIMEOUT
+        assert self._factory().create()._timeout == DEFAULT_CLIENT_TIMEOUT
+
+    def test_nonsense_falls_back_rather_than_failing_the_run(self):
+        # Aborting a benchmark over a typo in a tuning knob is worse than
+        # running it on the default.
+        from solrorbit.client import DEFAULT_CLIENT_TIMEOUT
+        assert self._factory(timeout="soon").create()._timeout == DEFAULT_CLIENT_TIMEOUT
+        assert self._factory(timeout=-5).create()._timeout == DEFAULT_CLIENT_TIMEOUT

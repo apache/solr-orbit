@@ -42,6 +42,14 @@ logger = logging.getLogger(__name__)
 # Exceptions
 # ---------------------------------------------------------------------------
 
+#: Socket read timeout used when ``--client-options`` does not set one.
+#:
+#: Fine for searches and bulk updates. Deliberately *not* relied on for
+#: long single operations such as ``optimize``, which a caller is expected to
+#: raise with ``--client-options=timeout:N``.
+DEFAULT_CLIENT_TIMEOUT = 30
+
+
 class SolrClientError(Exception):
     """Base exception for all SolrAdminClient errors."""
 
@@ -71,7 +79,7 @@ class SolrAdminClient:
 
     def __init__(self, host: str, port: int = 8983,
                  username: str = None, password: str = None,
-                 tls: bool = False, timeout: int = 30):
+                 tls: bool = False, timeout: int = DEFAULT_CLIENT_TIMEOUT):
         scheme = "https" if tls else "http"
         self.base_url = f"{scheme}://{host}:{port}"
         self.api_url = f"{self.base_url}/api"
@@ -476,7 +484,7 @@ class SolrClient(RequestContextHolder):  # pylint: disable=too-many-public-metho
             pass
 
     def __init__(self, host="localhost", port=8983, username=None, password=None,
-                 tls=False, timeout=30):
+                 tls=False, timeout=DEFAULT_CLIENT_TIMEOUT):
         self._host = host
         self._port = port
         self._username = username
@@ -614,7 +622,37 @@ class ClientFactory:
             username=self._client_options.get("basic_auth_user"),
             password=self._client_options.get("basic_auth_password"),
             tls=self._client_options.get("use_ssl", False),
+            timeout=self._read_timeout(),
         )
+
+    def _read_timeout(self) -> int:
+        """Socket read timeout for every request this client makes, in seconds.
+
+        ``--client-options=timeout:N`` used to be dropped here, so the client
+        always ran on the 30-second constructor default no matter what was
+        asked for. That is survivable for searches and bulk updates and fatal
+        for ``optimize``: a force-merge of a 165M-document index is a single
+        HTTP request that runs for many minutes, and it failed at 30 seconds
+        having already done the work -- after, in one observed case, 86
+        minutes of successful indexing.
+
+        Invalid input falls back to the default rather than failing the run:
+        the alternative is aborting a benchmark over a typo in a tuning knob.
+        """
+        raw = self._client_options.get("timeout", DEFAULT_CLIENT_TIMEOUT)
+        try:
+            timeout = int(raw)
+        except (TypeError, ValueError):
+            self.logger.warning(
+                "Ignoring client option timeout=%r, which is not a number; using %ds",
+                raw, DEFAULT_CLIENT_TIMEOUT)
+            return DEFAULT_CLIENT_TIMEOUT
+        if timeout <= 0:
+            self.logger.warning(
+                "Ignoring client option timeout=%d, which is not positive; using %ds",
+                timeout, DEFAULT_CLIENT_TIMEOUT)
+            return DEFAULT_CLIENT_TIMEOUT
+        return timeout
 
     def create_async(self):
         return self.create()
