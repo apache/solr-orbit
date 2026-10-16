@@ -24,6 +24,7 @@ from unittest.mock import MagicMock
 from solrorbit.worker_coordinator.runner import (
     _translate_ndjson_batch,
     SolrBulkIndex,
+    SolrOptimize,
     SolrSearch,
     SolrCreateCollection,
     SolrDeleteCollection,
@@ -342,6 +343,47 @@ class TestSolrDeleteCollection(unittest.TestCase):
         runner = SolrDeleteCollection()
         # Should not raise
         _run(runner(mock_sc, params))
+
+
+class TestSolrOptimize(unittest.TestCase):
+    """Optimize follows Solr's own default, which is no longer one segment.
+
+    Modern Solr honours the merge policy's maxSegmentSizeMB when maxSegments
+    is not given. Forcing maxSegments=1 produces an index shape no production
+    system would hold, and pays a full rewrite of the index to reach it --
+    which on a real corpus is the longest single operation in a run.
+    """
+
+    def test_no_max_segments_is_sent_by_default(self):
+        client = MagicMock()
+        _run(SolrOptimize()(client, {"collection": "c"}))
+        _args, kwargs = client.optimize.call_args
+        assert "maxSegments" not in kwargs
+
+    def test_an_explicit_value_is_honoured(self):
+        client = MagicMock()
+        _run(SolrOptimize()(client, {"collection": "c", "max-segments": 1}))
+        _args, kwargs = client.optimize.call_args
+        assert kwargs["maxSegments"] == 1
+
+    def test_a_string_value_is_coerced(self):
+        # Workload params arrive as JSON and a template can render a string.
+        client = MagicMock()
+        _run(SolrOptimize()(client, {"collection": "c", "max-segments": "4"}))
+        _args, kwargs = client.optimize.call_args
+        assert kwargs["maxSegments"] == 4
+
+    def test_an_empty_value_means_unset(self):
+        client = MagicMock()
+        _run(SolrOptimize()(client, {"collection": "c", "max-segments": ""}))
+        _args, kwargs = client.optimize.call_args
+        assert "maxSegments" not in kwargs
+
+    def test_it_reports_how_long_the_merge_took(self):
+        client = MagicMock()
+        result = _run(SolrOptimize()(client, {"collection": "c"}))
+        assert result["weight"] == 1 and result["unit"] == "ops"
+        assert result["took"] >= 0
 
 
 class TestRunnerRegistrationSmoke(unittest.TestCase):
