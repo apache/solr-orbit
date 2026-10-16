@@ -139,28 +139,21 @@ class SolrProvisioner:
             url = f"{base_url}/{version}/{tarball}"
             logger.info("Downloading Solr %s from %s", version, url)
 
-            temp_path = None
-
-            try:
-                fd, temp_path = tempfile.mkstemp(
+            with tempfile.TemporaryDirectory(
                     dir=self.cache_dir,
-                    prefix=f"{tarball}.",
-                    suffix=".tmp"
-                )
-                os.close(fd)
+                    prefix=f"{tarball}."
+            ) as temp_dir:
+                temp_path = os.path.join(temp_dir, tarball)
+
                 try:
                     urllib.request.urlretrieve(url, temp_path)
                 except Exception as exc:
                     logger.warning("Download from %s failed: %s", url, exc)
                     continue
-                os.replace(temp_path, dest)
 
+                os.replace(temp_path, dest)
                 logger.info("Downloaded Solr %s to %s", version, dest)
                 return dest
-
-            finally:
-                if temp_path is not None and os.path.exists(temp_path):
-                    os.remove(temp_path)
 
         raise SolrProvisionerError(
             f"Could not download Solr {version} from any mirror. "

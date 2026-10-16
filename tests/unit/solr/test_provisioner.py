@@ -21,6 +21,7 @@ import socket
 import unittest
 import os
 import tempfile
+import stat
 from unittest.mock import MagicMock, patch
 
 from solrorbit import exceptions
@@ -226,9 +227,7 @@ class TestProvisionerDownload(unittest.TestCase):
                 ):
                     provisioner.download("9.10.1")
             self.assertFalse(os.path.exists(dest))
-            self.assertFalse(
-                any(name.endswith(".tmp") for name in os.listdir(cache_dir))
-            )
+            self.assertEqual([], os.listdir(cache_dir))
 
     def test_successful_download_is_cached(self):
         with tempfile.TemporaryDirectory() as cache_dir:
@@ -282,7 +281,7 @@ class TestProvisionerDownload(unittest.TestCase):
             with open(dest, "rb") as file:
                 content = file.read()
             self.assertEqual(content, b"complete data")
-            self.assertFalse(any(name.endswith(".tmp") for name in os.listdir(cache_dir)))
+            self.assertEqual([os.path.basename(dest)], os.listdir(cache_dir))
 
     def test_all_mirrors_fail(self):
         with tempfile.TemporaryDirectory() as cache_dir:
@@ -309,9 +308,7 @@ class TestProvisionerDownload(unittest.TestCase):
 
             self.assertFalse(os.path.exists(dest))
 
-            self.assertFalse(
-                any(name.endswith(".tmp") for name in os.listdir(cache_dir))
-            )
+            self.assertEqual([], os.listdir(cache_dir))
 
     def test_replace_failure_propagates(self):
         with tempfile.TemporaryDirectory() as cache_dir:
@@ -335,9 +332,28 @@ class TestProvisionerDownload(unittest.TestCase):
 
             self.assertFalse(os.path.exists(dest))
 
-            self.assertFalse(
-                any(name.endswith(".tmp") for name in os.listdir(cache_dir))
-            )
+            self.assertEqual([], os.listdir(cache_dir))
+
+    def test_download_preserves_file_permissions(self):
+        with tempfile.TemporaryDirectory() as cache_dir:
+            provisioner = SolrProvisioner(cache_dir=cache_dir)
+            reference_path = os.path.join(cache_dir, "reference.txt")
+            with open(reference_path, "wb") as file:
+                file.write(b"reference data")
+
+            def fake_download(url, temp_path):
+                with open(temp_path, "wb") as file:
+                    file.write(b"complete data")
+
+            with patch(
+                    "solrorbit.builder.solr_provisioner.urllib.request.urlretrieve",
+                    side_effect=fake_download
+            ):
+                dest = provisioner.download("9.10.1")
+                expected_permissions = stat.S_IMODE(os.stat(reference_path).st_mode)
+                actual_permissions = stat.S_IMODE(os.stat(dest).st_mode)
+                self.assertEqual(expected_permissions, actual_permissions)
+
 
 if __name__ == "__main__":
     unittest.main()
