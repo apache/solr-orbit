@@ -1006,3 +1006,49 @@ class SystemStatsTests(TestCase):
                 "single": 833 * 1024 * 1024
             }
         }, select(metric_list, "bytes_written", node="benchmark-node-1"))
+
+
+class WorkloadDescriptionTests(TestCase):
+    """The workload's own description travels with the result.
+
+    It is declared in the workloads repository, next to the thing it describes,
+    so a consumer reading stored JSON can say what the numbers measure without
+    a checkout of that repository.
+    """
+
+    @staticmethod
+    def a_test_run(**kwargs):
+        schedule = [workload.Task("index #1", workload.Operation("index", workload.OperationType.Bulk))]
+        t = workload.Workload(name="unittest",
+                              description=kwargs.pop("description", None),
+                              collections=[workload.Collection(name="tests")],
+                              test_procedures=[workload.TestProcedure(name="index", default=True,
+                                                                      schedule=schedule)])
+        return metrics.TestRun(benchmark_version="0.4.4", benchmark_revision="123abc",
+                               environment_name="unittest", test_run_id="6ebc6e53",
+                               test_run_timestamp=datetime.datetime(2016, 1, 31),
+                               pipeline="from-sources", user_tags={}, workload=t,
+                               workload_params={}, test_procedure=t.default_test_procedure,
+                               cluster_config="4gheap", cluster_config_params=None,
+                               plugin_params=None, **kwargs)
+
+    def test_a_declared_description_reaches_the_stored_json(self):
+        test_run = self.a_test_run(description="Taxi rides in New York in 2015")
+        self.assertEqual("Taxi rides in New York in 2015",
+                         test_run.as_dict()["workload-description"])
+
+    def test_it_also_reaches_the_per_result_records(self):
+        test_run = self.a_test_run(description="Taxi rides in New York in 2015")
+        test_run.add_results(metrics.GlobalStats({"op_metrics": []}))
+        for record in test_run.to_result_dicts():
+            self.assertEqual("Taxi rides in New York in 2015", record["workload-description"])
+
+    def test_a_workload_without_one_omits_the_key(self):
+        # Workload.description defaults to the empty string, which is not a
+        # description and should not become one in the output.
+        self.assertNotIn("workload-description", self.a_test_run().as_dict())
+
+    def test_it_survives_a_round_trip_through_json(self):
+        stored = self.a_test_run(description="Taxi rides in New York in 2015").as_dict()
+        self.assertEqual("Taxi rides in New York in 2015",
+                         metrics.TestRun.from_dict(stored).workload_description)

@@ -1,0 +1,17 @@
+{
+  "responseHeader": {"status": 0, "QTime": 3},
+  "mode": "solrcloud",
+  "zkHost": "127.0.0.1:9983",
+  "lucene": {
+    "solr-spec-version": "9.11.0",
+    "solr-impl-version": "9.11.0 abc1234def5678 - jenkins - 2026-02-14 11:02:31",
+    "lucene-spec-version": "9.12.0",
+    "lucene-impl-version": "9.12.0 fedcba9876 - jenkins - 2026-02-10 08:00:00"
+  },
+  "jvm": {
+    "version": "21.0.5 21.0.5+11-LTS",
+    "name": "Eclipse Adoptium OpenJDK 64-Bit Server VM",
+    "spec": {"vendor": "Eclipse Adoptium", "name": "Java Platform API Specification", "version": "21"}
+  },
+  "system": {"name": "Linux", "arch": "amd64", "availableProcessors": 8}
+}
