@@ -25,6 +25,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import datetime
 import unittest.mock as mock
 from unittest import TestCase
 
@@ -141,6 +142,37 @@ class BuilderTests(TestCase):
         m.stop_engine()
         self.assertFalse(launcher.started)
         self.assertEqual(cleanup.call_count, 2)
+
+    @mock.patch("solrorbit.paths.install_root", return_value="/install-root")
+    @mock.patch("solrorbit.builder.builder._delete_node_file")
+    @mock.patch("solrorbit.builder.builder._load_node_file")
+    @mock.patch("solrorbit.builder.provisioner.cleanup")
+    @mock.patch("solrorbit.builder.provisioner.load_node_configuration")
+    @mock.patch("solrorbit.builder.launcher.ProcessLauncher")
+    @mock.patch("solrorbit.metrics.results_store")
+    @mock.patch("solrorbit.metrics.test_run_store")
+    def test_stop_persists_system_metrics_of_the_test_run(self, test_run_store, results_store, process_launcher,
+                                                          load_node_configuration, cleanup, load_node_file,
+                                                          delete_node_file, install_root):
+        cfg = config.Config()
+        cfg.add(config.Scope.application, "system", "env.name", "unittest")
+        cfg.add(config.Scope.application, "workload", "params", {})
+        cfg.add(config.Scope.application, "builder", "preserve.install", False)
+        load_node_configuration.return_value = mock.Mock(build_type="tar", binary_path="/install", data_paths=["/data"])
+        load_node_file.return_value = ([BuilderTests.Node("benchmark-node-0")], "17")
+        current_test_run = mock.Mock(test_run_id="17", test_run_timestamp=datetime.datetime(2026, 10, 16),
+                                     workload_name="geonames", test_procedure_name="append-no-conflicts")
+        test_run_store.return_value.find_by_test_run_id.return_value = current_test_run
+
+        builder.stop(cfg)
+
+        nodes, metrics_store = process_launcher.return_value.stop.call_args.args
+        self.assertEqual(["benchmark-node-0"], [node.node_name for node in nodes])
+        self.assertEqual("17", metrics_store.open_context["test-run-id"])
+        current_test_run.add_results.assert_called_once()
+        results_store.return_value.store_results.assert_called_once_with(current_test_run)
+        delete_node_file.assert_called_once_with("/install-root")
+        cleanup.assert_called_once_with(preserve=False, install_dir="/install", data_paths=["/data"])
 
 
 class ClusterDistributionVersionTests(TestCase):
