@@ -94,6 +94,20 @@ class ExtractUserTagsTests(TestCase):
         self.assertDictEqual({"os": "Linux", "cpu": "ARM"}, metrics.extract_user_tags_from_config(cfg))
 
 
+class MetricsStoreClassTests(TestCase):
+    def test_defaults_to_the_in_memory_store(self):
+        cfg = config.Config()
+        self.assertIs(metrics.InMemoryMetricsStore, metrics.metrics_store_class(cfg))
+
+    def test_selects_the_configured_store(self):
+        for store_type, store_class in [("in-memory", metrics.InMemoryMetricsStore),
+                                        ("filesystem", metrics.FilesystemMetricsStore)]:
+            with self.subTest(store_type=store_type):
+                cfg = config.Config()
+                cfg.add(config.Scope.application, "reporting", "datastore.type", store_type)
+                self.assertIs(store_class, metrics.metrics_store_class(cfg))
+
+
 class InMemoryMetricsStoreTests(TestCase):
     TEST_RUN_TIMESTAMP = datetime.datetime(2016, 1, 31)
     TEST_RUN_ID = "6ebc6e53-ee20-4b0c-99b4-09697987e9f4"
