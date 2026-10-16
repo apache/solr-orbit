@@ -68,6 +68,9 @@ class LocalProcessLauncher(Launcher):
 
         telemetry = self._prepare_telemetry(node_configuration, node_count_on_host, java_major_version)
         env = self._prepare_env(node_name, java_home, telemetry)
+        # The port the node was provisioned for. Without this Solr starts on its
+        # own default and the pid-file lookup below looks in the wrong place.
+        env["SOLR_PORT"] = str(node_configuration.http_port)
         telemetry.on_pre_node_start(node_name)
 
         node_pid = self._start_process(host, binary_path, env)
@@ -130,6 +133,7 @@ class LocalProcessLauncher(Launcher):
 
         cmd = [io.escape_path(os.path.join(binary_path, "bin", "solr"))]
         cmd.append("start")
+        cmd += ["-p", env.get("SOLR_PORT", "8983")]
 
         # Solr 9.x requires --cloud flag for SolrCloud mode; Solr 10+ uses it by default
         distribution_version = self.cluster_config.variables.get("distribution", {}).get("version")

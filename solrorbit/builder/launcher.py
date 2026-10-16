@@ -170,6 +170,9 @@ class ProcessLauncher:
 
         t = telemetry.Telemetry(enabled_devices, devices=node_telemetry)
         env = self._prepare_env(node_name, java_home, t)
+        # The port the node was provisioned for. Without this Solr starts on its
+        # own default and the pid-file lookup below looks in the wrong place.
+        env["SOLR_PORT"] = str(node_configuration.http_port)
         t.on_pre_node_start(node_name)
         # Get Solr version for version-specific startup command
         distribution_version = self.cfg.opts("builder", "distribution.version", mandatory=False)
@@ -235,6 +238,7 @@ class ProcessLauncher:
         # - Solr 10.x+: just "start" enables SolrCloud mode with embedded ZooKeeper by default
         # The bin/solr script handles daemonization and PID file creation
         cmd.append("start")
+        cmd += ["-p", env.get("SOLR_PORT", "8983")]
 
         # Determine if we need --cloud flag based on version
         if distribution_version:

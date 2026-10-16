@@ -1,0 +1,95 @@
+name: Run Integration Tests
+
+# Manual only. The suite downloads Solr distributions, builds from source and
+# runs real benchmarks -- minutes to tens of minutes -- which is too slow and
+# too failure-prone to gate every push. Manual is enough to make rot visible:
+# a maintainer runs it before a release, or when touching the builder or it/.
+on:
+  workflow_dispatch:
+    inputs:
+      tests:
+        description: "pytest targets (e.g. 'it/info_test.py it/list_test.py')"
+        required: false
+        default: "it"
+      distribution:
+        description: "Override the Solr versions under test (comma-separated)"
+        required: false
+        default: ""
+
+concurrency:
+  # Manual dispatches are never cancelled: they are not superseded by anything,
+  # and a half-finished run hides breakage.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  Integration-Tests:
+    # Linux only, deliberately. The two hangs that make this suite unrunnable on
+    # macOS -- the CPython os.stat recursion during corpus download, and a
+    # Thespian stall (#106) -- are both absent here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Install bz2 development package
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libbz2-dev
+
+      - name: Check out repository code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up JDK 21
+        # Solr 10 will not start on anything lower, and left to itself the
+        # resolver picks the lowest allowed JDK.
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.32"
+          enable-cache: true
+
+      - name: Record the toolchain
+        run: |
+          java -version
+          docker --version
+          uv --version
+
+      - name: Run the integration suite
+        env:
+          # Inputs reach the shell as environment variables rather than being
+          # interpolated into the script, which is both correct quoting and the
+          # documented way to keep a dispatch input out of the command text.
+          TESTS: ${{ inputs.tests }}
+          IT_DISTRIBUTIONS: ${{ inputs.distribution }}
+        run: |
+          # jvm.resolve_path looks for JAVA<major>_HOME before JAVA_HOME, and
+          # the tests ask for --runtime-jdk=21. setup-java exports JAVA_HOME.
+          export JAVA21_HOME="$JAVA_HOME"
+          # Unquoted on purpose: the input may name several pytest targets.
+          # shellcheck disable=SC2086
+          uv run --extra develop pytest -s -v --junitxml=it-results.xml $TESTS
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: integration-test-results
+          path: it-results.xml
+          if-no-files-found: warn
+
+      - name: Upload Solr Orbit logs
+        # These failures are usually only diagnosable from the logs.
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: solr-orbit-logs
+          path: ~/.solr-orbit/logs/
+          if-no-files-found: warn

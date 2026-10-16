@@ -37,14 +37,21 @@ def test_cluster():
     cluster = it.TestCluster("in-memory-it")
     # test with a recent distribution
     dist = it.DISTRIBUTIONS[-1]
-    port = 19200
     test_run_id = str(uuid.uuid4())
 
-    it.wait_until_port_is_free(port_number=port)
-    cluster.install(distribution_version=dist, node_name="benchmark-node", cluster_config="4gheap", http_port=port)
-    cluster.start(test_run_id=test_run_id)
-    yield cluster
-    cluster.stop()
+    cluster.install(distribution_version=dist, node_name="benchmark-node", cluster_config="4gheap",
+                    http_port=it.free_port())
+    try:
+        cluster.start(test_run_id=test_run_id)
+    except BaseException:
+        # Without this a failed start leaves a Solr node holding the port, and
+        # every later test that provisions Solr fails on "port already in use".
+        cluster.stop()
+        raise
+    try:
+        yield cluster
+    finally:
+        cluster.stop()
 
 
 @it.benchmark_in_mem

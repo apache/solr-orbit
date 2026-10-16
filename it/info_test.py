@@ -47,10 +47,10 @@ def test_workload_info_with_task_filter(cfg):
 @it.benchmark_in_mem
 def test_workload_info_fails_with_wrong_workload_params(cfg):
     # simulate a typo in workload parameter
-    cmd = it.solrorbit_command_line_for(cfg, "info --workload=geonames --workload-params='conflict_probability:5,number-of-replicas:1'")
+    cmd = it.solrorbit_command_line_for(cfg, "info --workload=geonames --workload-params='conflict_probability:5,conflict_probabilty:1'")
     output = process.run_subprocess_with_output(cmd)
-    expected = "Some of your workload parameter(s) \"number-of-replicas\" are not used by this workload; " \
-               "perhaps you intend to use \"number_of_replicas\" instead.\n\nAll workload parameters you " \
-               "provided are:\n- conflict_probability\n- number-of-replicas\n\nAll parameters exposed by this workload"
+    expected = "Some of your workload parameter(s) \"conflict_probabilty\" are not used by this workload; " \
+               "perhaps you intend to use \"conflict_probability\" instead.\n\nAll workload parameters you " \
+               "provided are:\n- conflict_probability\n- conflict_probabilty\n\nAll parameters exposed by this workload"
 
     assert expected in "\n".join(output)

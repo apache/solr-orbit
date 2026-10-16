@@ -43,8 +43,10 @@ def test_list_cluster_configs(cfg):
 @it.benchmark_in_mem
 def test_list_workloads(cfg):
     assert it.solrorbit(cfg, "list workloads") == 0
+    # The workloads repository's initial commit: a revision that exists and, short
+    # of a history rewrite, cannot stop existing.
     assert it.solrorbit(cfg, "list workloads --workload-repository=default "
-                           "--workload-revision=cba4e45dda37ac03abbd3c9dd4532475dac355e9") == 0
+                           "--workload-revision=89403d1fa7a78670fbf45710d97500414b231a66") == 0
 
 
 @it.benchmark_in_mem

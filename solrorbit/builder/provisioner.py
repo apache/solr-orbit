@@ -63,8 +63,14 @@ def docker(cfg, cluster_config, ip, http_port, target_root, node_name):
     return DockerProvisioner(cluster_config, node_name, ip, http_port, node_root_dir, distribution_version, benchmark_root)
 
 
+#: Solr's own default HTTP port, used when a node configuration predates the
+#: http-port field.
+DEFAULT_HTTP_PORT = 8983
+
+
 class NodeConfiguration:
-    def __init__(self, build_type, cluster_config_runtime_jdks, ip, node_name, node_root_path, binary_path, data_paths):
+    def __init__(self, build_type, cluster_config_runtime_jdks, ip, node_name, node_root_path, binary_path, data_paths,
+                 http_port=DEFAULT_HTTP_PORT):
         self.build_type = build_type
         self.cluster_config_runtime_jdks = cluster_config_runtime_jdks
         self.ip = ip
@@ -72,6 +78,9 @@ class NodeConfiguration:
         self.node_root_path = node_root_path
         self.binary_path = binary_path
         self.data_paths = data_paths
+        # The port the node was provisioned for. Without it the launcher cannot
+        # start Solr anywhere but its built-in default.
+        self.http_port = int(http_port)
 
     def as_dict(self):
         return {
@@ -81,14 +90,17 @@ class NodeConfiguration:
             "node-name": self.node_name,
             "node-root-path": self.node_root_path,
             "binary-path": self.binary_path,
-            "data-paths": self.data_paths
+            "data-paths": self.data_paths,
+            "http-port": self.http_port
         }
 
     @staticmethod
     def from_dict(d):
         return NodeConfiguration(
             d["build-type"], d["cluster-config-instance-runtime-jdks"], d["ip"],
-            d["node-name"], d["node-root-path"], d["binary-path"], d["data-paths"])
+            d["node-name"], d["node-root-path"], d["binary-path"], d["data-paths"],
+            # Tolerate a node-config.json written before this field existed.
+            d.get("http-port", DEFAULT_HTTP_PORT))
 
 
 def save_node_configuration(path, n):
@@ -195,7 +207,7 @@ class BareProvisioner:
         return NodeConfiguration("tar", self.os_installer.cluster_config.mandatory_var("runtime.jdk"),
                                  self.os_installer.node_ip, self.os_installer.node_name,
                                  self.os_installer.node_root_dir, self.os_installer.os_home_path,
-                                 self.os_installer.data_paths)
+                                 self.os_installer.data_paths, self.os_installer.http_port)
 
     def _provisioner_variables(self):
         provisioner_vars = {}
@@ -377,7 +389,8 @@ class DockerProvisioner:
             f.write(docker_cfg)
 
         return NodeConfiguration("docker", self.cluster_config.mandatory_var("runtime.jdk"),
-                                 self.node_ip, self.node_name, self.node_root_dir, self.binary_path, self.data_paths)
+                                 self.node_ip, self.node_name, self.node_root_dir, self.binary_path,
+                                 self.data_paths, self.http_port)
 
     def docker_vars(self, mounts):
         # Determine Docker image based on version type

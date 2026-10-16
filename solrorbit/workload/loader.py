@@ -1399,17 +1399,22 @@ class WorkloadFileReader:
 
         unused_user_defined_workload_params = self.complete_workload_params.unused_user_defined_workload_params()
         if len(unused_user_defined_workload_params) > 0:
+            close_matches = sorted(opts.make_list_of_close_matches(
+                unused_user_defined_workload_params,
+                self.complete_workload_params.workload_defined_params))
+            # Only suggest alternatives when there are any. The suggestion carries its
+            # own punctuation, so without it the sentence still ends in a full stop
+            # rather than "...by this workload; perhaps you intend to use  instead."
+            suggestion = "; perhaps you intend to use {} instead.".format(
+                ",".join(opts.double_quoted_list_of(close_matches))) if close_matches else "."
             err_msg = (
-                "Some of your workload parameter(s) {} are not used by this workload; perhaps you intend to use {} instead.\n\n"
+                "Some of your workload parameter(s) {} are not used by this workload{}\n\n"
                 "All workload parameters you provided are:\n"
                 "{}\n\n"
                 "All parameters exposed by this workload:\n"
                 "{}".format(
                     ",".join(opts.double_quoted_list_of(sorted(unused_user_defined_workload_params))),
-                    ",".join(opts.double_quoted_list_of(sorted(opts.make_list_of_close_matches(
-                        unused_user_defined_workload_params,
-                        self.complete_workload_params.workload_defined_params
-                    )))),
+                    suggestion,
                     "\n".join(opts.bulleted_list_of(sorted(list(self.workload_params.keys())))),
                     "\n".join(opts.bulleted_list_of(self.complete_workload_params.sorted_workload_defined_params))))
 
