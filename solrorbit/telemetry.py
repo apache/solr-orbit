@@ -992,6 +992,11 @@ class SolrCollectionStats(SolrTelemetryDevice):
 
     def __init__(self, admin_client, metrics_store,
                  collections: list = None, sample_interval_s: float = 30.0):
+        if sample_interval_s <= 0:
+            raise exceptions.SystemSetupError(
+                "The telemetry parameter 'collection-stats-sample-interval' must be greater than zero "
+                f"but was {sample_interval_s}."
+            )
         super().__init__(admin_client, metrics_store, sample_interval_s)
         self._collections = collections
 
