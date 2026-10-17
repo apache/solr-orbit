@@ -932,7 +932,10 @@ class WorkerCoordinator:
         return [
             telemetry.SolrJvmStats(sc, self.metrics_store),
             telemetry.SolrNodeStats(sc, self.metrics_store),
-            telemetry.SolrCollectionStats(sc, self.metrics_store),
+            telemetry.SolrCollectionStats(
+                sc, self.metrics_store,
+                sample_interval_s=telemetry_params.get("collection-stats-sample-interval", 30),
+            ),
             telemetry.SolrQueryStats(sc, self.metrics_store),
             telemetry.SolrIndexingStats(sc, self.metrics_store),
             telemetry.SolrCacheStats(sc, self.metrics_store),

@@ -21,6 +21,7 @@ import time
 import unittest
 from unittest.mock import MagicMock
 
+from solrorbit import exceptions
 from solrorbit.telemetry import (
     SolrCacheStats,
     SolrCollectionStats,
@@ -393,6 +394,11 @@ class TestSolrCollectionStats(unittest.TestCase):
 
         device = SolrCollectionStats(client, MagicMock(), collections=["coll"])
         device._collect()  # must not raise
+
+    def test_rejects_non_positive_sample_interval(self):
+        for interval in (0, -5):
+            with self.assertRaisesRegex(exceptions.SystemSetupError, "collection-stats-sample-interval"):
+                SolrCollectionStats(MagicMock(), MagicMock(), sample_interval_s=interval)
 
 
 # ---------------------------------------------------------------------------
