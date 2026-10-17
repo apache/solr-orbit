@@ -189,6 +189,21 @@ class WorkerCoordinatorTests(TestCase):
         # Did we start all load generators? There is no specific mock assert for this...
         self.assertEqual(4, target.start_worker.call_count)
 
+    def test_creates_cluster_environment_info_device(self):
+        # pylint: disable=import-outside-toplevel
+        from solrorbit import telemetry
+        from solrorbit.client import SolrClient
+
+        target = self.create_test_worker_coordinator_target()
+        d = worker_coordinator.WorkerCoordinator(target, self.cfg, client_factory_class=WorkerCoordinatorTests.StaticClientFactory)
+        sc = mock.MagicMock(spec=SolrClient)
+
+        devices = d._create_solr_telemetry_devices({"default": sc})
+
+        env_info = [device for device in devices if isinstance(device, telemetry.ClusterEnvironmentInfo)]
+        self.assertEqual(1, len(env_info))
+        self.assertIs(sc, env_info[0].admin_client)
+
     def test_client_reaches_join_point_others_still_executing(self):
         target = self.create_test_worker_coordinator_target()
         d = worker_coordinator.WorkerCoordinator(target, self.cfg, client_factory_class=WorkerCoordinatorTests.StaticClientFactory)
