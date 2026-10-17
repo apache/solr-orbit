@@ -1,0 +1,10 @@
+{
+  "responseHeader": {"status": 0, "QTime": 2},
+  "mode": "solrcloud",
+  "lucene": {
+    "solr-spec-version": "10.0.0",
+    "solr-impl-version": "10.0.0-SNAPSHOT 9f8e7d6c5b4a - jan - 2026-10-14 03:17:45",
+    "lucene-spec-version": "10.1.0"
+  },
+  "jvm": {"version": "21.0.5", "spec": {"vendor": "Eclipse Adoptium"}}
+}
