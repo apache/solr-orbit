@@ -120,3 +120,8 @@ tracks/
 .claude
 .specify
 specs/
+
+# launchr's default storage path, and reportr's default site output. Benchmark
+# results are large, machine-specific and regenerated on every run.
+/benchmark-results/
+/site-output/

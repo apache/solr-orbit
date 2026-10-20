@@ -1,0 +1,385 @@
+{
+  "benchmark-version": "0.1.0 (git revision: e9ab4c44)",
+  "benchmark-revision": "e9ab4c44",
+  "environment": "local",
+  "test-run-id": "97910801-f5e6-4d71-9a2f-106d066ee14f",
+  "test-run-timestamp": "20261015T095501Z",
+  "pipeline": "benchmark-only",
+  "user-tags": {
+    "launchr-session": "session-f15fc0",
+    "launchr-run": "run-09e524",
+    "launchr-cluster-config": "default-1s1r",
+    "launchr-profile": "local-docker",
+    "intention": "local-dev"
+  },
+  "workload": "nyc_taxis",
+  "cluster-config-instance": [
+    "defaults"
+  ],
+  "cluster": {
+    "revision": null,
+    "distribution-version": "9.9.0",
+    "distribution-flavor": "oss",
+    "cluster-config-revision": null
+  },
+  "results": {
+    "op_metrics": [
+      {
+        "task": "create-collection",
+        "operation": "create-collection",
+        "throughput": {
+          "min": 1.2881614747243506,
+          "mean": 1.2881614747243506,
+          "median": 1.2881614747243506,
+          "max": 1.2881614747243506,
+          "unit": "ops/s"
+        },
+        "latency": {
+          "100_0": 776.2199580029119,
+          "mean": 776.2199580029119,
+          "unit": "ms"
+        },
+        "service_time": {
+          "100_0": 776.2199580029119,
+          "mean": 776.2199580029119,
+          "unit": "ms"
+        },
+        "client_processing_time": {
+          "100_0": 0.0,
+          "mean": 0.0,
+          "unit": "ms"
+        },
+        "processing_time": {
+          "100_0": 776.2287499790546,
+          "mean": 776.2287499790546,
+          "unit": "ms"
+        },
+        "error_rate": 0.0,
+        "duration": 3.063709009438753
+      },
+      {
+        "task": "index",
+        "operation": "index",
+        "throughput": {
+          "min": 4750.421606169438,
+          "mean": 4750.421606169438,
+          "median": 4750.421606169438,
+          "max": 4750.421606169438,
+          "unit": "docs/s"
+        },
+        "latency": {
+          "50_0": 198.86891650094185,
+          "100_0": 201.8757089972496,
+          "mean": 198.69134887630935,
+          "unit": "ms"
+        },
+        "service_time": {
+          "50_0": 198.86891650094185,
+          "100_0": 201.8757089972496,
+          "mean": 198.69134887630935,
+          "unit": "ms"
+        },
+        "client_processing_time": {
+          "50_0": 0.0,
+          "100_0": 0.0,
+          "mean": 0.0,
+          "unit": "ms"
+        },
+        "processing_time": {
+          "50_0": 198.87400000880007,
+          "100_0": 201.88120898092166,
+          "mean": 198.6966355034383,
+          "unit": "ms"
+        },
+        "error_rate": 0.0,
+        "duration": 13.15562499803491
+      },
+      {
+        "task": "match-all",
+        "operation": "match-all",
+        "throughput": {
+          "min": 27.059414787408027,
+          "mean": 27.059414787408027,
+          "median": 27.059414787408027,
+          "max": 27.059414787408027,
+          "unit": "ops/s"
+        },
+        "latency": {
+          "100_0": 42.49125000205822,
+          "mean": 42.49125000205822,
+          "unit": "ms"
+        },
+        "service_time": {
+          "100_0": 5.501500010723248,
+          "mean": 5.501500010723248,
+          "unit": "ms"
+        },
+        "client_processing_time": {
+          "100_0": 0.0,
+          "mean": 0.0,
+          "unit": "ms"
+        },
+        "processing_time": {
+          "100_0": 5.504500004462898,
+          "mean": 5.504500004462898,
+          "unit": "ms"
+        },
+        "error_rate": 0.0,
+        "duration": 40.61591697973199
+      }
+    ],
+    "correctness_metrics": [
+      {
+        "task": "delete-collection",
+        "operation": "delete-collection",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 1.768165995599702
+      },
+      {
+        "task": "create-collection",
+        "operation": "create-collection",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 3.063709009438753
+      },
+      {
+        "task": "check-cluster-health",
+        "operation": "raw-request",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 4.028082999866456
+      },
+      {
+        "task": "index",
+        "operation": "index",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 13.15562499803491
+      },
+      {
+        "task": "refresh-after-index",
+        "operation": "commit",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 0.7359999872278422
+      },
+      {
+        "task": "optimize",
+        "operation": "optimize",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 2.378083998337388
+      },
+      {
+        "task": "match-all",
+        "operation": "match-all",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 40.61591697973199
+      },
+      {
+        "task": "range",
+        "operation": "range",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 20.28279099613428
+      },
+      {
+        "task": "distance_amount_facet",
+        "operation": "distance_amount_facet",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 27.003041992429644
+      },
+      {
+        "task": "date_histogram_facet",
+        "operation": "date_histogram_facet",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 16.348542005289346
+      },
+      {
+        "task": "desc_sort_tip_amount",
+        "operation": "desc_sort_tip_amount",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 24.491417017998174
+      },
+      {
+        "task": "asc_sort_tip_amount",
+        "operation": "asc_sort_tip_amount",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 13.064458005828783
+      },
+      {
+        "task": "desc_sort_passenger_count",
+        "operation": "desc_sort_passenger_count",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 16.403791989432648
+      },
+      {
+        "task": "asc_sort_passenger_count",
+        "operation": "asc_sort_passenger_count",
+        "recall@k": {},
+        "recall@1": {},
+        "error_rate": 0.0,
+        "duration": 9.248583985026926
+      }
+    ],
+    "profile_metrics": [],
+    "total_time": null,
+    "total_time_per_shard": {},
+    "indexing_throttle_time": null,
+    "indexing_throttle_time_per_shard": {},
+    "merge_time": null,
+    "merge_time_per_shard": {},
+    "merge_count": null,
+    "refresh_time": null,
+    "refresh_time_per_shard": {},
+    "refresh_count": null,
+    "flush_time": null,
+    "flush_time_per_shard": {},
+    "flush_count": null,
+    "merge_throttle_time": null,
+    "merge_throttle_time_per_shard": {},
+    "ml_processing_time": [],
+    "young_gc_time": null,
+    "young_gc_count": null,
+    "old_gc_time": null,
+    "old_gc_count": null,
+    "memory_segments": null,
+    "memory_doc_values": null,
+    "memory_terms": null,
+    "memory_norms": null,
+    "memory_points": null,
+    "memory_stored_fields": null,
+    "store_size": null,
+    "translog_size": null,
+    "segment_count": null,
+    "total_transform_search_times": [],
+    "total_transform_index_times": [],
+    "total_transform_processing_times": [],
+    "total_transform_throughput": []
+  },
+  "workload-revision": "a4684f1",
+  "test_procedure": "append-no-conflicts",
+  "workload-params": {
+    "num_shards": 1,
+    "replication_factor": 1
+  },
+  "launchr": {
+    "schema_version": 1,
+    "run_id": "run-09e524",
+    "session_id": "session-f15fc0",
+    "cell_id": "nyc_taxis__default__9.9.0__local-docker__default-1s1r",
+    "status": "completed",
+    "started_at": "2026-10-15T09:54:56Z",
+    "finished_at": "2026-10-15T09:55:16Z",
+    "solr": {
+      "version": "9.9.0",
+      "image": "docker.io/library/solr:9.9.0",
+      "endpoints": [
+        "http://127.0.0.1:8983"
+      ],
+      "impl_version": "9.9.0 386ed096a1946c488cfe576a19a147bdb1153508 - houston - 2025-07-18 14:15:23",
+      "commit": "386ed096a1946c488cfe576a19a147bdb1153508",
+      "lucene_version": "9.12.2",
+      "mode": "solrcloud",
+      "jvm": {
+        "vendor": "Oracle Corporation",
+        "version": "17.0.20.1 17.0.20.1+1"
+      },
+      "version_timestamp": "2025-07-24T00:00:00Z",
+      "version_timestamp_source": "apache-releases",
+      "version_timestamp_precision": "day",
+      "version_kind": "release",
+      "branch": null,
+      "branch_source": null
+    },
+    "infra": {
+      "provisioning_profile": "local-docker",
+      "install_method": "docker",
+      "provisioning": "local",
+      "provider": "local",
+      "nodes": 1,
+      "host": {
+        "os": "Darwin 27.0.0",
+        "arch": "arm64",
+        "cores": 14,
+        "physical_cores": 14,
+        "memory_gb": 48.0,
+        "cpu": "Apple M4 Pro"
+      }
+    },
+    "cluster_config": {
+      "name": "default-1s1r",
+      "heap": "4g",
+      "gc": "G1GC",
+      "shards": 1,
+      "replicas": 1,
+      "solr_opts": null,
+      "applied_env": {
+        "SOLR_HEAP": "4g",
+        "GC_TUNE": "-XX:+UseG1GC -XX:+UseStringDeduplication"
+      },
+      "workload_params": {
+        "num_shards": 1,
+        "replication_factor": 1
+      }
+    },
+    "workload": {
+      "name": "nyc_taxis",
+      "test_procedure": null,
+      "repository": "default",
+      "revision": "a4684f1",
+      "params": {
+        "num_shards": 1,
+        "replication_factor": 1
+      }
+    },
+    "benchmark": {
+      "iterations": 1,
+      "aggregated": false,
+      "test_mode": true,
+      "orbit_version": "0.1.0 (git revision: e9ab4c44)",
+      "orbit_revision": "e9ab4c44",
+      "command": [
+        "/Users/janhoy/git/solr-orbit/.venv/bin/python",
+        "-m",
+        "solrorbit.benchmark",
+        "run",
+        "--pipeline=benchmark-only",
+        "--target-hosts=127.0.0.1:8983",
+        "--client-options=timeout:60",
+        "--workload=nyc_taxis",
+        "--workload-repository=default",
+        "--test-run-id=97910801-f5e6-4d71-9a2f-106d066ee14f",
+        "--user-tag=launchr-session:session-f15fc0,launchr-run:run-09e524,launchr-cluster-config:default-1s1r,launchr-profile:local-docker,intention:local-dev",
+        "--test-iterations=1",
+        "--aggregate=false",
+        "--on-error=abort",
+        "--workload-params={\"num_shards\":1,\"replication_factor\":1}",
+        "--test-mode"
+      ]
+    },
+    "user_labels": {
+      "intention": "local-dev"
+    }
+  }
+}
