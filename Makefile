@@ -44,7 +44,7 @@ install: build
 	rm -rf dist
 
 clean:
-	rm -rf .benchmarks .eggs .tox .benchmark_it .cache build dist *.egg-info logs junit-py*.xml *.whl NOTICE.txt
+	rm -rf .benchmarks .eggs .tox .benchmark_it .cache build dist *.egg-info logs junit-py*.xml *.whl NOTICE.txt THIRD_PARTY.table THIRD_PARTY.next
 
 # Avoid conflicts between .pyc/pycache related files created by local Python interpreters and other interpreters in Docker
 python-caches-clean:
@@ -74,10 +74,21 @@ coverage: develop
 	uv run coverage run -m pytest tests/
 	uv run coverage html
 
-# Regenerates THIRD_PARTY.md from the runtime dependencies. --isolated runs in a fresh environment
+# Regenerates the dependency table in THIRD_PARTY.md from the runtime dependencies, leaving the
+# hand-maintained sections above the marker untouched. --isolated runs in a fresh environment
 # without the develop/test extras, so tools like pytest and ruff stay out of the list.
+# --with-system keeps setuptools and wheel, which pip-licenses otherwise drops even though wheel
+# is a declared runtime dependency; pip-licenses and its own dependencies are ignored instead.
 licenses: check-uv
-	uv run --isolated --with pip-licenses pip-licenses --with-authors --with-urls --format=markdown --ignore-packages solr-orbit --output-file THIRD_PARTY.md
+	@grep -q GENERATED-TABLE-BELOW THIRD_PARTY.md || { echo "THIRD_PARTY.md has no GENERATED-TABLE-BELOW marker; refusing to overwrite it" >&2; exit 1; }
+	uv run --isolated --with pip-licenses pip-licenses --with-authors --with-urls --with-system \
+	    --format=markdown --ignore-packages solr-orbit pip-licenses prettytable wcwidth \
+	    --output-file THIRD_PARTY.table
+	@awk '{ print } index($$0, "GENERATED-TABLE-BELOW") { exit }' THIRD_PARTY.md > THIRD_PARTY.next
+	@echo >> THIRD_PARTY.next
+	@cat THIRD_PARTY.table >> THIRD_PARTY.next
+	@mv THIRD_PARTY.next THIRD_PARTY.md
+	@rm -f THIRD_PARTY.table
 
 release-checks:
 	./release-checks.sh $(release_version) $(next_version)
