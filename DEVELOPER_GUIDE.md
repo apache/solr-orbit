@@ -134,6 +134,20 @@ uv sync --extra develop   # update the local venv
 
 Always commit both `pyproject.toml` and `uv.lock` together.
 
+### Third-party license attribution
+
+`THIRD_PARTY.md` lists the runtime dependencies with their licenses, authors and URLs. Regenerate
+it whenever the dependencies change, and before a release, so the `NOTICE` attribution can be
+checked against it:
+
+```bash
+make licenses
+```
+
+The target runs [pip-licenses](https://github.com/raimon49/pip-licenses) in an isolated
+environment that contains only the runtime dependencies, so the develop and test extras are not
+listed. Commit the updated `THIRD_PARTY.md` together with `pyproject.toml` and `uv.lock`.
+
 ### Avoiding secrets in commits
 
 Install [git-secrets](https://github.com/awslabs/git-secrets) to prevent

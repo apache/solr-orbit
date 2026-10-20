@@ -74,6 +74,11 @@ coverage: develop
 	uv run coverage run -m pytest tests/
 	uv run coverage html
 
+# Regenerates THIRD_PARTY.md from the runtime dependencies. --isolated runs in a fresh environment
+# without the develop/test extras, so tools like pytest and ruff stay out of the list.
+licenses: check-uv
+	uv run --isolated --with pip-licenses pip-licenses --with-authors --with-urls --format=markdown --ignore-packages solr-orbit --output-file THIRD_PARTY.md
+
 release-checks:
 	./release-checks.sh $(release_version) $(next_version)
 
@@ -81,4 +86,4 @@ release-checks:
 release: release-checks clean it
 	./release.sh $(release_version) $(next_version)
 
-.PHONY: install clean python-caches-clean tox-env-clean test it it312 it313 benchmark coverage release release-checks check-uv
+.PHONY: install clean python-caches-clean tox-env-clean test it it312 it313 benchmark coverage licenses release release-checks check-uv

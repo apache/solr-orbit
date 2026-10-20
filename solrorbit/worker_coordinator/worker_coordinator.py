@@ -941,6 +941,7 @@ class WorkerCoordinator:
             telemetry.SolrCacheStats(sc, self.metrics_store),
             telemetry.SegmentStats(log_root, sc),
             telemetry.ShardStats(telemetry_params, sc, self.metrics_store),
+            telemetry.ClusterEnvironmentInfo(sc, self.metrics_store),
         ]
 
     def wait_for_rest_api(self, clients):
