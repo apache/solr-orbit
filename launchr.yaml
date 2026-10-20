@@ -1,0 +1,93 @@
+# launchr.yaml -- the local development configuration.
+#
+# This file is what `launchr run` uses on a fresh checkout: Solr in a local
+# Docker container, results under ~/.solr-orbit, three versions of one
+# workload so the resulting chart has a real trend line rather than a dot.
+#
+# It is deliberately NOT the production configuration. A scheduled benchmark
+# passes its own file with --config: cloud storage, dedicated hardware
+# profiles, and repeated iterations for statistical confidence. See
+# examples/launchr-ec2.yaml for one, and examples/README.md for what to change
+# in it.
+#
+# Every value here can be overridden from the command line or the environment,
+# with CLI flags winning over environment variables winning over this file.
+# `launchr validate-config` prints the resolved result and where each value
+# came from.
+
+# ── Solr versions ───────────────────────────────────────────────────────────
+# Overridable with --versions or SOLR_VERSIONS. Three releases spanning enough
+# history to exercise version-specific handling: SolrCloud needs -c below Solr
+# 10 and rejects it from 10 onwards.
+solr_versions:
+  - "9.0.0"
+  - "9.7.0"
+  - "9.11.0"
+
+# ── Images ──────────────────────────────────────────────────────────────────
+# Where a version string becomes an image: "9.11.0" -> "docker.io/library/solr:9.11.0".
+# SNAPSHOT versions come from the nightly repository instead.
+registry: "docker.io/library/solr"
+nightly_registry: "docker.io/apache/solr-nightly"
+
+# ── Storage ─────────────────────────────────────────────────────────────────
+storage:
+  backend: local
+  # Default: ~/.solr-orbit/benchmark-results (BENCHMARK_HOME moves it).
+  # Set a path here to keep one project's history separate.
+  path: "~/.solr-orbit/benchmark-results"
+
+# ── Provisioning profiles ───────────────────────────────────────────────────
+# A profile says what infrastructure to create and how to put Solr on it.
+provisioning_profiles:
+  local-docker:
+    provisioning: local      # this machine; creates nothing
+    install_method: docker   # one Solr container per cell, embedded ZooKeeper
+    nodes: 1
+    port: 8983
+    # Generous, because the first run of a version has to pull its image.
+    startup_timeout: 300
+
+  # Benchmark a cluster launchr does not own. Point it at a Solr you started
+  # yourself, then run with --provisioning existing-lab and a --versions value
+  # that matches what that cluster is actually running.
+  #
+  # existing-lab:
+  #   provisioning: preconfigured
+  #   install_method: none
+  #   solr_url: "http://localhost:8983"
+
+# ── Cluster configs ─────────────────────────────────────────────────────────
+# Solr runtime settings. heap/gc/solr_opts become environment on the Solr
+# process; shards/replicas become workload parameters, because that is what
+# drives the workload's create-collection operation.
+cluster_configs:
+  default-1s1r:
+    heap: "4g"
+    gc: "G1GC"
+    shards: 1
+    replicas: 1
+
+# ── Defaults ────────────────────────────────────────────────────────────────
+# Which profiles and cluster configs the matrix uses when nothing overrides it.
+# Listing more than one of either multiplies the matrix.
+defaults:
+  provisioning: ["local-docker"]
+  cluster_config: ["default-1s1r"]
+
+# ── Workloads ───────────────────────────────────────────────────────────────
+# Overridable with --workloads or LAUNCHR_WORKLOADS.
+workloads:
+  - name: nyc_taxis
+    # test_procedures: ["default"]   # omitted → the workload's own default
+
+# ── Benchmark settings ──────────────────────────────────────────────────────
+benchmark:
+  iterations: 1
+  aggregate: false
+  # The full corpus by default, matching `solr-orbit run`, so a result is never
+  # accidentally a 1000-document toy. Pass --test-mode for a fast smoke run.
+  test_mode: false
+  workload_repository: default
+  user_tags:
+    intention: local-dev
