@@ -136,9 +136,8 @@ Always commit both `pyproject.toml` and `uv.lock` together.
 
 ### Third-party license attribution
 
-`THIRD_PARTY.md` lists the runtime dependencies with their licenses, authors and URLs. Regenerate
-it whenever the dependencies change, and before a release, so the `NOTICE` attribution can be
-checked against it:
+`THIRD_PARTY.md` inventories the runtime dependencies with their licenses, authors and URLs.
+Regenerate it whenever the dependencies change:
 
 ```bash
 make licenses
@@ -147,6 +146,19 @@ make licenses
 The target runs [pip-licenses](https://github.com/raimon49/pip-licenses) in an isolated
 environment that contains only the runtime dependencies, so the develop and test extras are not
 listed. Commit the updated `THIRD_PARTY.md` together with `pyproject.toml` and `uv.lock`.
+
+Only the table below the `GENERATED-TABLE-BELOW` marker is replaced. Everything above it is
+maintained by hand and records what the generated table cannot: corrections where a package
+declares only a coarse classifier, the elections made for dual-licensed packages, the Category B
+dependencies, and which dependencies ship a `NOTICE` of their own. **When a dependency is added,
+removed or upgraded, review those sections too** — a new dependency may need a correction or an
+election, and a dropped one leaves a stale entry behind.
+
+`THIRD_PARTY.md` is informational and is not the licensing compliance artifact. The source
+release, the sdist and the PyPI wheel resolve these packages with pip rather than bundling them,
+so per the ASF [licensing howto](https://infra.apache.org/licensing-howto.html) they need no
+dependency entries in `LICENSE` or `NOTICE`. The Docker image does bundle them and therefore needs
+an aggregated `LICENSE`; `THIRD_PARTY.md` is the input for assembling it.
 
 ### Avoiding secrets in commits
 

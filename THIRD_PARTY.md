@@ -1,3 +1,100 @@
+# Third-party dependencies
+
+## What this file is
+
+An informational inventory of Apache Solr Orbit's **runtime** dependencies, generated from
+`uv.lock` with [pip-licenses](https://github.com/raimon49/pip-licenses) by `make licenses`.
+
+It is **not** the licensing compliance artifact. Per the ASF
+[licensing howto](https://infra.apache.org/licensing-howto.html), `LICENSE` and `NOTICE` must
+represent exactly what a distribution contains and nothing more:
+
+- The **source release** resolves these packages with pip at install time rather than bundling
+  them, so it needs no entries in `LICENSE` or `NOTICE` for them.
+- The **Docker image** does bundle them (`uv pip install` into the image), so that artifact needs
+  an aggregated `LICENSE` and the propagated `NOTICE` content listed below. This file is the input
+  for assembling it, not a substitute.
+
+`NOTICE` records the Solr Orbit copyright and the source-derived attribution (OpenSearch, Rally);
+dependency entries do not belong there unless the dependency itself ships a `NOTICE` whose content
+must be propagated, and only for artifacts that bundle it.
+
+## Corrections to the generated table
+
+`pip-licenses` reports whatever a package declares, and many packages declare only a coarse trove
+classifier such as `BSD License`. The values below were read from the license text each wheel
+actually ships in its `dist-info`, and take precedence over the generated table:
+
+| Package                                                                     | Generated value           | Actual license |
+|-----------------------------------------------------------------------------|---------------------------|----------------|
+| google-crc32c                                                               | `UNKNOWN`                 | Apache-2.0 — the wheel carries no license metadata at all, but ships the full ALv2 text |
+| Jinja2, cloudpickle, pandas, partd, pysolr, zict                            | `BSD License` / `BSD`     | BSD-3-Clause   |
+| locket, pyasn1_modules                                                      | `BSD License` / `BSD`     | BSD-2-Clause   |
+| google-auth, google-resumable-media, requests, s3transfer, sortedcontainers, tornado | `Apache Software License` | Apache-2.0 |
+| python-dateutil                                                             | `Apache Software License; BSD License` | Dual Apache-2.0 **and** BSD-3-Clause; both texts are in the one license file and both apply |
+| setuptools, wheel                                                           | *(absent before)*         | MIT — `pip-licenses` filters these as "system packages" unless `--with-system` is passed, although `wheel` is a declared runtime dependency |
+
+## Dual licenses: the elections made
+
+Two dependencies are offered under a choice of licenses. Solr Orbit elects Apache-2.0 for both,
+being an ASF project. Change this only by PMC decision, and update the Docker image's aggregated
+`LICENSE` to match.
+
+| Package      | Offered as                   | Elected    |
+|--------------|------------------------------|------------|
+| cryptography | `Apache-2.0 OR BSD-3-Clause` | Apache-2.0 |
+| packaging    | `Apache-2.0 OR BSD-2-Clause` | Apache-2.0 |
+
+## Category B dependencies
+
+Two dependencies are [Category B](https://www.apache.org/legal/resolved.html#category-b), which
+may be included in binary form only, and require a pointer to where the covered source can be
+obtained:
+
+| Package | License           | Note |
+|---------|-------------------|------|
+| certifi | MPL-2.0           | Source: https://github.com/certifi/python-certifi |
+| tqdm    | `MPL-2.0 AND MIT` | MPL-2.0 covers all files by default; MIT applies to named exceptions only. Source: https://github.com/tqdm/tqdm |
+
+No dependency is [Category X](https://www.apache.org/legal/resolved.html#category-x).
+
+## Dependencies that ship their own NOTICE
+
+Under ALv2 §4(d) the relevant content of a bundled dependency's `NOTICE` must be carried into the
+notices of any artifact that bundles it. These four are the complete set among the runtime
+dependencies:
+
+| Package    | NOTICE content |
+|------------|----------------|
+| boto3      | A single copyright line |
+| requests   | A single copyright line |
+| s3transfer | A single copyright line |
+| botocore   | Substantial: copyright plus the licenses of vendored requests and urllib3 and an MPL-2.0 CA-certificate bundle |
+
+## Dependencies that bundle further third-party code
+
+One license per package understates these; each ships several license files that an aggregated
+`LICENSE` has to reproduce in full:
+
+| Package           | Bundled licenses |
+|-------------------|------------------|
+| numpy             | 17 license files (libdivide, highway, dragon4, x86-simd-sort, SVML, pocketfft, lapack_lite, random/*, pythoncapi-compat) |
+| pandas            | A 1000-line `LICENSE` covering roughly ten components (bottleneck, dateutil, musl, Sun/fdlibm, Arm, packaging, khash) |
+| h5py              | 7 license files (hdf5, pytables, python, stdint, lzf) |
+| dask              | Vendors numpy, with its license |
+| pillow            | Composite: MIT-CMU alongside other notices |
+| typing_extensions | The CPython/PSF license stack |
+
+`pip-licenses --with-license-file --no-license-path` dumps these texts, and is the right starting
+point for the Docker image's aggregated `LICENSE`.
+
+## Dependency table
+
+Generated by `make licenses` and replaced wholesale on every run — edit the sections above, not
+the table.
+
+<!-- GENERATED-TABLE-BELOW -->
+
 | Name                      | Version     | License                                            | Author                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | URL                                                                                         |
 |---------------------------|-------------|----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | Faker                     | 40.39.0     | MIT License                                        | joke2k                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | https://github.com/joke2k/faker                                                             |
@@ -49,6 +146,7 @@
 | requests                  | 2.34.2      | Apache Software License                            | Kenneth Reitz <me@kennethreitz.org>                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | https://github.com/psf/requests                                                             |
 | rpds-py                   | 2026.5.1    | MIT                                                | Julian Berman <Julian+rpds@GrayVines.com>                                                                                                                                                                                                                                                                                                                                                                                                                                                                | https://github.com/crate-py/rpds                                                            |
 | s3transfer                | 0.19.0      | Apache Software License                            | Amazon Web Services                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | https://github.com/boto/s3transfer                                                          |
+| setuptools                | 82.0.1      | MIT                                                | Python Packaging Authority <distutils-sig@python.org>                                                                                                                                                                                                                                                                                                                                                                                                                                                    | https://github.com/pypa/setuptools                                                          |
 | six                       | 1.17.0      | MIT License                                        | Benjamin Peterson                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | https://github.com/benjaminp/six                                                            |
 | sortedcontainers          | 2.4.0       | Apache Software License                            | Grant Jenks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | http://www.grantjenks.com/docs/sortedcontainers/                                            |
 | tabulate                  | 0.10.0      | MIT                                                | Sergey Astanin <s.astanin@gmail.com>                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | https://github.com/astanin/python-tabulate                                                  |
@@ -60,6 +158,7 @@
 | typing-inspection         | 0.4.4       | MIT                                                | Victorien Plot <contact@vctrn.dev>                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | https://github.com/pydantic/typing-inspection                                               |
 | typing_extensions         | 4.16.0      | PSF-2.0                                            | "Guido van Rossum, Jukka Lehtosalo, Łukasz Langa, Michael Lee" <levkivskyi@gmail.com>                                                                                                                                                                                                                                                                                                                                                                                                                    | https://github.com/python/typing_extensions                                                 |
 | urllib3                   | 2.8.0       | MIT                                                | Andrey Petrov <andrey.petrov@shazow.net>                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | https://github.com/urllib3/urllib3/blob/main/CHANGES.rst                                    |
+| wheel                     | 0.47.0      | MIT                                                | Daniel Holth <dholth@fastmail.fm>                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | https://github.com/pypa/wheel                                                               |
 | xyzservices               | 2026.3.0    | BSD-3-Clause                                       | Dani Arribas-Bel <daniel.arribas.bel@gmail.com>, Martin Fleischmann <martin@martinfleischmann.net>                                                                                                                                                                                                                                                                                                                                                                                                       | https://github.com/geopandas/xyzservices                                                    |
 | yappi                     | 1.7.6       | MIT License                                        | Sümer Cip                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | https://github.com/sumerc/yappi                                                             |
 | zict                      | 3.0.0       | BSD License                                        | UNKNOWN                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | http://zict.readthedocs.io/en/latest/                                                       |
