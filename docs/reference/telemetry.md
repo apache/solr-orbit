@@ -214,10 +214,10 @@ Records Solr version, JVM version, and hardware info as run metadata. Called onc
 
 Enables Java Flight Recorder. Injects `-XX:StartFlightRecording=...` into `SOLR_OPTS`.
 
-**Pipeline:** `docker` or `from-distribution` only
+**Pipeline:** `from-distribution` or `from-sources` (Docker support is tracked in [#138](https://github.com/apache/solr-orbit/issues/138))
 **Enable:** `--telemetry jfr`
 
-The flight recording is written to `profile.jfr` in the benchmark log directory. Requires OpenJDK 11 or later. To use a custom recording template, pass `--telemetry-params recording-template:/path/to/template.jfc`.
+The flight recording is written to `profile.jfr` in the `telemetry` directory of the test run (`~/.solr-orbit/benchmarks/test-runs/<test-run-id>/telemetry/`). Requires OpenJDK 11 or later. To use a custom recording template, pass `--telemetry-params recording-template:/path/to/template.jfc`.
 
 ---
 
@@ -225,10 +225,10 @@ The flight recording is written to `profile.jfr` in the benchmark log directory.
 
 Enables GC logging (Java 9+ `-Xlog:` format). Injects the GC log flags into `SOLR_OPTS`.
 
-**Pipeline:** `docker` or `from-distribution` only
+**Pipeline:** `from-distribution` or `from-sources` (Docker support is tracked in [#138](https://github.com/apache/solr-orbit/issues/138))
 **Enable:** `--telemetry gc`
 
-GC output is written to `gc.log` in the benchmark log directory. The default log configuration is `gc*=info,safepoint=info,age*=trace`. Override with `--telemetry-params gc-log-config:gc*=debug`.
+GC output is written to `gc.log` in the `telemetry` directory of the test run (`~/.solr-orbit/benchmarks/test-runs/<test-run-id>/telemetry/`). The default log configuration is `gc*=info,safepoint=info,age*=trace`. Override with `--telemetry-params gc-log-config:gc*=debug`.
 
 ---
 
@@ -236,10 +236,10 @@ GC output is written to `gc.log` in the benchmark log directory. The default log
 
 Enables JIT compiler logging. Injects `-XX:+LogCompilation` and related flags into `SOLR_OPTS`.
 
-**Pipeline:** `docker` or `from-distribution` only
+**Pipeline:** `from-distribution` or `from-sources` (Docker support is tracked in [#138](https://github.com/apache/solr-orbit/issues/138))
 **Enable:** `--telemetry jit`
 
-JIT output is written to `jit.log` in the benchmark log directory.
+JIT output is written to `jit.log` in the `telemetry` directory of the test run (`~/.solr-orbit/benchmarks/test-runs/<test-run-id>/telemetry/`).
 
 ---
 
@@ -280,7 +280,7 @@ Add JVM profiling devices on provisioned pipelines:
 
 ```bash
 solr-orbit run \
-  --pipeline docker \
+  --pipeline from-distribution \
   --distribution-version 9.10.1 \
   --workload nyc_taxis \
   --telemetry gc,jfr
