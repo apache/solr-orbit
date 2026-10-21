@@ -398,7 +398,12 @@ class TestSolrCollectionStats(unittest.TestCase):
     def test_rejects_non_positive_sample_interval(self):
         for interval in (0, -5):
             with self.assertRaisesRegex(exceptions.SystemSetupError, "collection-stats-sample-interval"):
-                SolrCollectionStats(MagicMock(), MagicMock(), sample_interval_s=interval)
+                SolrCollectionStats(MagicMock(), MagicMock(), {"collection-stats-sample-interval": interval})
+
+    def test_sample_interval_from_telemetry_params(self):
+        self.assertEqual(30, SolrCollectionStats(MagicMock(), MagicMock())._sample_interval)
+        device = SolrCollectionStats(MagicMock(), MagicMock(), {"collection-stats-sample-interval": 7})
+        self.assertEqual(7, device._sample_interval)
 
 
 # ---------------------------------------------------------------------------
