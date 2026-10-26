@@ -246,7 +246,7 @@ class JitCompiler(TelemetryDevice):
         io.ensure_dir(self.log_root)
         log_file = os.path.join(self.log_root, "jit.log")
         console.info("%s: Writing JIT compiler log to [%s]" % (self.human_name, log_file), logger=self.logger)
-        return ["-XX:+UnlockDiagnosticVMOptions", "-XX:+TraceClassLoading", "-XX:+LogCompilation",
+        return ["-XX:+UnlockDiagnosticVMOptions", "-Xlog:class+load=info", "-XX:+LogCompilation",
                 "-XX:LogFile={}".format(log_file), "-XX:+PrintAssembly"]
 
 
