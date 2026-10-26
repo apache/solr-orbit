@@ -28,7 +28,9 @@
 import json
 import logging
 import os
+import posixpath
 import re
+import shutil
 import threading
 from abc import abstractmethod
 
@@ -196,18 +198,21 @@ class FlightRecorder(TelemetryDevice):
     human_name = "Flight Recorder"
     help = "Enables Java Flight Recorder (requires OpenJDK 11+); injected into SOLR_OPTS."
 
-    def __init__(self, telemetry_params, log_root, java_major_version):
+    def __init__(self, telemetry_params, log_root, java_major_version, create_log_root=True):
         super().__init__()
         self.telemetry_params = telemetry_params
         self.log_root = log_root
         self.java_major_version = java_major_version
+        # False when log_root is a path inside a Docker container rather than on this host
+        self.create_log_root = create_log_root
 
     def instrument_java_opts(self):
         if self.telemetry_params.get("pipeline", "") == "benchmark-only":
             self.logger.warning("jfr: Solr was not provisioned by Solr Orbit; skipping JFR flags.")
             return []
 
-        io.ensure_dir(self.log_root)
+        if self.create_log_root:
+            io.ensure_dir(self.log_root)
         log_file = os.path.join(self.log_root, "profile.jfr")
         console.info("%s: Writing flight recording to [%s]" % (self.human_name, log_file), logger=self.logger)
         java_opts = self.java_opts(log_file)
@@ -233,17 +238,20 @@ class JitCompiler(TelemetryDevice):
     human_name = "JIT Compiler Profiler"
     help = "Enables JIT compiler logs; injected into SOLR_OPTS."
 
-    def __init__(self, log_root, telemetry_params=None):
+    def __init__(self, log_root, telemetry_params=None, create_log_root=True):
         super().__init__()
         self.log_root = log_root
         self.telemetry_params = telemetry_params or {}
+        # False when log_root is a path inside a Docker container rather than on this host
+        self.create_log_root = create_log_root
 
     def instrument_java_opts(self):
         if self.telemetry_params.get("pipeline", "") == "benchmark-only":
             self.logger.warning("jit: Solr was not provisioned by Solr Orbit; skipping JIT flags.")
             return []
 
-        io.ensure_dir(self.log_root)
+        if self.create_log_root:
+            io.ensure_dir(self.log_root)
         log_file = os.path.join(self.log_root, "jit.log")
         console.info("%s: Writing JIT compiler log to [%s]" % (self.human_name, log_file), logger=self.logger)
         return ["-XX:+UnlockDiagnosticVMOptions", "-XX:+TraceClassLoading", "-XX:+LogCompilation",
@@ -256,18 +264,21 @@ class Gc(TelemetryDevice):
     human_name = "GC log"
     help = "Enables GC logs (Java 9+ -Xlog: format); injected into SOLR_OPTS."
 
-    def __init__(self, telemetry_params, log_root, java_major_version):
+    def __init__(self, telemetry_params, log_root, java_major_version, create_log_root=True):
         super().__init__()
         self.telemetry_params = telemetry_params
         self.log_root = log_root
         self.java_major_version = java_major_version
+        # False when log_root is a path inside a Docker container rather than on this host
+        self.create_log_root = create_log_root
 
     def instrument_java_opts(self):
         if self.telemetry_params.get("pipeline", "") == "benchmark-only":
             self.logger.warning("gc: Solr was not provisioned by Solr Orbit; skipping GC flags.")
             return []
 
-        io.ensure_dir(self.log_root)
+        if self.create_log_root:
+            io.ensure_dir(self.log_root)
         log_file = os.path.join(self.log_root, "gc.log")
         console.info("%s: Writing GC log to [%s]" % (self.human_name, log_file), logger=self.logger)
         log_config = self.telemetry_params.get("gc-log-config", "gc*=info,safepoint=info,age*=trace")
@@ -282,25 +293,44 @@ class Heapdump(TelemetryDevice):
     help = "Captures a heap dump from the Solr JVM on benchmark stop."
 
     def __init__(self, log_root, docker_container=None):
+        """
+        :param log_root: Directory for the dump. With ``docker_container`` set, this is a path
+                         inside the container, and ``pid`` passed to ``dump()`` is the PID there.
+        :param docker_container: Name of the Solr container, or ``None`` for a local process.
+        """
         super().__init__()
         self.log_root = log_root
         self.docker_container = docker_container
 
     def detach_from_node(self, node, running):
         if running:
-            heap_dump_file = os.path.join(self.log_root, "heap_at_exit_{}.hprof".format(node.pid))
-            console.info("{}: Writing heap dump to [{}]".format(self.human_name, heap_dump_file), logger=self.logger)
-            # noinspection PyBroadException
-            try:
-                if self.docker_container:
-                    cmd = "docker exec {} jmap -dump:format=b,file={} {}".format(
-                        self.docker_container, heap_dump_file, node.pid)
+            self.dump(node.pid)
+
+    def dump(self, pid):
+        """Write ``heap_at_exit_<pid>.hprof`` to ``log_root``. Failures are logged, not raised."""
+        # noinspection PyBroadException
+        try:
+            if self.docker_container:
+                # The official Solr images ship jattach but no JDK tools (no jmap / jcmd).
+                heap_dump_file = posixpath.join(self.log_root, "heap_at_exit_{}.hprof".format(pid))
+                cmd = "docker exec {} jattach {} dumpheap {}".format(self.docker_container, pid, heap_dump_file)
+            else:
+                io.ensure_dir(self.log_root)
+                heap_dump_file = os.path.join(self.log_root, "heap_at_exit_{}.hprof".format(pid))
+                # Like bin/solr does for thread dumps: use the JDK tool if there is one, else jattach.
+                if shutil.which("jmap"):
+                    cmd = "jmap -dump:format=b,file={} {}".format(heap_dump_file, pid)
+                elif shutil.which("jattach"):
+                    cmd = "jattach {} dumpheap {}".format(pid, heap_dump_file)
                 else:
-                    cmd = "jmap -dump:format=b,file={} {}".format(heap_dump_file, node.pid)
-                if process.run_subprocess_with_logging(cmd):
-                    self.logger.warning("Could not write heap dump to [%s]", heap_dump_file)
-            except BaseException:
+                    console.warn("{}: Neither jmap nor jattach is on the PATH; skipping the heap dump.".format(
+                        self.human_name), logger=self.logger)
+                    return
+            console.info("{}: Writing heap dump to [{}]".format(self.human_name, heap_dump_file), logger=self.logger)
+            if process.run_subprocess_with_logging(cmd):
                 self.logger.warning("Could not write heap dump to [%s]", heap_dump_file)
+        except BaseException:
+            self.logger.warning("Could not write heap dump for PID [%s]", pid)
 
 
 class SegmentStats(TelemetryDevice):

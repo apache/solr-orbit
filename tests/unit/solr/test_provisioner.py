@@ -159,6 +159,67 @@ class TestSolrDockerLauncherEnvFlags(unittest.TestCase):
         self.assertNotIn("SOLR_MODULES", " ".join(flags))
 
 
+class TestSolrDockerLauncherLifecycle(unittest.TestCase):
+    """docker run / stop / cp / rm sequence of SolrDockerLauncher."""
+
+    @staticmethod
+    def _fake_docker(pgrep_output="14\n", stop_returncode=0):
+        def run(cmd, **kwargs):
+            if cmd[:2] == ["docker", "exec"]:
+                return MagicMock(returncode=0, stdout=pgrep_output, stderr="")
+            if cmd[:2] == ["docker", "stop"]:
+                return MagicMock(returncode=stop_returncode, stdout="", stderr="no such container")
+            return MagicMock(returncode=0, stdout="", stderr="")
+        return run
+
+    def _start(self, launcher, run):
+        with patch("solrorbit.builder.solr_provisioner._assert_port_free"), \
+                patch.object(SolrDockerLauncher, "_wait_for_ready"), \
+                patch("subprocess.run", side_effect=run) as mock_run:
+            launcher.start(version_tag="9")
+        return [c.args[0] for c in mock_run.call_args_list]
+
+    def test_start_keeps_the_container_after_it_exits(self):
+        """No --rm, so stop() can still copy the logs out of the stopped container."""
+        commands = self._start(SolrDockerLauncher(), self._fake_docker())
+        docker_run = next(cmd for cmd in commands if cmd[:2] == ["docker", "run"])
+        self.assertNotIn("--rm", docker_run)
+
+    def test_start_records_the_jvm_pid_inside_the_container(self):
+        """The PID comes from pgrep in the container, not docker inspect (host PID)."""
+        launcher = SolrDockerLauncher()
+        commands = self._start(launcher, self._fake_docker(pgrep_output="14\n"))
+        self.assertEqual(14, launcher.pid)
+        self.assertIn(["docker", "exec", "solr-orbit", "pgrep", "-o", "-x", "java"], commands)
+        self.assertFalse(any(cmd[:2] == ["docker", "inspect"] for cmd in commands))
+
+    def test_stop_copies_logs_between_stop_and_rm(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log_dest = os.path.join(tmp, "telemetry")
+            with patch("subprocess.run", side_effect=self._fake_docker()) as mock_run:
+                SolrDockerLauncher().stop(log_dest=log_dest)
+            commands = [c.args[0] for c in mock_run.call_args_list]
+            self.assertEqual([
+                ["docker", "stop", "solr-orbit"],
+                ["docker", "cp", "solr-orbit:/var/solr/logs/.", log_dest],
+                ["docker", "rm", "-f", "solr-orbit"],
+            ], commands)
+            self.assertTrue(os.path.isdir(log_dest))
+
+    def test_stop_without_log_dest_does_not_copy(self):
+        with patch("subprocess.run", side_effect=self._fake_docker()) as mock_run:
+            SolrDockerLauncher().stop()
+        commands = [c.args[0] for c in mock_run.call_args_list]
+        self.assertEqual([["docker", "stop", "solr-orbit"], ["docker", "rm", "-f", "solr-orbit"]], commands)
+
+    def test_stop_still_removes_the_container_when_stop_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("subprocess.run", side_effect=self._fake_docker(stop_returncode=1)) as mock_run:
+                SolrDockerLauncher().stop(log_dest=os.path.join(tmp, "telemetry"))
+        commands = [c.args[0] for c in mock_run.call_args_list]
+        self.assertEqual([["docker", "stop", "solr-orbit"], ["docker", "rm", "-f", "solr-orbit"]], commands)
+
+
 class TestAssertPortFree(unittest.TestCase):
     """Tests for the _assert_port_free() helper."""
 

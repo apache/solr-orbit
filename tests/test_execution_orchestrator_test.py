@@ -230,3 +230,70 @@ def test_from_sources_passes_jvm_telemetry_devices(source_repository, bldr, glob
     devices = provisioner_class.call_args.kwargs["telemetry_devices"]
     assert [device.command for device in devices] == ["jfr"]
     run_test.assert_called_once_with(cfg, external=True)
+
+
+def test_create_jvm_telemetry_devices_for_docker_point_inside_the_container(tmp_path):
+    cfg = _provisioned_cfg(tmp_path, ["gc", "jfr", "jit"])
+
+    devices = test_run_orchestrator._create_jvm_telemetry_devices(cfg, container_log_root="/var/solr/logs")
+
+    assert all(device.log_root == "/var/solr/logs" and not device.create_log_root for device in devices)
+
+
+def test_dump_heap_before_stop_does_nothing_unless_enabled(tmp_path):
+    cfg = _provisioned_cfg(tmp_path, ["gc"])
+
+    with mock.patch("solrorbit.telemetry.Heapdump.dump") as dump:
+        test_run_orchestrator._dump_heap_before_stop(cfg, pid=42)
+
+    dump.assert_not_called()
+
+
+def test_dump_heap_before_stop_in_docker_uses_jattach_in_the_container(tmp_path):
+    cfg = _provisioned_cfg(tmp_path, ["heapdump"])
+
+    with mock.patch("solrorbit.utils.process.run_subprocess_with_logging", return_value=0) as run:
+        test_run_orchestrator._dump_heap_before_stop(cfg, pid=14, docker_container="solr-orbit")
+
+    run.assert_called_once_with("docker exec solr-orbit jattach 14 dumpheap /var/solr/logs/heap_at_exit_14.hprof")
+
+
+@mock.patch("solrorbit.test_run_orchestrator.run_test")
+@mock.patch("solrorbit.test_run_orchestrator.set_default_hosts")
+@mock.patch("solrorbit.test_run_orchestrator._load_cluster_config", return_value=None)
+@mock.patch("solrorbit.test_run_orchestrator.SolrProvisioner")
+def test_from_distribution_dumps_heap_before_stopping_solr(provisioner_class, load_cluster_config, set_default_hosts,
+                                                           run_test, tmp_path):
+    cfg = _provisioned_cfg(tmp_path, ["heapdump"])
+    provisioner = provisioner_class.return_value
+    provisioner.pid = 4242
+    calls = mock.Mock()
+    provisioner.stop.side_effect = lambda *args: calls.stop()
+
+    with mock.patch("solrorbit.telemetry.Heapdump.dump", side_effect=lambda pid: calls.dump(pid)):
+        test_run_orchestrator.solr_from_distribution(cfg)
+
+    assert calls.mock_calls == [mock.call.dump(4242), mock.call.stop()]
+
+
+@mock.patch("solrorbit.test_run_orchestrator.run_test")
+@mock.patch("solrorbit.test_run_orchestrator.set_default_hosts")
+@mock.patch("solrorbit.test_run_orchestrator._load_cluster_config", return_value=None)
+@mock.patch("solrorbit.test_run_orchestrator.SolrDockerLauncher")
+def test_docker_passes_devices_dumps_heap_and_copies_logs_on_stop(launcher_class, load_cluster_config,
+                                                                  set_default_hosts, run_test, tmp_path):
+    launcher_class.CONTAINER_LOG_DIR = "/var/solr/logs"
+    launcher = launcher_class.return_value
+    launcher.pid = 14
+    launcher.container_name = "solr-orbit"
+    calls = mock.Mock()
+    launcher.stop.side_effect = lambda **kwargs: calls.stop(**kwargs)
+    cfg = _provisioned_cfg(tmp_path, ["gc", "heapdump"])
+
+    with mock.patch("solrorbit.telemetry.Heapdump.dump", side_effect=lambda pid: calls.dump(pid)):
+        test_run_orchestrator.solr_docker(cfg)
+
+    devices = launcher_class.call_args.kwargs["telemetry_devices"]
+    assert [(device.command, device.log_root) for device in devices] == [("gc", "/var/solr/logs")]
+    telemetry_dir = os.path.join(str(tmp_path), "test-runs", TEST_RUN_ID, "telemetry")
+    assert calls.mock_calls == [mock.call.dump(14), mock.call.stop(log_dest=telemetry_dir)]
