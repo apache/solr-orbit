@@ -202,7 +202,7 @@ class TestSolrDockerLauncherLifecycle(unittest.TestCase):
             self.assertEqual([
                 ["docker", "stop", "solr-orbit"],
                 ["docker", "cp", "solr-orbit:/var/solr/logs/.", log_dest],
-                ["docker", "rm", "-f", "solr-orbit"],
+                ["docker", "rm", "-f", "-v", "solr-orbit"],
             ], commands)
             self.assertTrue(os.path.isdir(log_dest))
 
@@ -210,14 +210,26 @@ class TestSolrDockerLauncherLifecycle(unittest.TestCase):
         with patch("subprocess.run", side_effect=self._fake_docker()) as mock_run:
             SolrDockerLauncher().stop()
         commands = [c.args[0] for c in mock_run.call_args_list]
-        self.assertEqual([["docker", "stop", "solr-orbit"], ["docker", "rm", "-f", "solr-orbit"]], commands)
+        self.assertEqual([["docker", "stop", "solr-orbit"], ["docker", "rm", "-f", "-v", "solr-orbit"]], commands)
 
     def test_stop_still_removes_the_container_when_stop_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
             with patch("subprocess.run", side_effect=self._fake_docker(stop_returncode=1)) as mock_run:
                 SolrDockerLauncher().stop(log_dest=os.path.join(tmp, "telemetry"))
         commands = [c.args[0] for c in mock_run.call_args_list]
-        self.assertEqual([["docker", "stop", "solr-orbit"], ["docker", "rm", "-f", "solr-orbit"]], commands)
+        self.assertEqual([["docker", "stop", "solr-orbit"], ["docker", "rm", "-f", "-v", "solr-orbit"]], commands)
+
+    def test_stop_still_removes_the_container_when_log_dest_cannot_be_created(self):
+        with patch("os.makedirs", side_effect=PermissionError("denied")), \
+                patch("subprocess.run", side_effect=self._fake_docker()) as mock_run:
+            with self.assertRaises(PermissionError):
+                SolrDockerLauncher().stop(log_dest="/not/writable")
+        commands = [c.args[0] for c in mock_run.call_args_list]
+        self.assertEqual([["docker", "stop", "solr-orbit"], ["docker", "rm", "-f", "-v", "solr-orbit"]], commands)
+
+    def test_start_removes_a_stale_container_with_its_volume(self):
+        commands = self._start(SolrDockerLauncher(), self._fake_docker())
+        self.assertEqual(["docker", "rm", "-f", "-v", "solr-orbit"], commands[0])
 
 
 class TestAssertPortFree(unittest.TestCase):

@@ -384,7 +384,7 @@ class SolrDockerLauncher:
 
         # Remove any stale container with the same name before the port check,
         # so a leftover benchmark container does not cause a false-positive.
-        subprocess.run(["docker", "rm", "-f", self.container_name], capture_output=True, text=True)
+        subprocess.run(["docker", "rm", "-f", "-v", self.container_name], capture_output=True, text=True)
         _assert_port_free(self.port)
 
         logger.info("Starting Solr Docker container: %s", " ".join(cmd))
@@ -447,24 +447,27 @@ class SolrDockerLauncher:
         Stopping first lets the JVM flush files written on exit, such as the JFR recording.
         """
         logger.info("Stopping Solr container '%s'", self.container_name)
-        result = subprocess.run(["docker", "stop", self.container_name], capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.warning("docker stop returned non-zero: %s", result.stderr or result.stdout)
-        elif log_dest:
-            os.makedirs(log_dest, exist_ok=True)
-            # The trailing "/." copies the directory's contents rather than the directory itself.
-            source = f"{self.container_name}:{self.CONTAINER_LOG_DIR}/."
-            result = subprocess.run(["docker", "cp", source, log_dest], capture_output=True, text=True)
+        try:
+            result = subprocess.run(["docker", "stop", self.container_name], capture_output=True, text=True)
             if result.returncode != 0:
-                logger.warning("Could not copy Solr logs from the container: %s", result.stderr or result.stdout)
+                logger.warning("docker stop returned non-zero: %s", result.stderr or result.stdout)
+            elif log_dest:
+                os.makedirs(log_dest, exist_ok=True)
+                # The trailing "/." copies the directory's contents rather than the directory itself.
+                source = f"{self.container_name}:{self.CONTAINER_LOG_DIR}/."
+                result = subprocess.run(["docker", "cp", source, log_dest], capture_output=True, text=True)
+                if result.returncode != 0:
+                    logger.warning("Could not copy Solr logs from the container: %s", result.stderr or result.stdout)
+                else:
+                    logger.info("Copied Solr logs from the container to %s", log_dest)
+        finally:
+            # Always remove the container, even if creating log_dest or copying fails.
+            # -v also removes the anonymous volume the image declares for /var/solr.
+            result = subprocess.run(["docker", "rm", "-f", "-v", self.container_name], capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.warning("docker rm returned non-zero: %s", result.stderr or result.stdout)
             else:
-                logger.info("Copied Solr logs from the container to %s", log_dest)
-
-        result = subprocess.run(["docker", "rm", "-f", self.container_name], capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.warning("docker rm returned non-zero: %s", result.stderr or result.stdout)
-        else:
-            logger.info("Container '%s' removed.", self.container_name)
+                logger.info("Container '%s' removed.", self.container_name)
 
     def _wait_for_ready(self) -> None:
         """Poll until Solr container responds on localhost:{port}."""
