@@ -246,8 +246,13 @@ class JitCompiler(TelemetryDevice):
         io.ensure_dir(self.log_root)
         log_file = os.path.join(self.log_root, "jit.log")
         console.info("%s: Writing JIT compiler log to [%s]" % (self.human_name, log_file), logger=self.logger)
-        return ["-XX:+UnlockDiagnosticVMOptions", "-XX:+TraceClassLoading", "-XX:+LogCompilation",
-                "-XX:LogFile={}".format(log_file), "-XX:+PrintAssembly"]
+        flags = ["-XX:+UnlockDiagnosticVMOptions", "-Xlog:class+load=info", "-XX:+LogCompilation",
+                 "-XX:LogFile={}".format(log_file)]
+        # Opt-in: without the hsdis plugin PrintAssembly only dumps raw machine code, and it
+        # slows Solr startup enough to hit the provisioners' startup timeouts.
+        if self.telemetry_params.get("jit-print-assembly", False):
+            flags.append("-XX:+PrintAssembly")
+        return flags
 
 
 class Gc(TelemetryDevice):

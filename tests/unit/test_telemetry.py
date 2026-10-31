@@ -360,6 +360,20 @@ class TestJitCompilerPipelineSkip(unittest.TestCase):
             self.assertTrue(len(result) > 0)
             self.assertIn("-XX:+LogCompilation", result)
 
+    def test_jit_uses_unified_class_load_logging(self):
+        """-XX:+TraceClassLoading is obsolete since JDK 17 and stops the JVM from starting."""
+        with tempfile.TemporaryDirectory() as log_root:
+            result = JitCompiler(log_root=log_root).instrument_java_opts()
+            self.assertNotIn("-XX:+TraceClassLoading", result)
+            self.assertIn("-Xlog:class+load=info", result)
+
+    def test_jit_print_assembly_is_opt_in(self):
+        """PrintAssembly slows startup past the provisioner timeouts, so it is off by default."""
+        with tempfile.TemporaryDirectory() as log_root:
+            self.assertNotIn("-XX:+PrintAssembly", JitCompiler(log_root=log_root).instrument_java_opts())
+            opts = JitCompiler(log_root=log_root, telemetry_params={"jit-print-assembly": True}).instrument_java_opts()
+            self.assertIn("-XX:+PrintAssembly", opts)
+
     def test_jit_no_telemetry_params(self):
         """JitCompiler works with no telemetry_params (defaults to empty dict)."""
         with tempfile.TemporaryDirectory() as log_root:
