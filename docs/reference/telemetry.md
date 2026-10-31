@@ -239,7 +239,7 @@ Enables JIT compiler logging. Injects `-XX:+LogCompilation` and related flags in
 **Pipeline:** `from-distribution` or `from-sources` (Docker support is tracked in [#138](https://github.com/apache/solr-orbit/issues/138))
 **Enable:** `--telemetry jit`
 
-JIT output is written to `jit.log` in the `telemetry` directory of the test run (`~/.solr-orbit/benchmarks/test-runs/<test-run-id>/telemetry/`).
+JIT output is written to `jit.log` in the `telemetry` directory of the test run (`~/.solr-orbit/benchmarks/test-runs/<test-run-id>/telemetry/`). To also add `-XX:+PrintAssembly`, pass `--telemetry-params jit-print-assembly:true`. It is off by default because it makes Solr start much slower (over 90s instead of about 25s on `solr:9`) and `jit.log` grow past 100 MB, and without the `hsdis` plugin it only prints raw machine code.
 
 ---
 
