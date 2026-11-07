@@ -87,3 +87,14 @@ release: release-checks clean it
 	./release.sh $(release_version) $(next_version)
 
 .PHONY: install clean python-caches-clean tox-env-clean test it it312 it313 benchmark coverage licenses release release-checks check-uv
+
+# Changelog fragments in changelog.d/ are folded into CHANGELOG.md by towncrier, see changelog.d/README.md.
+VERSION := $(shell cat version.txt)
+
+# Preview the pending release notes without writing anything.
+changelog-draft: develop
+	uv run towncrier build --draft --version $(VERSION)
+
+# Fold the pending fragments into CHANGELOG.md for version.txt and delete them. Run at release.
+changelog: develop
+	uv run towncrier build --yes --version $(VERSION)
