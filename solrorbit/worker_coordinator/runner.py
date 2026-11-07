@@ -1526,9 +1526,11 @@ class SolrDeleteCollection(SolrRunner):
 # Runner: raw-request
 # ---------------------------------------------------------------------------
 
-class RawRequest(Runner):
+class RawRequest(SolrRunner):
     """
     Send an arbitrary HTTP request to any Solr endpoint.
+
+    A 4xx or 5xx response is reported as a failed request, like the other runners.
 
     Params:
       - ``method`` (default "GET"), ``path``, ``body``, ``headers``
@@ -1544,6 +1546,9 @@ class RawRequest(Runner):
         start = time.perf_counter()
         resp = await _run_in_executor(sc.raw_request, method, path, body, headers)
         elapsed = time.perf_counter() - start
+        # raw_request returns error responses instead of raising; SolrRunner turns this
+        # HTTPError into a BenchmarkTransportError, so the request counts as an error.
+        resp.raise_for_status()
 
         return {
             "weight": 1,
