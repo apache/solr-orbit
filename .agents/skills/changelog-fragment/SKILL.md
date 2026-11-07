@@ -36,5 +36,5 @@ Format, types and attribution rules are in `changelog.d/README.md`; read it firs
 `changelog.d/115.changed.md`
 
 ```markdown
-The `optimize` operation follows Solr's merge policy by default instead of forcing a single segment. Pass `max-num-segments` to restore the old behaviour. (@jdoe)
+The `optimize` operation follows Solr's merge policy by default instead of forcing a single segment. Set `max-segments` to `1` to restore the old behaviour. (@jdoe)
 ```
