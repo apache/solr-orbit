@@ -202,6 +202,41 @@ class TestSolrBulkIndex(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertGreater(result["error-count"], 0)
 
+    def test_partial_failure_counts_failed_docs_once(self):
+        """A failed batch is reported as errors, not also subtracted from the indexed docs."""
+        import pysolr
+        mock_sc = MagicMock()
+        mock_sc.add.side_effect = [None, pysolr.SolrError("Indexing error")]
+
+        lines = [
+            '{"index": {"_id": "1"}}',
+            '{"title": "doc"}',
+            '{"index": {"_id": "2"}}',
+            '{"title": "doc"}',
+        ]
+        params = {**self._params(lines), "bulk-size": 1}
+        result = _run(SolrBulkIndex()(mock_sc, params))
+
+        self.assertEqual(1, result["weight"])
+        self.assertEqual(2, result["bulk-size"])
+        self.assertEqual(1, result["error-count"])
+        self.assertFalse(result["success"])
+
+    def test_failed_bulk_has_zero_weight(self):
+        import pysolr
+        mock_sc = MagicMock()
+        mock_sc.add.side_effect = pysolr.SolrError("Indexing error")
+
+        lines = [
+            '{"index": {"_id": "1"}}',
+            '{"title": "doc"}',
+        ]
+        result = _run(SolrBulkIndex()(mock_sc, self._params(lines)))
+
+        self.assertEqual(0, result["weight"])
+        self.assertEqual(1, result["bulk-size"])
+        self.assertEqual(1, result["error-count"])
+
     def test_simple_ndjson_format(self):
         """Test simple NDJSON (one doc per line, no action lines)."""
         mock_sc = MagicMock()

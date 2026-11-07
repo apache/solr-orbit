@@ -1151,18 +1151,18 @@ class SolrBulkIndex(SolrRunner):
         for doc in doc_stream:
             batch.append(doc)
             if len(batch) >= batch_size:
+                total_docs += len(batch)
                 try:
                     await _run_in_executor(sc.add, collection, batch, commit=False, commitWithin=1000)
-                    total_docs += len(batch)
                 except pysolr.SolrError as exc:
                     logging.getLogger(__name__).error("Bulk index error on batch: %s", exc)
                     errors += len(batch)
                 batch = []
 
         if batch:
+            total_docs += len(batch)
             try:
                 await _run_in_executor(sc.add, collection, batch, commit=False, commitWithin=1000)
-                total_docs += len(batch)
             except pysolr.SolrError as exc:
                 logging.getLogger(__name__).error("Bulk index error on final batch: %s", exc)
                 errors += len(batch)
@@ -1171,6 +1171,7 @@ class SolrBulkIndex(SolrRunner):
             await _run_in_executor(sc.commit, collection)
 
         elapsed = time.perf_counter() - start
+        # total_docs counts every document sent, so this is the number actually indexed.
         weight = total_docs - errors
 
         return {
