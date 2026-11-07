@@ -81,7 +81,7 @@ def kv_to_map(kvs):
 
     result = {}
     for kv in kvs:
-        k, v = kv.split(":")
+        k, v = kv.split(":", 1)
         # key is always considered a string, value needs to be converted
         result[k.strip()] = convert(v.strip())
     return result
