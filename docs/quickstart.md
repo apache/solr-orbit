@@ -180,12 +180,30 @@ Now that you're familiar with running a benchmark, you can run Solr Orbit agains
 - Use `--workload-params` to override workload parameters such as the number of clients or the target throughput.
 - Use `--include-tasks` or `--exclude-tasks` to run only the operations you care about.
 
+For example, to benchmark a three-node SolrCloud cluster with the `nyc_taxis` collection spread over all three nodes:
+
 ```bash
 solr-orbit run \
   --pipeline=benchmark-only \
-  --target-hosts=<your-solr-host>:8983 \
-  --workload=nyc_taxis
+  --target-hosts=solr1.example.com:8983,solr2.example.com:8983,solr3.example.com:8983 \
+  --workload=nyc_taxis \
+  --workload-params="num_shards:3,replication_factor:2,bulk_indexing_clients:12,search_clients:3" \
+  --exclude-tasks="desc_sort_tip_amount,asc_sort_tip_amount" \
+  --user-tag="cluster:3-nodes"
 ```
+
+What each setting does:
+
+- `--target-hosts` lists the Solr nodes as comma-separated `host:port` pairs.
+- `num_shards:3,replication_factor:2` creates the `nyc_taxis` collection with three shards and two replicas of each, so every node holds part of the index. Both default to `1`, which puts the whole collection on a single node.
+- `bulk_indexing_clients:12` and `search_clients:3` raise the number of parallel indexing and search clients (defaults `8` and `1`) so there is enough load to keep three nodes busy.
+- `--exclude-tasks` skips the two `tip_amount` sort queries; every other task in the test procedure still runs. Use `--include-tasks` instead to run only the tasks you name.
+- `--user-tag` attaches a `key:value` tag to every metric of the run, which makes runs against different cluster sizes easy to tell apart later.
+
+The parameters a workload accepts are listed in its `README.md` in the [workloads repository](https://github.com/apache/solr-orbit-workloads); for `nyc_taxis`, see [nyc_taxis/README.md](https://github.com/apache/solr-orbit-workloads/blob/main/nyc_taxis/README.md#parameters).
+
+{: .note }
+Solr Orbit currently sends all benchmark requests to the first host in `--target-hosts`, and SolrCloud routes them on to the nodes that hold the data. The node-level telemetry (JVM and node stats) is likewise sampled from that first node only.
 
 ## Next steps
 

@@ -96,7 +96,7 @@ dependencies = [
     "h5py>=3.10.0",
     # License: BSD
     # Required for knnvector workload
-    "numpy>=1.24.2,<=2.5.3",
+    "numpy>=1.24.2,<=2.5.4",
     # License: MIT
     "tqdm",
     # License: MIT
@@ -129,28 +129,27 @@ solr-orbitd = "solrorbit.benchmarkd:main"
 [project.optional-dependencies]
 test = [
     "ujson",
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     # Upgraded from 3.2.2: py.io.TerminalWriter was removed in py 1.11+,
     # making 3.x incompatible with Python 3.12. 4.0+ dropped the py dependency.
     "pytest-benchmark>=4.0.0",
-    "pytest-asyncio==1.4.0",
+    "pytest-asyncio==1.4.1",
 ]
 develop = [
     "ujson",
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     # Upgraded from 3.2.2: py.io.TerminalWriter was removed in py 1.11+,
     # making 3.x incompatible with Python 3.12. 4.0+ dropped the py dependency.
     "pytest-benchmark>=4.0.0",
-    "pytest-asyncio==1.4.0",
+    "pytest-asyncio==1.4.1",
     "tox>=4.0",
     # tox plugin: create tox envs with uv and auto-download missing Python interpreters
     "tox-uv>=1.11",
-    "coverage==7.16.2",
+    "coverage==7.17.0",
     "twine==7.0.0",
     "wheel>=0.38.4",
     "github3.py==4.0.1",
-    "ruff==0.16.9",
-    # Changelog fragments -> CHANGELOG.md, see DEVELOPER_GUIDE.md "Changelog"
+    "ruff==0.17.3",
     "towncrier>=24.8",
 ]
 
