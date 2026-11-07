@@ -21,7 +21,11 @@ import asyncio
 import unittest
 from unittest.mock import MagicMock
 
+import requests
+
+from solrorbit import exceptions
 from solrorbit.worker_coordinator.runner import (
+    RawRequest,
     _translate_ndjson_batch,
     SolrBulkIndex,
     SolrOptimize,
@@ -468,6 +472,32 @@ class TestRunnerRegistrationSmoke(unittest.TestCase):
         params = {"collection": "smoke-coll", "q": "*:*"}
         result = self._run_via_framework("search", {"default": mock_sc}, params)
         self.assertEqual(5, result["hits"])
+
+
+class TestRawRequest(unittest.TestCase):
+    @staticmethod
+    def _client(status_code):
+        resp = requests.Response()
+        resp.status_code = status_code
+        resp.url = "http://localhost:8983/api/collections/test"
+        mock_sc = MagicMock()
+        mock_sc.raw_request.return_value = resp
+        return mock_sc
+
+    def test_success_reports_http_status(self):
+        result = _run(RawRequest()(self._client(200), {"path": "/api/collections/test"}))
+        self.assertEqual(200, result["http-status"])
+        self.assertEqual(1, result["weight"])
+
+    def test_server_error_is_a_transport_error(self):
+        """A rejected request must count as an error, not as a successful operation."""
+        with self.assertRaises(exceptions.BenchmarkTransportError) as ctx:
+            _run(RawRequest()(self._client(500), {"path": "/api/collections/test", "method": "POST"}))
+        self.assertEqual(500, ctx.exception.status_code)
+
+    def test_not_found_is_a_transport_error(self):
+        with self.assertRaises(exceptions.BenchmarkNotFoundError):
+            _run(RawRequest()(self._client(404), {"path": "/api/collections/missing"}))
 
 
 if __name__ == "__main__":
