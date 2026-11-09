@@ -298,6 +298,35 @@ class TestTranslateToSolrJsonDsl(unittest.TestCase):
         self.assertIn("filter", result)
         self.assertTrue(len(result["filter"]) > 0)
 
+    def test_filter_under_must_not_stays_excluded(self):
+        # Hoisting this filter to fq would keep only the documents the query excludes.
+        body = {"query": {"bool": {"must_not": [{"bool": {"filter": [{"term": {"status": "deleted"}}]}}]}}}
+        result = translate_to_solr_json_dsl(body)
+        self.assertNotIn("filter", result)
+        self.assertEqual("-(+(status:deleted))", result["query"])
+
+    def test_filters_under_should_stay_alternatives(self):
+        # Hoisting both filters to fq would require red AND blue instead of red OR blue.
+        body = {"query": {"bool": {"should": [
+            {"bool": {"filter": [{"term": {"color": "red"}}]}},
+            {"bool": {"filter": [{"term": {"color": "blue"}}]}},
+        ]}}}
+        result = translate_to_solr_json_dsl(body)
+        self.assertNotIn("filter", result)
+        self.assertEqual("((+(color:red)) (+(color:blue)))", result["query"])
+
+    def test_nested_bool_under_should_keeps_its_grouping(self):
+        # (a AND b) OR c, not a AND b AND c
+        body = {"query": {"bool": {"should": [
+            {"bool": {"must": [{"term": {"a": 1}}, {"term": {"b": 2}}]}},
+            {"term": {"c": 3}},
+        ]}}}
+        self.assertEqual("((+(a:1) +(b:2)) c:3)", translate_to_solr_json_dsl(body)["query"])
+
+    def test_filter_under_must_still_goes_to_fq(self):
+        body = {"query": {"bool": {"must": [{"bool": {"filter": [{"term": {"color": "red"}}]}}]}}}
+        self.assertEqual({"query": "*:*", "filter": ["color:red"]}, translate_to_solr_json_dsl(body))
+
     def test_sort_is_extracted(self):
         body = {"query": {"match_all": {}}, "sort": [{"fare_amount": "desc"}]}
         result = translate_to_solr_json_dsl(body)
