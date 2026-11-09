@@ -32,6 +32,7 @@ import unittest.mock as mock
 import pytest
 
 from solrorbit import config, exceptions, test_run_orchestrator
+from solrorbit.builder.solr_provisioner import SolrProvisioner
 from solrorbit.utils import opts
 
 
@@ -151,3 +152,81 @@ def test_check_cloud_mode_raises_for_standalone_solr():
         admin_client.return_value.is_cloud_mode.return_value = False
         with pytest.raises(exceptions.SystemSetupError, match="not running in SolrCloud"):
             test_run_orchestrator._check_cloud_mode(cfg)
+
+
+TEST_RUN_ID = "28a032d1-0b03-4579-ad2a-c65316f126e9"
+
+
+def _provisioned_cfg(root_dir, devices, params=None):
+    cfg = config.Config()
+    cfg.add(config.Scope.benchmark, "system", "test_run.id", TEST_RUN_ID)
+    cfg.add(config.Scope.benchmark, "node", "root.dir", str(root_dir))
+    cfg.add(config.Scope.benchmark, "telemetry", "devices", devices)
+    cfg.add(config.Scope.benchmark, "telemetry", "params", params or {})
+    cfg.add(config.Scope.benchmark, "builder", "distribution.version", "9.10.1")
+    cfg.add(config.Scope.benchmark, "solr", "install_dir", str(root_dir / "install"))
+    cfg.add(config.Scope.benchmark, "solr", "cache_dir", str(root_dir / "cache"))
+    return cfg
+
+
+def test_create_jvm_telemetry_devices_returns_only_enabled_devices(tmp_path):
+    cfg = _provisioned_cfg(tmp_path, ["gc", "jfr", "segment-stats"])
+
+    devices = test_run_orchestrator._create_jvm_telemetry_devices(cfg)
+
+    assert sorted(device.command for device in devices) == ["gc", "jfr"]
+    expected_log_root = os.path.join(str(tmp_path), "test-runs", TEST_RUN_ID, "telemetry")
+    assert all(device.log_root == expected_log_root for device in devices)
+
+
+def test_create_jvm_telemetry_devices_returns_nothing_without_telemetry(tmp_path):
+    cfg = _provisioned_cfg(tmp_path, [])
+
+    assert test_run_orchestrator._create_jvm_telemetry_devices(cfg) == []
+
+
+def test_jvm_telemetry_devices_add_their_flags_to_solr_opts(tmp_path):
+    cfg = _provisioned_cfg(tmp_path, ["gc", "jfr", "jit"], params={"gc-log-config": "gc*=debug"})
+    devices = test_run_orchestrator._create_jvm_telemetry_devices(cfg)
+
+    provisioner = SolrProvisioner(cache_dir=str(tmp_path / "cache"), telemetry_devices=devices)
+    solr_opts = provisioner._build_env()["SOLR_OPTS"]
+
+    log_root = os.path.join(str(tmp_path), "test-runs", TEST_RUN_ID, "telemetry")
+    assert f"-Xlog:gc*=debug:file={os.path.join(log_root, 'gc.log')}" in solr_opts
+    assert f"filename={os.path.join(log_root, 'profile.jfr')}" in solr_opts
+    assert f"-XX:LogFile={os.path.join(log_root, 'jit.log')}" in solr_opts
+
+
+@mock.patch("solrorbit.test_run_orchestrator.run_test")
+@mock.patch("solrorbit.test_run_orchestrator.set_default_hosts")
+@mock.patch("solrorbit.test_run_orchestrator._load_cluster_config", return_value=None)
+@mock.patch("solrorbit.test_run_orchestrator.SolrProvisioner")
+def test_from_distribution_passes_jvm_telemetry_devices(provisioner_class, load_cluster_config, set_default_hosts, run_test, tmp_path):
+    cfg = _provisioned_cfg(tmp_path, ["gc", "jit"])
+
+    test_run_orchestrator.solr_from_distribution(cfg)
+
+    devices = provisioner_class.call_args.kwargs["telemetry_devices"]
+    assert sorted(device.command for device in devices) == ["gc", "jit"]
+    run_test.assert_called_once_with(cfg, external=True)
+
+
+@mock.patch("solrorbit.test_run_orchestrator.run_test")
+@mock.patch("solrorbit.test_run_orchestrator.set_default_hosts")
+@mock.patch("solrorbit.test_run_orchestrator._load_cluster_config", return_value=None)
+@mock.patch("solrorbit.test_run_orchestrator.SolrProvisioner")
+@mock.patch("solrorbit.test_run_orchestrator.tarfile.open")
+@mock.patch("solrorbit.test_run_orchestrator.glob.glob", return_value=["/src/solr-10.0.0-SNAPSHOT.tgz"])
+@mock.patch("solrorbit.test_run_orchestrator.Builder")
+@mock.patch("solrorbit.test_run_orchestrator.SourceRepository")
+def test_from_sources_passes_jvm_telemetry_devices(source_repository, bldr, glob_glob, tarfile_open, provisioner_class,
+                                                   load_cluster_config, set_default_hosts, run_test, tmp_path):
+    tarfile_open.return_value.__enter__.return_value.getnames.return_value = ["solr-10.0.0-SNAPSHOT/bin/solr"]
+    cfg = _provisioned_cfg(tmp_path, ["jfr"])
+
+    test_run_orchestrator.solr_from_sources(cfg)
+
+    devices = provisioner_class.call_args.kwargs["telemetry_devices"]
+    assert [device.command for device in devices] == ["jfr"]
+    run_test.assert_called_once_with(cfg, external=True)
