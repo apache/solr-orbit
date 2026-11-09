@@ -990,8 +990,17 @@ class SolrCollectionStats(SolrTelemetryDevice):
     human_name = "Solr Collection Stats"
     help = "Per-collection: doc count, deleted docs, index size, and segment count (30 s interval)"
 
-    def __init__(self, admin_client, metrics_store,
-                 collections: list = None, sample_interval_s: float = 30.0):
+    def __init__(self, admin_client, metrics_store, telemetry_params=None, collections: list = None):
+        """
+        :param telemetry_params: May optionally specify
+            ``collection-stats-sample-interval``: positive number, seconds between polls. Default: 30.
+        """
+        sample_interval_s = (telemetry_params or {}).get("collection-stats-sample-interval", 30)
+        if sample_interval_s <= 0:
+            raise exceptions.SystemSetupError(
+                "The telemetry parameter 'collection-stats-sample-interval' must be greater than zero "
+                f"but was {sample_interval_s}."
+            )
         super().__init__(admin_client, metrics_store, sample_interval_s)
         self._collections = collections
 

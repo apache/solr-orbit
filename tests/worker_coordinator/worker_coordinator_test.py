@@ -204,6 +204,21 @@ class WorkerCoordinatorTests(TestCase):
         self.assertEqual(1, len(env_info))
         self.assertIs(sc, env_info[0].admin_client)
 
+    def test_collection_stats_uses_sample_interval_param(self):
+        # pylint: disable=import-outside-toplevel
+        from solrorbit import telemetry
+        from solrorbit.client import SolrClient
+
+        self.cfg.add(config.Scope.applicationOverride, "telemetry", "params", {"collection-stats-sample-interval": 7})
+        target = self.create_test_worker_coordinator_target()
+        d = worker_coordinator.WorkerCoordinator(target, self.cfg, client_factory_class=WorkerCoordinatorTests.StaticClientFactory)
+
+        devices = d._create_solr_telemetry_devices({"default": mock.MagicMock(spec=SolrClient)})
+
+        collection_stats = [device for device in devices if isinstance(device, telemetry.SolrCollectionStats)]
+        self.assertEqual(1, len(collection_stats))
+        self.assertEqual(7, collection_stats[0]._sample_interval)
+
     def test_client_reaches_join_point_others_still_executing(self):
         target = self.create_test_worker_coordinator_target()
         d = worker_coordinator.WorkerCoordinator(target, self.cfg, client_factory_class=WorkerCoordinatorTests.StaticClientFactory)
