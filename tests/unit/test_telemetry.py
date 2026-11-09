@@ -360,6 +360,20 @@ class TestJitCompilerPipelineSkip(unittest.TestCase):
             self.assertTrue(len(result) > 0)
             self.assertIn("-XX:+LogCompilation", result)
 
+    def test_jit_uses_unified_class_load_logging(self):
+        """-XX:+TraceClassLoading is obsolete since JDK 17 and stops the JVM from starting."""
+        with tempfile.TemporaryDirectory() as log_root:
+            result = JitCompiler(log_root=log_root).instrument_java_opts()
+            self.assertNotIn("-XX:+TraceClassLoading", result)
+            self.assertIn("-Xlog:class+load=info", result)
+
+    def test_jit_print_assembly_is_opt_in(self):
+        """PrintAssembly slows startup past the provisioner timeouts, so it is off by default."""
+        with tempfile.TemporaryDirectory() as log_root:
+            self.assertNotIn("-XX:+PrintAssembly", JitCompiler(log_root=log_root).instrument_java_opts())
+            opts = JitCompiler(log_root=log_root, telemetry_params={"jit-print-assembly": True}).instrument_java_opts()
+            self.assertIn("-XX:+PrintAssembly", opts)
+
     def test_jit_no_telemetry_params(self):
         """JitCompiler works with no telemetry_params (defaults to empty dict)."""
         with tempfile.TemporaryDirectory() as log_root:
@@ -370,13 +384,18 @@ class TestJitCompilerPipelineSkip(unittest.TestCase):
 
 class TestHeapdumpDockerSupport(unittest.TestCase):
 
+    @staticmethod
+    def _which(*available):
+        return lambda name: f"/usr/bin/{name}" if name in available else None
+
     def test_heapdump_local_calls_jmap(self):
-        """Heapdump calls jmap directly for non-Docker nodes."""
+        """Heapdump calls jmap directly for non-Docker nodes when it is on the PATH."""
         with tempfile.TemporaryDirectory() as log_root:
             device = Heapdump(log_root=log_root)
             node = MagicMock()
             node.pid = 12345
-            with patch("solrorbit.utils.process.run_subprocess_with_logging") as mock_run:
+            with patch("solrorbit.telemetry.shutil.which", side_effect=self._which("jmap", "jattach")), \
+                    patch("solrorbit.utils.process.run_subprocess_with_logging") as mock_run:
                 mock_run.return_value = 0
                 device.detach_from_node(node, running=True)
                 call_args = mock_run.call_args[0][0]
@@ -384,19 +403,34 @@ class TestHeapdumpDockerSupport(unittest.TestCase):
                 self.assertIn("12345", call_args)
                 self.assertNotIn("docker", call_args)
 
-    def test_heapdump_docker_calls_docker_exec(self):
-        """Heapdump uses docker exec when docker_container is set."""
+    def test_heapdump_local_falls_back_to_jattach(self):
+        """Without jmap (a JRE), Heapdump uses jattach, like bin/solr does for thread dumps."""
         with tempfile.TemporaryDirectory() as log_root:
-            device = Heapdump(log_root=log_root, docker_container="solr-orbit")
-            node = MagicMock()
-            node.pid = 12345
-            with patch("solrorbit.utils.process.run_subprocess_with_logging") as mock_run:
-                mock_run.return_value = 0
-                device.detach_from_node(node, running=True)
-                call_args = mock_run.call_args[0][0]
-                self.assertIn("docker exec", call_args)
-                self.assertIn("solr-orbit", call_args)
-                self.assertIn("jmap", call_args)
+            device = Heapdump(log_root=log_root)
+            with patch("solrorbit.telemetry.shutil.which", side_effect=self._which("jattach")), \
+                    patch("solrorbit.utils.process.run_subprocess_with_logging", return_value=0) as mock_run:
+                device.dump(12345)
+                expected_file = os.path.join(log_root, "heap_at_exit_12345.hprof")
+                mock_run.assert_called_once_with(f"jattach 12345 dumpheap {expected_file}")
+
+    def test_heapdump_local_skips_without_a_tool(self):
+        """Heapdump runs nothing when neither jmap nor jattach is available."""
+        with tempfile.TemporaryDirectory() as log_root:
+            device = Heapdump(log_root=log_root)
+            with patch("solrorbit.telemetry.shutil.which", return_value=None), \
+                    patch("solrorbit.utils.process.run_subprocess_with_logging") as mock_run:
+                device.dump(12345)
+                mock_run.assert_not_called()
+
+    def test_heapdump_docker_uses_jattach_inside_the_container(self):
+        """The Solr images have jattach but no jmap; the dump path is inside the container."""
+        device = Heapdump(log_root="/var/solr/logs", docker_container="solr-orbit")
+        node = MagicMock()
+        node.pid = 14
+        with patch("solrorbit.utils.process.run_subprocess_with_logging", return_value=0) as mock_run:
+            device.detach_from_node(node, running=True)
+            mock_run.assert_called_once_with(
+                "docker exec solr-orbit jattach 14 dumpheap /var/solr/logs/heap_at_exit_14.hprof")
 
     def test_heapdump_not_running_skips(self):
         """Heapdump does nothing when running=False."""
@@ -407,6 +441,30 @@ class TestHeapdumpDockerSupport(unittest.TestCase):
             with patch("solrorbit.utils.process.run_subprocess_with_logging") as mock_run:
                 device.detach_from_node(node, running=False)
                 mock_run.assert_not_called()
+
+
+class TestJvmDevicesWithContainerLogRoot(unittest.TestCase):
+
+    def test_container_log_root_is_not_created_on_the_host(self):
+        """With create_log_root=False the flags point at log_root but nothing is created locally."""
+        with tempfile.TemporaryDirectory() as tmp:
+            log_root = os.path.join(tmp, "var", "solr", "logs")
+            devices = [
+                FlightRecorder({}, log_root, None, create_log_root=False),
+                Gc({}, log_root, None, create_log_root=False),
+                JitCompiler(log_root, {}, create_log_root=False),
+            ]
+            opts = [opt for device in devices for opt in device.instrument_java_opts()]
+            self.assertFalse(os.path.exists(log_root))
+            self.assertTrue(any(os.path.join(log_root, "profile.jfr") in opt for opt in opts))
+            self.assertTrue(any(os.path.join(log_root, "gc.log") in opt for opt in opts))
+            self.assertTrue(any(os.path.join(log_root, "jit.log") in opt for opt in opts))
+
+    def test_log_root_is_created_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log_root = os.path.join(tmp, "telemetry")
+            Gc({}, log_root, None).instrument_java_opts()
+            self.assertTrue(os.path.isdir(log_root))
 
 
 if __name__ == "__main__":
