@@ -21,7 +21,11 @@ import asyncio
 import unittest
 from unittest.mock import MagicMock
 
+import requests
+
+from solrorbit import exceptions
 from solrorbit.worker_coordinator.runner import (
+    RawRequest,
     _translate_ndjson_batch,
     SolrBulkIndex,
     SolrOptimize,
@@ -201,6 +205,41 @@ class TestSolrBulkIndex(unittest.TestCase):
         result = _run(runner(mock_sc, self._params(lines)))
         self.assertFalse(result["success"])
         self.assertGreater(result["error-count"], 0)
+
+    def test_partial_failure_counts_failed_docs_once(self):
+        """A failed batch is reported as errors, not also subtracted from the indexed docs."""
+        import pysolr
+        mock_sc = MagicMock()
+        mock_sc.add.side_effect = [None, pysolr.SolrError("Indexing error")]
+
+        lines = [
+            '{"index": {"_id": "1"}}',
+            '{"title": "doc"}',
+            '{"index": {"_id": "2"}}',
+            '{"title": "doc"}',
+        ]
+        params = {**self._params(lines), "bulk-size": 1}
+        result = _run(SolrBulkIndex()(mock_sc, params))
+
+        self.assertEqual(1, result["weight"])
+        self.assertEqual(2, result["bulk-size"])
+        self.assertEqual(1, result["error-count"])
+        self.assertFalse(result["success"])
+
+    def test_failed_bulk_has_zero_weight(self):
+        import pysolr
+        mock_sc = MagicMock()
+        mock_sc.add.side_effect = pysolr.SolrError("Indexing error")
+
+        lines = [
+            '{"index": {"_id": "1"}}',
+            '{"title": "doc"}',
+        ]
+        result = _run(SolrBulkIndex()(mock_sc, self._params(lines)))
+
+        self.assertEqual(0, result["weight"])
+        self.assertEqual(1, result["bulk-size"])
+        self.assertEqual(1, result["error-count"])
 
     def test_simple_ndjson_format(self):
         """Test simple NDJSON (one doc per line, no action lines)."""
@@ -433,6 +472,32 @@ class TestRunnerRegistrationSmoke(unittest.TestCase):
         params = {"collection": "smoke-coll", "q": "*:*"}
         result = self._run_via_framework("search", {"default": mock_sc}, params)
         self.assertEqual(5, result["hits"])
+
+
+class TestRawRequest(unittest.TestCase):
+    @staticmethod
+    def _client(status_code):
+        resp = requests.Response()
+        resp.status_code = status_code
+        resp.url = "http://localhost:8983/api/collections/test"
+        mock_sc = MagicMock()
+        mock_sc.raw_request.return_value = resp
+        return mock_sc
+
+    def test_success_reports_http_status(self):
+        result = _run(RawRequest()(self._client(200), {"path": "/api/collections/test"}))
+        self.assertEqual(200, result["http-status"])
+        self.assertEqual(1, result["weight"])
+
+    def test_server_error_is_a_transport_error(self):
+        """A rejected request must count as an error, not as a successful operation."""
+        with self.assertRaises(exceptions.BenchmarkTransportError) as ctx:
+            _run(RawRequest()(self._client(500), {"path": "/api/collections/test", "method": "POST"}))
+        self.assertEqual(500, ctx.exception.status_code)
+
+    def test_not_found_is_a_transport_error(self):
+        with self.assertRaises(exceptions.BenchmarkNotFoundError):
+            _run(RawRequest()(self._client(404), {"path": "/api/collections/missing"}))
 
 
 if __name__ == "__main__":

@@ -1151,18 +1151,18 @@ class SolrBulkIndex(SolrRunner):
         for doc in doc_stream:
             batch.append(doc)
             if len(batch) >= batch_size:
+                total_docs += len(batch)
                 try:
                     await _run_in_executor(sc.add, collection, batch, commit=False, commitWithin=1000)
-                    total_docs += len(batch)
                 except pysolr.SolrError as exc:
                     logging.getLogger(__name__).error("Bulk index error on batch: %s", exc)
                     errors += len(batch)
                 batch = []
 
         if batch:
+            total_docs += len(batch)
             try:
                 await _run_in_executor(sc.add, collection, batch, commit=False, commitWithin=1000)
-                total_docs += len(batch)
             except pysolr.SolrError as exc:
                 logging.getLogger(__name__).error("Bulk index error on final batch: %s", exc)
                 errors += len(batch)
@@ -1171,6 +1171,7 @@ class SolrBulkIndex(SolrRunner):
             await _run_in_executor(sc.commit, collection)
 
         elapsed = time.perf_counter() - start
+        # total_docs counts every document sent, so this is the number actually indexed.
         weight = total_docs - errors
 
         return {
@@ -1526,9 +1527,11 @@ class SolrDeleteCollection(SolrRunner):
 # Runner: raw-request
 # ---------------------------------------------------------------------------
 
-class RawRequest(Runner):
+class RawRequest(SolrRunner):
     """
     Send an arbitrary HTTP request to any Solr endpoint.
+
+    A 4xx or 5xx response is reported as a failed request, like the other runners.
 
     Params:
       - ``method`` (default "GET"), ``path``, ``body``, ``headers``
@@ -1544,6 +1547,9 @@ class RawRequest(Runner):
         start = time.perf_counter()
         resp = await _run_in_executor(sc.raw_request, method, path, body, headers)
         elapsed = time.perf_counter() - start
+        # raw_request returns error responses instead of raising; SolrRunner turns this
+        # HTTPError into a BenchmarkTransportError, so the request counts as an error.
+        resp.raise_for_status()
 
         return {
             "weight": 1,
