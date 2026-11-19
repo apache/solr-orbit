@@ -38,7 +38,7 @@ import thespian.actors
 
 from solrorbit import actor, config, doc_link, \
     worker_coordinator, exceptions, builder, metrics, \
-        publisher, workload, version, PROGRAM_NAME
+        publisher, workload, version, paths, telemetry, PROGRAM_NAME
 from solrorbit.builder import cluster_config as cc_module
 from solrorbit.builder.supplier import SourceRepository, Builder
 from solrorbit.builder.solr_provisioner import SolrProvisioner, SolrDockerLauncher
@@ -462,6 +462,52 @@ def _load_cluster_config(cfg):
     return instance
 
 
+def _telemetry_dir(cfg):
+    """The ``telemetry`` directory inside the test run directory."""
+    return os.path.join(paths.test_run_root(cfg), "telemetry")
+
+
+def _enabled_telemetry_devices(cfg):
+    return cfg.opts("telemetry", "devices", mandatory=False, default_value=[]) or []
+
+
+def _create_jvm_telemetry_devices(cfg, container_log_root=None):
+    """
+    Build the JVM telemetry devices (``jfr``, ``gc``, ``jit``) enabled with ``--telemetry``.
+
+    ``SolrProvisioner`` and ``SolrDockerLauncher`` add the ``instrument_java_opts()`` of every
+    device they are given to ``SOLR_OPTS``, so only the enabled ones are returned. Their output
+    goes to the test run's ``telemetry`` directory, or to *container_log_root* when Solr runs in
+    Docker (the launcher copies it to the host on stop).
+    """
+    enabled_devices = _enabled_telemetry_devices(cfg)
+    telemetry_params = cfg.opts("telemetry", "params", mandatory=False, default_value={}) or {}
+    log_root = container_log_root or _telemetry_dir(cfg)
+    create_log_root = container_log_root is None
+    devices = [
+        telemetry.FlightRecorder(telemetry_params, log_root, java_major_version=None,
+                                 create_log_root=create_log_root),
+        telemetry.Gc(telemetry_params, log_root, java_major_version=None, create_log_root=create_log_root),
+        telemetry.JitCompiler(log_root, telemetry_params, create_log_root=create_log_root),
+    ]
+    return [device for device in devices if device.command in enabled_devices]
+
+
+def _dump_heap_before_stop(cfg, pid, docker_container=None):
+    """Take a heap dump of the running Solr JVM if ``--telemetry heapdump`` is enabled."""
+    if telemetry.Heapdump.command not in _enabled_telemetry_devices(cfg):
+        return
+    if pid is None:
+        logging.getLogger(__name__).warning("Skipping the heap dump: the Solr PID is unknown.")
+        return
+    if docker_container:
+        # Written inside the container, then copied out with the other logs by SolrDockerLauncher.stop().
+        device = telemetry.Heapdump(SolrDockerLauncher.CONTAINER_LOG_DIR, docker_container=docker_container)
+    else:
+        device = telemetry.Heapdump(_telemetry_dir(cfg))
+    device.dump(pid)
+
+
 def solr_from_sources(cfg):
     """
     Clone/update the Solr source tree, build a distribution with Gradle, provision
@@ -517,12 +563,14 @@ def solr_from_sources(cfg):
     cc_instance = _load_cluster_config(cfg)
     solr_modules = cfg.opts("solr", "modules", mandatory=False, default_value="")
     provisioner = SolrProvisioner(cache_dir=os.path.join(base_dir, "cache"), port=port,
-                                  cluster_config=cc_instance, solr_modules=solr_modules)
+                                  cluster_config=cc_instance, solr_modules=solr_modules,
+                                  telemetry_devices=_create_jvm_telemetry_devices(cfg))
     try:
         provisioner.start(solr_root, mode="cloud")
         set_default_hosts(cfg, host="127.0.0.1", port=port)
         run_test(cfg, external=True)
     finally:
+        _dump_heap_before_stop(cfg, provisioner.pid)
         try:
             provisioner.stop(solr_root)
         except Exception as exc:
@@ -562,7 +610,8 @@ def solr_from_distribution(cfg):
     cc_instance = _load_cluster_config(cfg)
     solr_modules = cfg.opts("solr", "modules", mandatory=False, default_value="")
     provisioner = SolrProvisioner(cache_dir=cache_dir, port=port, cluster_config=cc_instance,
-                                  solr_modules=solr_modules)
+                                  solr_modules=solr_modules,
+                                  telemetry_devices=_create_jvm_telemetry_devices(cfg))
     _tarball = provisioner.download(version_str)
     solr_root = provisioner.install(version_str, install_dir)
 
@@ -571,6 +620,7 @@ def solr_from_distribution(cfg):
         set_default_hosts(cfg, host="127.0.0.1", port=port)
         run_test(cfg, external=True)
     finally:
+        _dump_heap_before_stop(cfg, provisioner.pid)
         try:
             provisioner.stop(solr_root)
         except Exception as exc:
@@ -607,14 +657,17 @@ def solr_docker(cfg):
 
     cc_instance = _load_cluster_config(cfg)
     solr_modules = cfg.opts("solr", "modules", mandatory=False, default_value="")
-    launcher = SolrDockerLauncher(port=port, cluster_config=cc_instance, solr_modules=solr_modules)
+    jvm_devices = _create_jvm_telemetry_devices(cfg, container_log_root=SolrDockerLauncher.CONTAINER_LOG_DIR)
+    launcher = SolrDockerLauncher(port=port, cluster_config=cc_instance, solr_modules=solr_modules,
+                                  telemetry_devices=jvm_devices)
     try:
         launcher.start(version_tag=version_tag, mode="cloud")
         set_default_hosts(cfg, host="127.0.0.1", port=port)
         run_test(cfg, external=True)
     finally:
+        _dump_heap_before_stop(cfg, launcher.pid, docker_container=launcher.container_name)
         try:
-            launcher.stop()
+            launcher.stop(log_dest=_telemetry_dir(cfg))
         except Exception as exc:
             logging.getLogger(__name__).warning("Solr Docker teardown failed: %s", exc)
 

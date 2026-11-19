@@ -326,10 +326,13 @@ class SolrDockerLauncher:
         launcher = SolrDockerLauncher(port=8983)
         launcher.start("9")   # pulls solr:9 if needed
         # ... run benchmark ...
-        launcher.stop()
+        launcher.stop(log_dest="/path/to/test-run/telemetry")
     """
 
     DEFAULT_CONTAINER_NAME = "solr-orbit"
+    # Solr's log directory in the official images, owned by the solr user. Telemetry output
+    # inside the container goes here and is copied to the host by stop().
+    CONTAINER_LOG_DIR = "/var/solr/logs"
 
     def __init__(self, port: int = 8983, startup_timeout: int = 60,
                  container_name: str = None, cluster_config=None, solr_modules: str = "",
@@ -365,9 +368,9 @@ class SolrDockerLauncher:
         major = _solr_major_version(version_tag)
 
         # Build the docker run command
+        # No --rm: stop() copies the logs out of the stopped container before removing it.
         cmd = [
             "docker", "run",
-            "--rm",
             "--name", self.container_name,
             "-p", f"{self.port}:8983",
             "-d",
@@ -381,7 +384,7 @@ class SolrDockerLauncher:
 
         # Remove any stale container with the same name before the port check,
         # so a leftover benchmark container does not cause a false-positive.
-        subprocess.run(["docker", "rm", "-f", self.container_name], capture_output=True, text=True)
+        subprocess.run(["docker", "rm", "-f", "-v", self.container_name], capture_output=True, text=True)
         _assert_port_free(self.port)
 
         logger.info("Starting Solr Docker container: %s", " ".join(cmd))
@@ -393,10 +396,11 @@ class SolrDockerLauncher:
 
         self._wait_for_ready()
 
-        # Capture the Solr JVM PID from inside the container for DiskIo / Heapdump telemetry
+        # Capture the Solr JVM PID inside the container for Heapdump telemetry. Not
+        # `docker inspect .State.Pid`: that is the PID on the Docker host, and PID 1 is tini.
         try:
             pid_result = subprocess.run(
-                ["docker", "inspect", self.container_name, "--format={{.State.Pid}}"],
+                ["docker", "exec", self.container_name, "pgrep", "-o", "-x", "java"],
                 capture_output=True, text=True, check=True,
             )
             self.pid = int(pid_result.stdout.strip())
@@ -436,15 +440,34 @@ class SolrDockerLauncher:
             flags += ["-e", f"SOLR_OPTS={solr_opts}"]
         return flags
 
-    def stop(self) -> None:
-        """Stop and remove the Solr container."""
-        cmd = ["docker", "rm", "-f", self.container_name]
+    def stop(self, log_dest: str = None) -> None:
+        """
+        Stop the Solr container, copy its log directory to *log_dest* (if given), and remove it.
+
+        Stopping first lets the JVM flush files written on exit, such as the JFR recording.
+        """
         logger.info("Stopping Solr container '%s'", self.container_name)
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.warning("docker rm returned non-zero: %s", result.stderr or result.stdout)
-        else:
-            logger.info("Container '%s' removed.", self.container_name)
+        try:
+            result = subprocess.run(["docker", "stop", self.container_name], capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.warning("docker stop returned non-zero: %s", result.stderr or result.stdout)
+            elif log_dest:
+                os.makedirs(log_dest, exist_ok=True)
+                # The trailing "/." copies the directory's contents rather than the directory itself.
+                source = f"{self.container_name}:{self.CONTAINER_LOG_DIR}/."
+                result = subprocess.run(["docker", "cp", source, log_dest], capture_output=True, text=True)
+                if result.returncode != 0:
+                    logger.warning("Could not copy Solr logs from the container: %s", result.stderr or result.stdout)
+                else:
+                    logger.info("Copied Solr logs from the container to %s", log_dest)
+        finally:
+            # Always remove the container, even if creating log_dest or copying fails.
+            # -v also removes the anonymous volume the image declares for /var/solr.
+            result = subprocess.run(["docker", "rm", "-f", "-v", self.container_name], capture_output=True, text=True)
+            if result.returncode != 0:
+                logger.warning("docker rm returned non-zero: %s", result.stderr or result.stdout)
+            else:
+                logger.info("Container '%s' removed.", self.container_name)
 
     def _wait_for_ready(self) -> None:
         """Poll until Solr container responds on localhost:{port}."""

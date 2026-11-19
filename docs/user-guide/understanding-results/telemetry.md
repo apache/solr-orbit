@@ -58,7 +58,7 @@ JVM and process devices that inject flags into `SOLR_OPTS` before Solr starts. R
 | `jfr` | Java Flight Recorder — writes `profile.jfr` to the log directory (requires OpenJDK 11+) |
 | `gc` | GC logging (`-Xlog:` format) — writes `gc.log` to the log directory |
 | `jit` | JIT compiler logging — writes `jit.log` to the log directory |
-| `heapdump` | Heap dump (`jmap -dump`) on benchmark stop — writes `heap_at_exit_{pid}.hprof` |
+| `heapdump` | Heap dump (`jmap`, or `jattach` in Docker) on benchmark stop — writes `heap_at_exit_{pid}.hprof` |
 | `disk-io` | Disk I/O bytes read/written by the Solr process (always active on provisioned pipelines) |
 
 **Note:** JVM devices (jfr, gc, jit, heapdump, disk-io) silently skip when pipeline is
