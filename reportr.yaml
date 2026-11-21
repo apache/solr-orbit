@@ -1,0 +1,79 @@
+# reportr.yaml -- the local development configuration.
+#
+# reportr reads the enriched JSON reports launchr wrote and emits a static
+# site. Build and serve it in one step:
+#
+#   reportr build --serve
+
+storage:
+  backend: local
+  # Default: ~/.solr-orbit/benchmark-results, where launchr writes.
+  path: "~/.solr-orbit/benchmark-results"
+
+site:
+  out: "./site-output"
+  title: "Apache Solr Benchmarks"
+
+# Which metrics become charts, one chart per metric. A metric a report does not
+# carry is skipped, so listing p99 costs nothing on runs that have too few
+# samples to have one.
+# p50 and p90 lead the query charts and p99 follows: the stock query tasks
+# measure 100 iterations, and the 99th percentile of 100 samples is a single
+# observation that moves run to run for reasons unrelated to Solr.
+metrics:
+  - throughput.mean
+  - service_time.mean
+  - service_time.p50
+  - service_time.p90
+  - service_time.p99
+  - error_rate
+
+# Per-workload presentation. Every key is optional, and a workload with no entry
+# charts everything and decides its own defaults, so a new workload shows up on
+# the site without a config change.
+#
+#   description     what this workload measures, shown at the top of its page
+#   tasks           restrict the site to these tasks entirely
+#   default_tasks   the lines a kind's shared chart opens with
+#   featured_tasks  the tasks that start with a chart of their own; a reader can
+#                   give any other task the same with its chip
+#
+# A workload describes itself first. Its `description` field in workload.json
+# travels with every result, and a workload wanting more than the one line that
+# field is specified for adds a fuller one to its meta:
+#
+#   "meta": { "reportr.description": "165 million rides, and what they exercise." }
+#
+# The same meta block nominates tasks: "reportr.chart": "own" asks for a chart
+# of its own, "reportr.default": true asks to be on before the reader picks,
+# and "reportr.note" records how the task is set up -- which facet
+# implementation a query uses, say. Edit that note when the setup changes and
+# the chart marks the point it happened, because a step that comes from the
+# benchmark asking a different question is not a step in Solr.
+# Anything set below wins over all of it -- the workload suggests, whoever runs
+# the site decides.
+# Curated notes about a particular Solr build. Nothing is inferred: a regression
+# detector that cried wolf would be worse than no annotation at all. An entry
+# marks every chart on the page unless it names a task, and a version nothing
+# was benchmarked at is skipped rather than guessed at.
+#
+# annotations:
+#   - version: "9.11.0"
+#     text: "Fixes SOLR-12345, a 30% regression in JSON range facets."
+#     url: "https://issues.apache.org/jira/browse/SOLR-12345"
+#     workload: nyc_taxis     # optional; default every workload
+#     task: range             # optional; default every chart
+annotations: []
+
+workloads:
+  nyc_taxis:
+    # An override, kept here so this repository's sample site shows the block.
+    # Remove it and the workload's own description takes over.
+    description: >-
+      Every yellow-cab ride in New York City over a year: 165 million rows of
+      real trip data with timestamps, fares, distances and passenger counts.
+      It exercises bulk indexing of flat documents, then the query shapes that
+      analytics puts on top of them -- numeric range filters, date histogram
+      and numeric facets, and sorting a large result set by a stored field.
+    default_tasks: [index, match-all, range, date_histogram_facet]
+    featured_tasks: [range, date_histogram_facet]
