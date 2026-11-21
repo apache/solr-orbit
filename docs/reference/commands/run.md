@@ -128,10 +128,10 @@ solr-orbit run \
   --workload nyc_taxis \
   --test-mode
 
-# Docker pipeline with Solr 9.10.1
+# Docker pipeline with Solr 10.1.0
 solr-orbit run \
   --pipeline docker \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload nyc_taxis
 
 # Custom workload with parameter overrides

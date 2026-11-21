@@ -74,7 +74,7 @@ For the full list of flags, see the [run command reference](reference/commands/r
 - `--pipeline=from-distribution,` - tells Solr Orbit to download and install Solr from a distribution.
 - `--workload=nyc_taxis` — the name of the workload to run.
 - `--target-hosts=localhost:8983` — the host and port of the Solr cluster to benchmark, if using `benchmark-only` pipeline.
-- `--distribution-version=9.10.1` — the Solr version to use when provisioning a cluster.
+- `--distribution-version=10.1.0` — the Solr version to use when provisioning a cluster.
 - `--test-mode` — runs an abbreviated version of the workload (first 1,000 documents per task) for a quick sanity check. Metrics produced in test mode are not meaningful for production analysis.
 
 ### Running the workload
@@ -94,7 +94,7 @@ To instead let Solr Orbit start a Solr cluster for you using Docker:
 ```bash
 solr-orbit run \
   --pipeline=docker \
-  --distribution-version=9.10.1 \
+  --distribution-version=10.1.0 \
   --workload=nyc_taxis \
   --test-mode
 ```

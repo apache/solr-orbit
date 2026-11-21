@@ -196,14 +196,14 @@ To compare G1GC vs Parallel GC on the same workload:
 # Run 1: G1GC
 solr-orbit run \
   --pipeline docker \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload nyc_taxis \
   --cluster-config g1gc
 
 # Run 2: Parallel GC
 solr-orbit run \
   --pipeline docker \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload nyc_taxis \
   --cluster-config parallelgc
 
