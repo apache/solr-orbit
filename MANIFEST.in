@@ -4,6 +4,7 @@ include LICENSE
 include MANIFEST.in
 include README.md
 include version.txt
+include launchr.yaml
 include solrorbit/min-version.txt
 recursive-include docs *
 recursive-include solrorbit/resources *
