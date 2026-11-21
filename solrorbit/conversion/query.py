@@ -27,7 +27,8 @@ Native Solr workloads should not go through this translation layer.
 
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from .field import normalize_field_name
 
@@ -365,6 +366,9 @@ def translate_to_solr_json_dsl(body: dict) -> dict:
         facets = _convert_aggregations_to_facets(aggs, body.get("query"))
         if facets:
             result["facet"] = facets
+        zone = _time_zone_of(aggs)
+        if zone and facets:
+            result["params"] = {"TZ": zone}
 
     return result
 
@@ -439,6 +443,54 @@ def _align_to_epoch(start: str, interval: str):
     return (epoch + timedelta(seconds=(elapsed // step) * step)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+_CALENDAR_ROUNDING = {"+1YEAR": "YEAR", "+1MONTH": "MONTH", "+1DAY": "DAY", "+1HOUR": "HOUR", "+1MINUTE": "MINUTE"}
+
+
+def _fixed_ranges_in_zone(start: str, end: str, interval: str, zone: str):
+    """
+    Explicit ranges for a day-based fixed_interval in a named zone, or None.
+
+    The UTC offset changes inside the range, so the buckets are N days of local calendar time
+    (counted from 1970-01-01 local) and no single Solr gap describes them.
+    """
+    match = re.fullmatch(r"(\d*)d", str(interval).strip())
+    if not match or not int(match.group(1) or 1):
+        return None
+    step = int(match.group(1) or 1)
+    try:
+        tz = ZoneInfo(zone)
+    except Exception:  # pylint: disable=broad-except
+        return None
+    local_start = datetime.strptime(start, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz)
+    last = datetime.strptime(end, "%Y-%m-%dT%H:%M:%SZ")
+    epoch = date(1970, 1, 1)
+    edge = epoch + timedelta(days=((local_start.date() - epoch).days // step) * step)
+
+    def utc(day):
+        return datetime.combine(day, time()).replace(tzinfo=tz).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    ranges = []
+    while datetime.strptime(utc(edge), "%Y-%m-%dT%H:%M:%SZ") < last:
+        ranges.append({"from": utc(edge), "to": utc(edge + timedelta(days=step)),
+                       "inclusive_from": True, "inclusive_to": False})
+        edge += timedelta(days=step)
+    return ranges or None
+
+
+def _time_zone_of(aggs):
+    """The first time_zone a date_histogram anywhere in ``aggs`` declares, or None."""
+    for agg in (aggs or {}).values():
+        if not isinstance(agg, dict):
+            continue
+        zone = (agg.get("date_histogram") or {}).get("time_zone")
+        if zone:
+            return zone
+        zone = _time_zone_of(agg.get("aggs") or agg.get("aggregations"))
+        if zone:
+            return zone
+    return None
+
+
 def _convert_aggregations_to_facets(aggs: dict, query=None) -> dict:
     """
     Convert OpenSearch aggregations to Solr JSON Facet API format.
@@ -470,6 +522,13 @@ def _convert_aggregations_to_facets(aggs: dict, query=None) -> dict:
     for agg_name, agg_def in aggs.items():
         if not isinstance(agg_def, dict):
             continue
+        if "stats" in agg_def:
+            # `stats` is four numbers in OpenSearch and four function facets in Solr: <name>_min ... <name>_avg.
+            field = normalize_field_name(agg_def["stats"].get("field", ""))
+            if field:
+                for stat in ("min", "max", "sum", "avg"):
+                    result[f"{agg_name}_{stat}"] = f"{stat}({field})"
+                continue
         entry = _convert_single_agg(agg_name, agg_def, query)
         if entry is not None:
             result[agg_name] = entry
@@ -516,14 +575,31 @@ def _convert_single_agg(agg_name: str, agg_def: dict, query=None):
                 "are placeholders that must be set to the data's range before the operation runs.",
                 agg_name, field)
             start, end = "REPLACE_WITH_START", "REPLACE_WITH_END"
-        facet_def = {
-            "type": "range",
-            "field": field,
-            "gap": gap,
-            "mincount": 1,
-            "start": start,
-            "end": end,
-        }
+        zone = dh_conf.get("time_zone")
+        ranges, in_zone = None, False
+        if zone and bounds:
+            if "fixed_interval" in dh_conf:
+                ranges = _fixed_ranges_in_zone(bounds[0], bounds[1], dh_conf["fixed_interval"], zone)
+                in_zone = bool(ranges)
+            elif gap in _CALENDAR_ROUNDING:
+                # Solr rounds date math in the request's TZ; the end is rounded first, then one gap added.
+                unit = _CALENDAR_ROUNDING[gap]
+                start, end = f"{start}/{unit}", f"{end}/{unit}{gap}"
+                in_zone = True
+        if zone and not in_zone:
+            logger.warning("date_histogram agg '%s': time_zone '%s' could not be applied; buckets are in UTC",
+                           agg_name, zone)
+        if ranges:
+            facet_def = {"type": "range", "field": field, "mincount": 1, "ranges": ranges}
+        else:
+            facet_def = {
+                "type": "range",
+                "field": field,
+                "gap": gap,
+                "mincount": 1,
+                "start": start,
+                "end": end,
+            }
         nested = agg_def.get("aggs") or agg_def.get("aggregations")
         if nested:
             sub = _convert_aggregations_to_facets(nested, query)
