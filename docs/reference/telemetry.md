@@ -281,7 +281,7 @@ Add JVM profiling devices on provisioned pipelines:
 ```bash
 solr-orbit run \
   --pipeline docker \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload nyc_taxis \
   --telemetry gc,jfr
 ```
