@@ -469,6 +469,54 @@ class TestDateHistogramFacetGap(unittest.TestCase):
         self.assertEqual("+1MONTH", gap)
 
 
+class TestDateHistogramFacetBounds(unittest.TestCase):
+    def _facet(self, date_histogram, range_clause):
+        body = {
+            "query": range_clause,
+            "aggs": {"dropoffs_over_time": {"date_histogram": date_histogram}},
+        }
+        return translate_to_solr_json_dsl(body)["facet"]["dropoffs_over_time"]
+
+    def _range(self, **bounds):
+        return {"range": {"dropoff_datetime": bounds}}
+
+    def test_bounds_come_from_the_query_range_on_the_same_field(self):
+        facet = self._facet(
+            {"field": "dropoff_datetime", "calendar_interval": "month"},
+            self._range(gte="2015-01-01 00:00:00", lt="2016-01-01 00:00:00", format="yyyy-MM-dd HH:mm:ss"))
+        self.assertEqual("2015-01-01T00:00:00Z", facet["start"])
+        self.assertEqual("2016-01-01T00:00:00Z", facet["end"])
+
+    def test_bounds_are_found_inside_bool_filter(self):
+        clause = {"bool": {"filter": [self._range(gte="2015-01-01", lte="2015-01-21", format="yyyy-MM-dd")]}}
+        facet = self._facet({"field": "dropoff_datetime", "calendar_interval": "day"}, clause)
+        self.assertEqual("2015-01-01T00:00:00Z", facet["start"])
+        self.assertEqual("2015-01-22T00:00:00Z", facet["end"])
+
+    def test_fixed_interval_starts_where_the_engine_aligns_it(self):
+        facet = self._facet(
+            {"field": "dropoff_datetime", "fixed_interval": "60d"},
+            self._range(gte="2015-01-01 00:00:00", lt="2016-01-01 00:00:00", format="yyyy-MM-dd HH:mm:ss"))
+        self.assertEqual("2014-11-06T00:00:00Z", facet["start"])
+
+    def test_range_on_another_field_is_not_used(self):
+        clause = {"range": {"fare_amount": {"gte": 1, "lt": 5}}}
+        facet = self._facet({"field": "dropoff_datetime", "calendar_interval": "month"}, clause)
+        self.assertEqual("REPLACE_WITH_START", facet["start"])
+
+    def test_no_range_leaves_a_placeholder_and_says_so(self):
+        with self.assertLogs("solrorbit.conversion.query", level="WARNING") as log:
+            facet = self._facet({"field": "dropoff_datetime", "calendar_interval": "month"}, {"match_all": {}})
+        self.assertEqual("REPLACE_WITH_START", facet["start"])
+        self.assertEqual("REPLACE_WITH_END", facet["end"])
+        self.assertTrue(any("dropoffs_over_time" in msg for msg in log.output))
+
+    def test_date_math_bounds_are_not_taken_as_dates(self):
+        facet = self._facet({"field": "dropoff_datetime", "calendar_interval": "month"},
+                            self._range(gte="now-30d", lt="now"))
+        self.assertEqual("REPLACE_WITH_START", facet["start"])
+
+
 class TestMergeWaitConversion(unittest.TestCase):
     """Tests for OpenSearch's index-stats merge wait becoming Solr's wait-for-merges."""
 
