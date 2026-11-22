@@ -363,10 +363,15 @@ def translate_to_solr_json_dsl(body: dict) -> dict:
 
     aggs = body.get("aggs") or body.get("aggregations")
     if aggs and isinstance(aggs, dict):
+        zones = _date_histogram_zones(aggs)
+        if len(zones) > 1:
+            raise ValueError(
+                "date_histogram aggregations in one request use different time zones (%s), and Solr applies one TZ "
+                "to a whole request" % ", ".join(sorted(z or "none" for z in zones)))
         facets = _convert_aggregations_to_facets(aggs, body.get("query"))
         if facets:
             result["facet"] = facets
-        zone = _time_zone_of(aggs)
+        zone = next(iter(zones), None)
         if zone and facets:
             result["params"] = {"TZ": zone}
 
@@ -401,7 +406,7 @@ def _range_bounds(bounds: dict) -> tuple:
 
 def _date_bounds_for_field(query, field: str):
     """
-    The (start, end) of the range the query puts on ``field``, or None.
+    The (start, end, end is inclusive) of the range the query puts on ``field``, or None.
 
     OpenSearch derives a date_histogram's span from the data; a Solr range facet needs it
     spelled out. The query's own range on the aggregated field is the span the buckets cover.
@@ -411,9 +416,9 @@ def _date_bounds_for_field(query, field: str):
     if "range" in query and isinstance(query["range"], dict):
         for name, bounds in query["range"].items():
             if normalize_field_name(name) == field and isinstance(bounds, dict):
-                lo, _, hi, _ = _range_bounds(bounds)
+                lo, _, hi, hi_bracket = _range_bounds(bounds)
                 if _SOLR_INSTANT.fullmatch(str(lo)) and _SOLR_INSTANT.fullmatch(str(hi)):
-                    return lo, hi
+                    return lo, hi, hi_bracket == "]"
         return None
     bool_q = query.get("bool")
     if isinstance(bool_q, dict):
@@ -426,32 +431,73 @@ def _date_bounds_for_field(query, field: str):
     return None
 
 
+def _parse_instant(value: str) -> datetime:
+    """A naive UTC datetime from a Solr instant, with or without fractional seconds."""
+    text = value[:-1]
+    return datetime.strptime(text, "%Y-%m-%dT%H:%M:%S.%f" if "." in text else "%Y-%m-%dT%H:%M:%S")
+
+
+def _format_instant(moment: datetime) -> str:
+    """A Solr instant; milliseconds are written only when there are some."""
+    base = moment.strftime("%Y-%m-%dT%H:%M:%S")
+    millis = moment.microsecond // 1000
+    return "%s.%03dZ" % (base, millis) if millis else base + "Z"
+
+
+_FIXED_UNIT_MS = {"ms": 1, "s": 1000, "m": 60000, "h": 3600000, "d": 86400000}
+
+
 def _align_to_epoch(start: str, interval: str):
     """
     ``start`` moved down to a multiple of a fixed interval counted from the epoch.
 
     A fixed_interval's buckets are aligned to 1970-01-01, not to the start of the range, so
     ``60d`` over 2015 begins at 2014-11-06. A Solr range facet starts where it is told to.
+    Integer milliseconds throughout: a float step moves exact boundaries.
     """
     match = re.fullmatch(r"(\d*)(ms|[smhd])", str(interval).strip())
     if not match:
         return None
-    seconds = {"ms": 0.001, "s": 1, "m": 60, "h": 3600, "d": 86400}[match.group(2)]
-    step = int(match.group(1) or 1) * seconds
+    step = int(match.group(1) or 1) * _FIXED_UNIT_MS[match.group(2)]
+    if step <= 0:
+        return None
     epoch = datetime(1970, 1, 1)
-    elapsed = (datetime.strptime(start, "%Y-%m-%dT%H:%M:%SZ") - epoch).total_seconds()
-    return (epoch + timedelta(seconds=(elapsed // step) * step)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elapsed = (_parse_instant(start) - epoch) // timedelta(milliseconds=1)
+    return _format_instant(epoch + timedelta(milliseconds=(elapsed // step) * step))
+
+
+def _floor_calendar(start: str, gap: str):
+    """``start`` rounded down to the calendar unit of ``gap`` in UTC (weeks begin on Monday), or None."""
+    moment = _parse_instant(start)
+    if gap == "+1MINUTE":
+        moment = moment.replace(second=0, microsecond=0)
+    elif gap == "+1HOUR":
+        moment = moment.replace(minute=0, second=0, microsecond=0)
+    elif gap == "+1DAY":
+        moment = moment.replace(hour=0, minute=0, second=0, microsecond=0)
+    elif gap == "+7DAYS":
+        moment = (moment - timedelta(days=moment.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    elif gap == "+1MONTH":
+        moment = moment.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif gap == "+3MONTHS":
+        moment = moment.replace(month=3 * ((moment.month - 1) // 3) + 1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    elif gap == "+1YEAR":
+        moment = moment.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    else:
+        return None
+    return _format_instant(moment)
 
 
 _CALENDAR_ROUNDING = {"+1YEAR": "YEAR", "+1MONTH": "MONTH", "+1DAY": "DAY", "+1HOUR": "HOUR", "+1MINUTE": "MINUTE"}
 
 
-def _fixed_ranges_in_zone(start: str, end: str, interval: str, zone: str):
+def _fixed_ranges_in_zone(start: str, end: str, interval: str, zone: str, inclusive: bool = False):
     """
     Explicit ranges for a day-based fixed_interval in a named zone, or None.
 
     The UTC offset changes inside the range, so the buckets are N days of local calendar time
-    (counted from 1970-01-01 local) and no single Solr gap describes them.
+    (counted from 1970-01-01 local) and no single Solr gap describes them. A range is opened for an
+    inclusive end that falls exactly on a bucket edge.
     """
     match = re.fullmatch(r"(\d*)d", str(interval).strip())
     if not match or not int(match.group(1) or 1):
@@ -461,34 +507,35 @@ def _fixed_ranges_in_zone(start: str, end: str, interval: str, zone: str):
         tz = ZoneInfo(zone)
     except Exception:  # pylint: disable=broad-except
         return None
-    local_start = datetime.strptime(start, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).astimezone(tz)
-    last = datetime.strptime(end, "%Y-%m-%dT%H:%M:%SZ")
+    local_start = _parse_instant(start).replace(tzinfo=timezone.utc).astimezone(tz)
+    last = _parse_instant(end)
     epoch = date(1970, 1, 1)
     edge = epoch + timedelta(days=((local_start.date() - epoch).days // step) * step)
 
     def utc(day):
-        return datetime.combine(day, time()).replace(tzinfo=tz).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return datetime.combine(day, time()).replace(tzinfo=tz).astimezone(timezone.utc).replace(tzinfo=None)
 
     ranges = []
-    while datetime.strptime(utc(edge), "%Y-%m-%dT%H:%M:%SZ") < last:
-        ranges.append({"from": utc(edge), "to": utc(edge + timedelta(days=step)),
+    while True:
+        opens = utc(edge)
+        if opens > last or (opens == last and not inclusive):
+            break
+        ranges.append({"from": _format_instant(opens), "to": _format_instant(utc(edge + timedelta(days=step))),
                        "inclusive_from": True, "inclusive_to": False})
         edge += timedelta(days=step)
     return ranges or None
 
 
-def _time_zone_of(aggs):
-    """The first time_zone a date_histogram anywhere in ``aggs`` declares, or None."""
+def _date_histogram_zones(aggs):
+    """The set of time_zone values (None for a histogram without one) of every date_histogram in ``aggs``."""
+    zones = set()
     for agg in (aggs or {}).values():
         if not isinstance(agg, dict):
             continue
-        zone = (agg.get("date_histogram") or {}).get("time_zone")
-        if zone:
-            return zone
-        zone = _time_zone_of(agg.get("aggs") or agg.get("aggregations"))
-        if zone:
-            return zone
-    return None
+        if "date_histogram" in agg:
+            zones.add((agg["date_histogram"] or {}).get("time_zone"))
+        zones |= _date_histogram_zones(agg.get("aggs") or agg.get("aggregations"))
+    return zones
 
 
 def _convert_aggregations_to_facets(aggs: dict, query=None) -> dict:
@@ -519,6 +566,13 @@ def _convert_aggregations_to_facets(aggs: dict, query=None) -> dict:
         return {}
 
     result = {}
+
+    def put(key, value):
+        if key in result:
+            raise ValueError("aggregation name '%s' is used twice in the converted facets (a stats aggregation "
+                             "also produces <name>_min, _max, _sum and _avg)" % key)
+        result[key] = value
+
     for agg_name, agg_def in aggs.items():
         if not isinstance(agg_def, dict):
             continue
@@ -527,11 +581,14 @@ def _convert_aggregations_to_facets(aggs: dict, query=None) -> dict:
             field = normalize_field_name(agg_def["stats"].get("field", ""))
             if field:
                 for stat in ("min", "max", "sum", "avg"):
-                    result[f"{agg_name}_{stat}"] = f"{stat}({field})"
+                    if f"{agg_name}_{stat}" in aggs:
+                        raise ValueError("stats aggregation '%s' would overwrite the aggregation '%s_%s'"
+                                         % (agg_name, agg_name, stat))
+                    put(f"{agg_name}_{stat}", f"{stat}({field})")
                 continue
         entry = _convert_single_agg(agg_name, agg_def, query)
         if entry is not None:
-            result[agg_name] = entry
+            put(agg_name, entry)
 
     return result
 
@@ -565,30 +622,38 @@ def _convert_single_agg(agg_name: str, agg_def: dict, query=None):
             return None
         gap = _date_histogram_gap(dh_conf, agg_name)
         bounds = _date_bounds_for_field(query, field)
+        zone = dh_conf.get("time_zone")
+        inclusive = False
         if bounds:
-            start, end = bounds
+            start, end, inclusive = bounds
             if "fixed_interval" in dh_conf:
                 start = _align_to_epoch(start, dh_conf["fixed_interval"]) or start
+            elif not zone:
+                start = _floor_calendar(start, gap) or start
         else:
             logger.warning(
                 "date_histogram agg '%s' has no date range on '%s' in its query: start and end "
                 "are placeholders that must be set to the data's range before the operation runs.",
                 agg_name, field)
             start, end = "REPLACE_WITH_START", "REPLACE_WITH_END"
-        zone = dh_conf.get("time_zone")
         ranges, in_zone = None, False
         if zone and bounds:
             if "fixed_interval" in dh_conf:
-                ranges = _fixed_ranges_in_zone(bounds[0], bounds[1], dh_conf["fixed_interval"], zone)
+                ranges = _fixed_ranges_in_zone(bounds[0], bounds[1], dh_conf["fixed_interval"], zone, inclusive)
                 in_zone = bool(ranges)
             elif gap in _CALENDAR_ROUNDING:
-                # Solr rounds date math in the request's TZ; the end is rounded first, then one gap added.
+                # Solr rounds date math in the request's TZ; the end is rounded first, then one gap added
+                # (which also covers an inclusive end that falls on a bucket edge).
                 unit = _CALENDAR_ROUNDING[gap]
                 start, end = f"{start}/{unit}", f"{end}/{unit}{gap}"
                 in_zone = True
+                inclusive = False
         if zone and not in_zone:
             logger.warning("date_histogram agg '%s': time_zone '%s' could not be applied; buckets are in UTC",
                            agg_name, zone)
+        if inclusive and bounds and not ranges:
+            # An inclusive upper bound that falls on a bucket edge belongs to the bucket that starts there.
+            end = f"{end}{gap}"
         if ranges:
             facet_def = {"type": "range", "field": field, "mincount": 1, "ranges": ranges}
         else:
@@ -785,7 +850,7 @@ def _convert_date_to_solr_format(date_str, os_format=None) -> tuple:
     return date_str, False
 
 
-_SOLR_INSTANT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+_SOLR_INSTANT = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z")
 
 
 def _round_date_only_bound(value: str) -> str:
