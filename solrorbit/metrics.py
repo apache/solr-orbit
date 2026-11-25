@@ -866,7 +866,7 @@ class TestRun:
                  test_run_id, test_run_timestamp, pipeline, user_tags,
                  workload, workload_params, test_procedure, cluster_config,
                  cluster_config_params, plugin_params,
-                 workload_revision=None, cluster_config_revision=None,
+                 workload_revision=None, workload_description=None, cluster_config_revision=None,
                  distribution_version=None, distribution_flavor=None,
                  revision=None, results=None, meta_data=None, latency_percentiles=None, throughput_percentiles=None,
                  cluster_config_instance=None):
@@ -898,6 +898,11 @@ class TestRun:
         self.cluster_config_params = cluster_config_params
         self.plugin_params = plugin_params
         self.workload_revision = workload_revision
+        # The workload's own one-line description of itself. Carried into the
+        # result so a consumer reading stored JSON -- a report site, say -- can
+        # say what the numbers measure without a checkout of the workloads repo.
+        # Explicit wins, so a test run rebuilt from JSON keeps what it was given.
+        self.workload_description = workload_description or getattr(workload, "description", None) or None
         self.cluster_config_revision = cluster_config_revision
         self.distribution_version = distribution_version
         self.distribution_flavor = distribution_flavor
@@ -958,6 +963,8 @@ class TestRun:
                 d["results"] = self.results
         if self.workload_revision:
             d["workload-revision"] = self.workload_revision
+        if self.workload_description:
+            d["workload-description"] = self.workload_description
         d["test_procedure"] = self.test_procedure_name
         if self.workload_params:
             d["workload-params"] = self.workload_params
@@ -1001,6 +1008,8 @@ class TestRun:
             result_template["cluster-config-revision"] = self.cluster_config_revision
         if self.workload_revision:
             result_template["workload-revision"] = self.workload_revision
+        if self.workload_description:
+            result_template["workload-description"] = self.workload_description
         if self.workload_params:
             result_template["workload-params"] = self.workload_params
         if self.cluster_config_params:
@@ -1030,6 +1039,7 @@ class TestRun:
                     d.get("test_procedure"), d["cluster-config-instance"],
                     d.get("cluster-config-instance-params"), d.get("plugin-params"),
                     workload_revision=d.get("workload-revision"),
+                    workload_description=d.get("workload-description"),
                     cluster_config_revision=cluster.get("cluster-config-revision"),
                     distribution_version=cluster.get("distribution-version"),
                     distribution_flavor=cluster.get("distribution-flavor"),
@@ -1275,6 +1285,7 @@ class GlobalStatsCalculator:
                             task.operation.meta_data,
                             task.meta_data,
                         ),
+                        schedule=self.schedule_of(task),
                     )
 
                     result.add_correctness_metrics(
@@ -1360,6 +1371,20 @@ class GlobalStatsCalculator:
 
     def one(self, metric_name):
         return self.store.get_one(metric_name)
+
+    @staticmethod
+    def schedule_of(task):
+        """How a task was driven, for a consumer reading the stored result."""
+        target = task.target_throughput
+        return {
+            "target_throughput": target.value if target else None,
+            "target_throughput_unit": target.unit if target else None,
+            "clients": task.clients,
+            "warmup_iterations": task.warmup_iterations,
+            "iterations": task.iterations,
+            "warmup_time_period": task.warmup_time_period,
+            "time_period": task.time_period,
+        }
 
     def summary_stats(self, metric_name, task_name, operation_type, percentiles_list=None):
         mean = self.store.get_mean(metric_name, task=task_name, operation_type=operation_type, sample_type=SampleType.Normal)
@@ -1623,7 +1648,7 @@ class GlobalStats:
         return d.get(k, default) if d else default
 
     def add_op_metrics(self, task, operation, throughput, latency, service_time, client_processing_time,
-                       processing_time, error_rate, duration, meta):
+                       processing_time, error_rate, duration, meta, schedule=None):
         doc = {
             "task": task,
             "operation": operation,
@@ -1637,6 +1662,12 @@ class GlobalStats:
         }
         if meta:
             doc["meta"] = meta
+        # How the task was driven. Without it a consumer cannot tell a query
+        # that was pushed as hard as it would go from one held at three
+        # requests a second: the first is measured on throughput, the second
+        # only on latency, because its throughput is whatever was asked for.
+        if schedule:
+            doc["schedule"] = schedule
         self.op_metrics.append(doc)
 
     def add_correctness_metrics(self, task, operation, recall_at_k_stats, recall_at_1_stats, error_rate, duration):

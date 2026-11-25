@@ -1,0 +1,57 @@
+# examples/reportr-ec2.yaml -- build the trends site from S3 and publish it there.
+#
+#   reportr build  --config examples/reportr-ec2.yaml --serve     # look at it first
+#   reportr build  --config examples/reportr-ec2.yaml --publish   # then put it live
+#
+# The counterpart to examples/launchr-ec2.yaml: it reads the reports that run wrote and
+# emits the site beside them, in the same bucket.
+#
+# ── Where things land ───────────────────────────────────────────────────────
+#   s3://solr-orbit/public/v1/runs/...   the reports (written by launchr)
+#   s3://solr-orbit/public/index.html    the site (written by reportr publish)
+#   s3://solr-orbit/public/data/*.json   its chart data
+#   s3://solr-orbit/public/reports/*     the report behind each plotted point
+#
+# Everything under `public/` is world-readable; everything outside it is not.
+#
+# ── The published URL ───────────────────────────────────────────────────────
+#   https://solr-orbit.s3.eu-north-1.amazonaws.com/public/index.html
+#
+# index.html is explicit because the bucket has no S3 *website* configuration,
+# and the plain REST endpoint serves no default document. That is deliberate:
+# the website endpoint is HTTP-only, and the bucket policy requires
+# aws:SecureTransport. Every asset path in the site is relative, so it works
+# unchanged under this prefix.
+
+storage:
+  backend: s3
+  path: "s3://solr-orbit/public/v1"
+  options:
+    region: eu-north-1
+    profile: solr-orbit
+
+site:
+  out: "./site-output"
+  title: "Apache Solr Benchmarks"
+  publish_to: "s3://solr-orbit/public"
+
+metrics:
+  - throughput.mean
+  - service_time.mean
+  - service_time.p50
+  - service_time.p90
+  - service_time.p99
+  - error_rate
+
+annotations: []
+
+workloads:
+  nyc_taxis:
+    description: >-
+      Every yellow-cab ride in New York City over a year: 165 million rows of
+      real trip data with timestamps, fares, distances and passenger counts.
+      It exercises bulk indexing of flat documents, then the query shapes that
+      analytics puts on top of them -- numeric range filters, date histogram
+      and numeric facets, and sorting a large result set by a stored field.
+    default_tasks: [index, match-all, range, date_histogram_facet]
+    featured_tasks: [range, date_histogram_facet]

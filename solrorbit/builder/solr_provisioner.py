@@ -330,16 +330,24 @@ class SolrDockerLauncher:
     """
 
     DEFAULT_CONTAINER_NAME = "solr-orbit"
+    #: Docker repository for released versions (the Docker Official Image).
+    DEFAULT_IMAGE_REPOSITORY = "solr"
+    #: Docker repository for SNAPSHOT builds.
+    DEFAULT_NIGHTLY_IMAGE_REPOSITORY = "apache/solr-nightly"
 
     def __init__(self, port: int = 8983, startup_timeout: int = 60,
                  container_name: str = None, cluster_config=None, solr_modules: str = "",
-                 telemetry_devices: list = None):
+                 telemetry_devices: list = None, image_repository: str = None,
+                 nightly_image_repository: str = None, extra_env: dict = None):
         self.port = port
         self.startup_timeout = startup_timeout
         self.container_name = container_name or self.DEFAULT_CONTAINER_NAME
         self.cluster_config = cluster_config
         self.solr_modules = solr_modules
         self.telemetry_devices = telemetry_devices or []
+        self.image_repository = image_repository or self.DEFAULT_IMAGE_REPOSITORY
+        self.nightly_image_repository = nightly_image_repository or self.DEFAULT_NIGHTLY_IMAGE_REPOSITORY
+        self.extra_env = dict(extra_env or {})
         # PID of the Solr process inside the container; set by start() after Solr is ready
         self.pid = None
 
@@ -349,18 +357,19 @@ class SolrDockerLauncher:
 
         Args:
             version_tag: Docker image tag, e.g. "9.10.1", "10.0.0-SNAPSHOT".
-                         SNAPSHOT builds are pulled from apache/solr-nightly;
-                         stable releases use the official solr image.
+                         SNAPSHOT builds are pulled from ``nightly_image_repository``;
+                         stable releases from ``image_repository``.
             mode:        "cloud" (default), "user-managed", or None (defaults to "cloud").
         """
         if mode is None:
             mode = "cloud"
 
-        # SNAPSHOT builds live in apache/solr-nightly; stable releases use the official solr image
+        # SNAPSHOT builds live in apache/solr-nightly; stable releases use the official solr image.
+        # Both repositories are overridable so a caller can pull from a mirror or a private registry.
         if "SNAPSHOT" in version_tag.upper():
-            image = f"apache/solr-nightly:{version_tag}"
+            image = f"{self.nightly_image_repository}:{version_tag}"
         else:
-            image = f"solr:{version_tag}"
+            image = f"{self.image_repository}:{version_tag}"
 
         major = _solr_major_version(version_tag)
 
@@ -434,6 +443,10 @@ class SolrDockerLauncher:
             logger.info("Added JVM telemetry flags to SOLR_OPTS: %s", " ".join(jvm_extra))
         if solr_opts:
             flags += ["-e", f"SOLR_OPTS={solr_opts}"]
+        # Caller-supplied environment, applied last so it can override the above.
+        for key, value in self.extra_env.items():
+            flags += ["-e", f"{key}={value}"]
+            logger.info("Applying extra env: %s=%s", key, value)
         return flags
 
     def stop(self) -> None:

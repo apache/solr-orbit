@@ -1,7 +1,12 @@
 # Documentation Maintenance Guide
 
 This directory contains the source for the [Apache Solr Orbit documentation site](https://apache.github.io/solr-orbit/),
-built with [Jekyll](https://jekyllrb.com/) and the [just-the-docs](https://just-the-docs.com/) theme.
+built with [Jekyll](https://jekyllrb.com/) and a small theme maintained in this directory.
+
+The front matter below (`nav_order`, `parent`, `grand_parent`, `has_children`) looks like
+[just-the-docs](https://just-the-docs.com/), but that gem is **not** installed: navigation is rendered by
+`_includes/nav.html` in this repository. The differences matter when adding pages — see
+[Navigation constraints](#navigation-constraints).
 
 ## Prerequisites
 
@@ -19,7 +24,7 @@ cd docs
 bundle install
 ```
 
-This installs Jekyll 4.4.1 and the just-the-docs 0.12.0 gem into the local bundle.
+This installs Jekyll into the local bundle. There is no theme gem; `Gemfile` contains only `jekyll`.
 
 ## Local Development
 
@@ -48,7 +53,21 @@ You will see many warnings like:
 DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
 ```
 
-These come from the just-the-docs theme gem's own SCSS files and are **harmless** — the CSS compiles correctly. They are a known issue upstream and can be ignored until just-the-docs migrates its SCSS from `@import` to `@use`.
+These come from Sass's deprecation of `@import` and are **harmless** — the CSS compiles correctly.
+
+## Navigation constraints
+
+`_includes/nav.html` builds the sidebar, and four of its properties are easy to fall foul of:
+
+- **Exactly three levels render.** A root page (no `parent`), its children (`parent: <root title>`), and
+  their grandchildren (`parent: <child title>` *and* `grand_parent: <root title>`). A fourth level is
+  silently not rendered.
+- **`nav_order` is mandatory.** A page without one is absent from the sidebar *and* from `search.json`.
+  It is not a default-to-the-end — it is invisible.
+- **`parent` and `grand_parent` match by exact page `title`, not by path.** Page titles must therefore be
+  unique across the whole site; two pages sharing a title would collect each other's children.
+- **`has_children` is documentary.** The template expands a node when matching children exist, so the
+  property is for human readers, not for Jekyll.
 
 ## Adding or Editing Pages
 
@@ -121,17 +140,19 @@ docs/
 
 ## Publishing
 
-The documentation is published automatically to **GitHub Pages** via the GitHub Actions workflow
-at `.github/workflows/docs.yml`.
+The documentation is published to **GitHub Pages** by the ASF's own tooling, configured in
+[`.asf.yaml`](../.asf.yaml) at the repository root:
 
-**Trigger**: every push to the `main` branch.
+```yaml
+github:
+  ghp_branch: main
+  ghp_path: /docs
+```
 
-**Steps in the workflow**:
-1. Check out the repository.
-2. Install Ruby 3.3 and run `bundle install` (gems are cached between runs).
-3. `actions/configure-pages` injects the correct `baseurl` for GitHub Pages.
-4. `bundle exec jekyll build` generates the static site.
-5. The `docs/_site/` directory is uploaded as a Pages artifact and deployed.
+**Trigger**: every push to the `main` branch. Infrastructure builds the Jekyll site from `docs/` and
+deploys it; there is no GitHub Actions workflow involved.
+
+`.github/workflows/docs-lint.yml` runs on pull requests and checks the Markdown, but it does not publish.
 
 The live site URL is: **https://apache.github.io/solr-orbit/**
 
