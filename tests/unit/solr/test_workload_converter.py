@@ -623,6 +623,28 @@ class TestDateHistogramReviewCases(unittest.TestCase):
         self.assertEqual("2014-11-06T05:00:00Z", ranges[0]["from"])
 
 
+class TestSearchBodiesWithoutAQuery(unittest.TestCase):
+    def _convert(self, body):
+        op = {"name": "country_agg", "operation-type": "search", "body": body}
+        _convert_operation(op, [], [], "", "")
+        return op["body"]
+
+    def test_aggs_only_body_is_translated(self):
+        body = self._convert({"size": 0, "aggs": {"by_country": {"terms": {"field": "country_code.raw"},
+                                                                  "aggs": {"total": {"sum": {"field": "population"}}}}}})
+        self.assertEqual("*:*", body["query"])
+        self.assertEqual(0, body["limit"])
+        self.assertEqual({"type": "terms", "field": "country_code_raw", "limit": 10, "facet": {"total": "sum(population)"}},
+                         body["facet"]["by_country"])
+
+    def test_size_only_body_is_translated(self):
+        self.assertEqual({"query": "*:*", "limit": 5}, self._convert({"size": 5}))
+
+    def test_body_that_already_holds_a_solr_query_string_is_left_alone(self):
+        body = {"query": "country_code:NL", "limit": 5}
+        self.assertEqual(body, self._convert(dict(body)))
+
+
 class TestMergeWaitConversion(unittest.TestCase):
     """Tests for OpenSearch's index-stats merge wait becoming Solr's wait-for-merges."""
 

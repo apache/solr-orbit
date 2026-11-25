@@ -55,11 +55,11 @@ solr-orbit install [OPTIONS]
 
 ## Example
 
-Install Solr 9.10.1 locally on the default port:
+Install Solr 10.1.0 locally on the default port:
 
 ```bash
 solr-orbit install \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --cluster-config defaults
 ```
 
@@ -67,7 +67,7 @@ Install on a custom port with a specific JDK:
 
 ```bash
 solr-orbit install \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --runtime-jdk 21 \
   --http-port 18983 \
   --node-name my-node

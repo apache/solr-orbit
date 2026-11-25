@@ -42,7 +42,7 @@ The dataset contains around 165 million documents and is suitable for small to m
 ```bash
 solr-orbit run \
   --pipeline docker \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload nyc_taxis \
   --test-mode
 ```
@@ -69,7 +69,7 @@ The dataset contains around 11.4 million documents and is suitable for small clu
 ```bash
 solr-orbit run \
   --pipeline docker \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload geonames \
   --test-mode
 ```

@@ -636,6 +636,15 @@ def _convert_merge_wait_text(text: str) -> str:
     return _MERGE_WAIT_OBJECT.sub(replace, text)
 
 
+def _is_opensearch_body(body):
+    """A search body written in OpenSearch DSL: a dict whose `query`, if it has one, is an object.
+
+    A body with no `query` at all (only `aggs`, or only `size`) is still OpenSearch DSL and must be
+    translated; a `query` that is already a string is Solr's and is left alone.
+    """
+    return isinstance(body, dict) and (("query" not in body) or isinstance(body["query"], dict))
+
+
 def _convert_operation(op, issues, skipped, source_dir, output_dir):
     """Convert an operation definition dict in-place.
 
@@ -695,7 +704,7 @@ def _convert_operation(op, issues, skipped, source_dir, output_dir):
     # Translate search body from OpenSearch DSL to Solr JSON DSL
     if op_type in ("search", "paginated-search", "scroll-search"):
         body = op.get("body")
-        if isinstance(body, dict) and isinstance(body.get("query"), dict):
+        if _is_opensearch_body(body):
             try:
                 op["body"] = translate_to_solr_json_dsl(body)
             except Exception as exc:
@@ -709,7 +718,7 @@ def _convert_operation(op, issues, skipped, source_dir, output_dir):
                 try:
                     with open(body_abs, encoding="utf-8") as f:
                         body_dict = json.load(f)
-                    if isinstance(body_dict.get("query"), dict):
+                    if _is_opensearch_body(body_dict):
                         converted = translate_to_solr_json_dsl(body_dict)
                         out_body_dir = os.path.join(output_dir, os.path.dirname(body_file))
                         os.makedirs(out_body_dir, exist_ok=True)
