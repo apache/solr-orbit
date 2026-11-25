@@ -29,7 +29,7 @@ solr-orbit start --installation-id ID --test-run-id ID [OPTIONS]
 
 ```bash
 # Install and capture the installation ID
-solr-orbit install --distribution-version 9.10.1
+solr-orbit install --distribution-version 10.1.0
 
 # Start the installed node (use the ID printed by install)
 solr-orbit start \

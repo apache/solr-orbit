@@ -16,7 +16,7 @@ The `--cluster-config` flag selects a preset JVM and garbage collector configura
 ```bash
 solr-orbit run \
   --pipeline docker \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload nyc_taxis \
   --cluster-config 4gheap
 ```

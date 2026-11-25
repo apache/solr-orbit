@@ -34,15 +34,15 @@ On success, the command prints a JSON object with the path to the downloaded art
 
 ```json
 {
-  "solr": "/Users/yourname/.solr-orbit/distributions/solr-9.10.1.tgz"
+  "solr": "/Users/yourname/.solr-orbit/distributions/solr-10.1.0.tgz"
 }
 ```
 
 ## Examples
 
 ```bash
-# Download Solr 9.10.1
-solr-orbit download --distribution-version 9.10.1
+# Download Solr 10.1.0
+solr-orbit download --distribution-version 10.1.0
 ```
 
 ## See also

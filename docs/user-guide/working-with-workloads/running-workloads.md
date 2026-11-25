@@ -147,7 +147,7 @@ runs the workload, and stops the cluster when finished. No JDK is required.
 ```bash
 solr-orbit run \
   --pipeline docker \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload nyc_taxis \
   --test-mode
 ```
@@ -162,7 +162,7 @@ and starts a cluster. JDK 21 must be available on the host.
 ```bash
 solr-orbit run \
   --pipeline from-distribution \
-  --distribution-version 9.10.1 \
+  --distribution-version 10.1.0 \
   --workload nyc_taxis \
   --cluster-config 4gheap
 ```
