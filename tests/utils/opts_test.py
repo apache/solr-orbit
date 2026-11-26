@@ -48,6 +48,12 @@ class ConfigHelperFunctionTests(TestCase):
         self.assertEqual({"k": "v", "size": 4, "empty": False, "temperature": 0.5},
                          opts.kv_to_map(["k:'v'", "size:4", "empty:false", "temperature:0.5"]))
 
+    def test_kv_to_map_value_contains_colon(self):
+        # only the first colon separates key and value; URLs, passwords and times keep theirs
+        self.assertEqual({"source": "http://mirror:8080/docs.json"}, opts.kv_to_map(["source:'http://mirror:8080/docs.json'"]))
+        self.assertEqual({"basic_auth_password": "s3:cr3t"}, opts.kv_to_map(["basic_auth_password:s3:cr3t"]))
+        self.assertEqual({"bulk_size": 100, "start": "12:30"}, opts.to_dict("bulk_size:100,start:'12:30'"))
+
 
 class GenericHelperFunctionTests(TestCase):
     def test_list_as_bulleted_list(self):
