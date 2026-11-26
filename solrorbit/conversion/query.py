@@ -221,13 +221,13 @@ def _translate_query_node(node: dict, fq_list: list = None) -> str:
         bool_q = node["bool"]
         parts = []
 
-        def _add_to_q(clauses, prefix):
+        def _add_to_q(clauses, prefix, nested_fq_list):
             if not clauses:
                 return
             if isinstance(clauses, dict):
                 clauses = [clauses]
             for clause in clauses:
-                sub = _translate_query_node(clause, fq_list=fq_list)
+                sub = _translate_query_node(clause, fq_list=nested_fq_list)
                 if sub and sub != "*:*":
                     parts.append(f"{prefix}({sub})")
 
@@ -242,20 +242,26 @@ def _translate_query_node(node: dict, fq_list: list = None) -> str:
                 if fq_str:
                     fq_list.append(fq_str)
 
-        _add_to_q(bool_q.get("must"), "+")
-        _add_to_q(bool_q.get("must_not"), "-")
+        # A nested filter may only become a top-level fq where it is required anyway, i.e. under must.
+        # Under must_not it would be inverted, and under should it would turn alternatives into a conjunction.
+        _add_to_q(bool_q.get("must"), "+", fq_list)
+        _add_to_q(bool_q.get("must_not"), "-", None)
 
         # bool.filter → Solr fq when fq_list is available; otherwise inline in q
         if fq_list is not None:
             _add_to_fq(bool_q.get("filter"))
         else:
-            _add_to_q(bool_q.get("filter"), "+")
+            _add_to_q(bool_q.get("filter"), "+", None)
 
         shoulds = bool_q.get("should", [])
         if isinstance(shoulds, dict):
             shoulds = [shoulds]
-        should_parts = [_translate_query_node(s, fq_list=fq_list) for s in shoulds]
-        should_parts = [s for s in should_parts if s and s != "*:*"]
+        should_parts = []
+        for clause in shoulds:
+            sub = _translate_query_node(clause, fq_list=None)
+            if sub and sub != "*:*":
+                # A nested bool is several clauses; group them so it stays one alternative.
+                should_parts.append(f"({sub})" if isinstance(clause, dict) and "bool" in clause else sub)
         if should_parts:
             parts.append("(" + " ".join(should_parts) + ")")
 
