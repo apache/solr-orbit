@@ -1232,6 +1232,11 @@ class QueryRandomizerWorkloadProcessor(WorkloadProcessor):
                         leaf_task.operation.name, leaf_task.operation.type)
                 if op_type == workload.OperationType.Search:
                     op_name = leaf_task.operation.name
+                    if leaf_task.operation.param_source and "body" not in leaf_task.operation.params:
+                        # The body is produced by the operation's own param source; there is no static query to randomize
+                        self.logger.info("Not randomizing operation %s: its body comes from param source %s",
+                                         op_name, leaf_task.operation.param_source)
+                        continue
                     param_source_name = op_name + "-randomized"
                     params.register_param_source_for_name(
                         param_source_name,
