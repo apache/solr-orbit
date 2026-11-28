@@ -26,6 +26,7 @@ Native Solr workloads should not go through this translation layer.
 """
 
 import logging
+import math
 import re
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -404,12 +405,13 @@ def _range_bounds(bounds: dict) -> tuple:
     return lo, lo_bracket, hi, hi_bracket
 
 
-def _date_bounds_for_field(query, field: str):
+def _range_bounds_for_field(query, field: str, usable):
     """
     The (start, end, end is inclusive) of the range the query puts on ``field``, or None.
 
-    OpenSearch derives a date_histogram's span from the data; a Solr range facet needs it
-    spelled out. The query's own range on the aggregated field is the span the buckets cover.
+    OpenSearch derives a histogram's span from the data; a Solr range facet needs it spelled out.
+    The query's own range on the aggregated field is the span the buckets cover. ``usable(lo, hi)``
+    says whether the two bounds are the kind this histogram can use (instants, or numbers).
     """
     if not isinstance(query, dict):
         return None
@@ -417,7 +419,7 @@ def _date_bounds_for_field(query, field: str):
         for name, bounds in query["range"].items():
             if normalize_field_name(name) == field and isinstance(bounds, dict):
                 lo, _, hi, hi_bracket = _range_bounds(bounds)
-                if _SOLR_INSTANT.fullmatch(str(lo)) and _SOLR_INSTANT.fullmatch(str(hi)):
+                if usable(lo, hi):
                     return lo, hi, hi_bracket == "]"
         return None
     bool_q = query.get("bool")
@@ -425,10 +427,32 @@ def _date_bounds_for_field(query, field: str):
         for key in ("must", "filter"):
             clauses = bool_q.get(key) or []
             for clause in [clauses] if isinstance(clauses, dict) else clauses:
-                found = _date_bounds_for_field(clause, field)
+                found = _range_bounds_for_field(clause, field, usable)
                 if found:
                     return found
     return None
+
+
+def _date_bounds_for_field(query, field: str):
+    """The date range the query puts on ``field`` as (start, end, end is inclusive), or None."""
+    return _range_bounds_for_field(
+        query, field, lambda lo, hi: bool(_SOLR_INSTANT.fullmatch(str(lo)) and _SOLR_INSTANT.fullmatch(str(hi))))
+
+
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _numeric_bounds_for_field(query, field: str):
+    """The numeric range the query puts on ``field`` as (start, end, end is inclusive), or None."""
+    return _range_bounds_for_field(query, field, lambda lo, hi: _is_number(lo) and _is_number(hi))
+
+
+def _histogram_start(low, interval):
+    """``low`` moved down to a multiple of ``interval``: a histogram's keys are multiples of its interval."""
+    if isinstance(low, int) and isinstance(interval, int):
+        return (low // interval) * interval
+    return math.floor(low / interval) * interval
 
 
 def _parse_instant(value: str) -> datetime:
@@ -678,13 +702,26 @@ def _convert_single_agg(agg_name: str, agg_def: dict, query=None):
         if not field:
             logger.warning("histogram agg '%s' has no field — skipping", agg_name)
             return None
+        interval = h_conf.get("interval", 1)
+        bounds = _numeric_bounds_for_field(query, field) if _is_number(interval) and interval > 0 else None
+        if bounds:
+            start, end, inclusive = bounds
+            start = _histogram_start(start, interval)
+            if inclusive:
+                # An inclusive upper bound that falls on a bucket edge belongs to the bucket that starts there.
+                end = end + interval
+        else:
+            logger.warning(
+                "histogram agg '%s' has no numeric range on '%s' in its query: start and end are "
+                "placeholders that must be set to the data's range before the operation runs.", agg_name, field)
+            start, end = "REPLACE_WITH_START", "REPLACE_WITH_END"
         return {
             "type": "range",
             "field": field,
-            "gap": h_conf.get("interval", 1),
+            "gap": interval,
             "mincount": 1,
-            "start": 0,
-            "end": 1000000,
+            "start": start,
+            "end": end,
         }
 
     # --- metric aggregations (function expressions) ---

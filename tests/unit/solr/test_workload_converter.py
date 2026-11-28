@@ -645,6 +645,55 @@ class TestSearchBodiesWithoutAQuery(unittest.TestCase):
         self.assertEqual(body, self._convert(dict(body)))
 
 
+class TestHistogramBounds(unittest.TestCase):
+    def _facet(self, query, interval=1, field="trip_distance"):
+        body = {"query": query, "aggs": {"h": {"histogram": {"field": field, "interval": interval}}}}
+        return translate_to_solr_json_dsl(body)["facet"]["h"]
+
+    def _range(self, low, high, operator="lt", field="trip_distance"):
+        return {"bool": {"filter": {"range": {field: {"gte": low, operator: high}}}}}
+
+    def test_bounds_come_from_the_query_range_on_the_same_field(self):
+        facet = self._facet(self._range(0, 50))
+        self.assertEqual((0, 50, 1), (facet["start"], facet["end"], facet["gap"]))
+
+    def test_start_is_a_multiple_of_the_interval(self):
+        self.assertEqual(5, self._facet(self._range(7, 40), 5)["start"])
+        self.assertEqual(0, self._facet(self._range(0.5, 12.3), 1)["start"])
+        self.assertEqual(5.0, self._facet(self._range(6, 30), 2.5)["start"])
+
+    def test_inclusive_upper_bound_gets_the_bucket_that_starts_there(self):
+        self.assertEqual(51, self._facet(self._range(0, 50, "lte"))["end"])
+        self.assertEqual(50, self._facet(self._range(0, 50))["end"])
+
+    def test_no_range_leaves_a_placeholder_and_says_so(self):
+        with self.assertLogs("solrorbit.conversion.query", level="WARNING") as log:
+            facet = self._facet({"match_all": {}}, 100, "size")
+        self.assertEqual(("REPLACE_WITH_START", "REPLACE_WITH_END"), (facet["start"], facet["end"]))
+        self.assertTrue(any("'h'" in msg for msg in log.output))
+
+    def test_a_range_on_another_field_is_not_used(self):
+        facet = self._facet(self._range(0, 50, field="fare_amount"))
+        self.assertEqual("REPLACE_WITH_START", facet["start"])
+
+    def test_negative_low_bounds_round_down_to_a_multiple(self):
+        self.assertEqual(-10, self._facet(self._range(-7, 40), 5)["start"])
+        self.assertEqual(-500, self._facet(self._range(-321, 1000, "lte"), 250)["start"])
+
+    def test_the_range_may_be_at_the_top_of_the_query_or_in_bool_must(self):
+        top = {"range": {"trip_distance": {"gte": 3, "lt": 20}}}
+        must = {"bool": {"must": [{"match_all": {}}, {"range": {"trip_distance": {"gte": 3, "lt": 20}}}]}}
+        for query in (top, must):
+            facet = self._facet(query, 2)
+            self.assertEqual((2, 20), (facet["start"], facet["end"]))
+
+    def test_date_bounds_are_still_found_after_the_refactor(self):
+        body = {"query": {"range": {"dropoff_datetime": {"gte": "2015-01-01T00:00:00Z", "lt": "2016-01-01T00:00:00Z"}}},
+                "aggs": {"d": {"date_histogram": {"field": "dropoff_datetime", "calendar_interval": "month"}}}}
+        facet = translate_to_solr_json_dsl(body)["facet"]["d"]
+        self.assertEqual(("2015-01-01T00:00:00Z", "2016-01-01T00:00:00Z"), (facet["start"], facet["end"]))
+
+
 class TestMergeWaitConversion(unittest.TestCase):
     """Tests for OpenSearch's index-stats merge wait becoming Solr's wait-for-merges."""
 
