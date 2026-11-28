@@ -42,6 +42,7 @@ By submitting a contribution, you agree to license it under the same license.
 We aim to review contributions promptly. To smooth the process:
 
 - Reference the related issue in your PR description.
+- Add a changelog fragment under `changelog.d/` for user-visible changes (see its README).
 - Keep PRs focused; a narrow PR is easier to review than a large one.
 - Respond to review comments in a timely manner.
 - If you stop working on a PR, let us know so we can close or reassign it.

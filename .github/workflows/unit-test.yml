@@ -14,6 +14,7 @@ on:
       - '.fossa.yml'
       - 'LICENSE'
       - 'NOTICE'
+      - 'changelog.d/**'
       # The docs site is validated by docs-lint.yml instead.
       - 'docs/**'
 

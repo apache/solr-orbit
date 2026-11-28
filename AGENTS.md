@@ -25,7 +25,13 @@ make it312            # Integration tests for Python 3.12 only
 make benchmark        # Run performance benchmarks (pytest benchmarks/)
 make build            # Build distribution wheel
 make clean            # Remove build artifacts, caches, tox environments
+make changelog-draft  # Preview release notes from the fragments in changelog.d/
 ```
+
+## Changelog
+
+User-visible changes need a fragment in `changelog.d/` (see its README); draft it with the
+`changelog-fragment` skill in `.agents/skills/`. Never edit `CHANGELOG.md` directly.
 
 ## Code Style
 
