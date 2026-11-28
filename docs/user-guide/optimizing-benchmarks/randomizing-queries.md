@@ -21,6 +21,8 @@ Apache Solr Orbit uses a **Zipf probability distribution** to model realistic ca
 
 With the default settings (`rf=0.3`, `N=5000`), 30% of queries reuse stored value pairs (likely cache hits) and 70% generate fresh random values (likely cache misses).
 
+An operation that has no `body` in `operations/default.json` because it names a `param-source` that builds the body at run time is left as it is: it keeps its own param source and is not randomized by this mechanism. An operation whose `body` has no `query` is rejected as malformed.
+
 ## Implementing randomized queries in a workload
 
 Randomization requires a `workload.py` file in your workload directory. This file registers functions that generate random parameter values.

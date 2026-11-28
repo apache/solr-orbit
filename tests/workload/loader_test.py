@@ -2346,6 +2346,48 @@ class WorkloadRandomizationTests(TestCase):
                     if op_type == workload.OperationType.Search:
                         self.assertIsNotNone(leaf_task.operation.param_source)
 
+    def test_on_after_load_workload_leaves_operations_with_their_own_param_source(self):
+        # An operation with no body gets it from its param source, so there is no query to randomize
+        cfg = config.Config()
+        cfg.add(config.Scope.application, "workload", "randomization.enabled", True)
+        processor = loader.QueryRandomizerWorkloadProcessor(cfg)
+        helper = self.StandardValueHelper()
+        workload_specification = {
+            "description": "description for unit test",
+            "indices": [{"name": helper.index_name, "auto-managed": False}],
+            "operations": [
+                helper.op_1_query,
+                {
+                    "name": "terms-from-source",
+                    "operation-type": "search",
+                    "param-source": "terms-query-source"
+                }
+            ],
+            "test_procedures": [
+                {
+                    "name": "default-test_procedure",
+                    "schedule": [
+                        {"name": "task-1", "operation": helper.op_name_1},
+                        {"name": "task-2", "operation": "terms-from-source"}
+                    ]
+                }
+            ]
+        }
+        input_workload = loader.WorkloadSpecificationReader()("unittest", workload_specification, "/mappings")
+        result = processor.on_after_load_workload(input_workload, get_standard_value=helper.get_standard_value,
+                                                  get_standard_value_source=helper.get_standard_value_source)
+        operations = {task.operation.name: task.operation for task in result.test_procedures[0].schedule}
+        self.assertEqual("terms-query-source", operations["terms-from-source"].param_source)
+        self.assertEqual(helper.op_name_1 + "-randomized", operations[helper.op_name_1].param_source)
+
+    def test_extract_fields_and_paths_still_rejects_a_body_without_query(self):
+        processor = loader.QueryRandomizerWorkloadProcessor(config.Config())
+        params = {"name": "malformed", "operation-type": "search", "body": {"contents": ["not_a_valid_query"]}}
+        with self.assertRaises(exceptions.SystemSetupError) as ctx:
+            processor.extract_fields_and_paths(
+                params, loader.QueryRandomizerWorkloadProcessor.DEFAULT_QUERY_RANDOMIZATION_INFO)
+        self.assertIn('missing params["body"]["query"]', ctx.exception.args[0])
+
 
 # pylint: disable=too-many-public-methods
 class WorkloadSpecificationReaderTests(TestCase):
