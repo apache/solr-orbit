@@ -469,6 +469,160 @@ class TestDateHistogramFacetGap(unittest.TestCase):
         self.assertEqual("+1MONTH", gap)
 
 
+class TestDateHistogramFacetBounds(unittest.TestCase):
+    def _facet(self, date_histogram, range_clause):
+        body = {
+            "query": range_clause,
+            "aggs": {"dropoffs_over_time": {"date_histogram": date_histogram}},
+        }
+        return translate_to_solr_json_dsl(body)["facet"]["dropoffs_over_time"]
+
+    def _range(self, **bounds):
+        return {"range": {"dropoff_datetime": bounds}}
+
+    def test_bounds_come_from_the_query_range_on_the_same_field(self):
+        facet = self._facet(
+            {"field": "dropoff_datetime", "calendar_interval": "month"},
+            self._range(gte="2015-01-01 00:00:00", lt="2016-01-01 00:00:00", format="yyyy-MM-dd HH:mm:ss"))
+        self.assertEqual("2015-01-01T00:00:00Z", facet["start"])
+        self.assertEqual("2016-01-01T00:00:00Z", facet["end"])
+
+    def test_bounds_are_found_inside_bool_filter(self):
+        clause = {"bool": {"filter": [self._range(gte="2015-01-01", lte="2015-01-21", format="yyyy-MM-dd")]}}
+        facet = self._facet({"field": "dropoff_datetime", "calendar_interval": "day"}, clause)
+        self.assertEqual("2015-01-01T00:00:00Z", facet["start"])
+        self.assertEqual("2015-01-22T00:00:00Z", facet["end"])
+
+    def test_fixed_interval_starts_where_the_engine_aligns_it(self):
+        facet = self._facet(
+            {"field": "dropoff_datetime", "fixed_interval": "60d"},
+            self._range(gte="2015-01-01 00:00:00", lt="2016-01-01 00:00:00", format="yyyy-MM-dd HH:mm:ss"))
+        self.assertEqual("2014-11-06T00:00:00Z", facet["start"])
+
+    def test_range_on_another_field_is_not_used(self):
+        clause = {"range": {"fare_amount": {"gte": 1, "lt": 5}}}
+        facet = self._facet({"field": "dropoff_datetime", "calendar_interval": "month"}, clause)
+        self.assertEqual("REPLACE_WITH_START", facet["start"])
+
+    def test_no_range_leaves_a_placeholder_and_says_so(self):
+        with self.assertLogs("solrorbit.conversion.query", level="WARNING") as log:
+            facet = self._facet({"field": "dropoff_datetime", "calendar_interval": "month"}, {"match_all": {}})
+        self.assertEqual("REPLACE_WITH_START", facet["start"])
+        self.assertEqual("REPLACE_WITH_END", facet["end"])
+        self.assertTrue(any("dropoffs_over_time" in msg for msg in log.output))
+
+    def test_date_math_bounds_are_not_taken_as_dates(self):
+        facet = self._facet({"field": "dropoff_datetime", "calendar_interval": "month"},
+                            self._range(gte="now-30d", lt="now"))
+        self.assertEqual("REPLACE_WITH_START", facet["start"])
+
+
+class TestDateHistogramTimeZoneAndStats(unittest.TestCase):
+    QUERY = {"range": {"dropoff_datetime": {"gte": "2015-01-01 00:00:00", "lt": "2016-01-01 00:00:00",
+                                            "format": "yyyy-MM-dd HH:mm:ss"}}}
+
+    def _convert(self, date_histogram, sub_aggs=None):
+        agg = {"date_histogram": dict({"field": "dropoff_datetime"}, **date_histogram)}
+        if sub_aggs:
+            agg["aggs"] = sub_aggs
+        return translate_to_solr_json_dsl({"query": self.QUERY, "aggs": {"over_time": agg}})
+
+    def test_calendar_interval_in_a_zone_rounds_in_that_zone(self):
+        result = self._convert({"calendar_interval": "month", "time_zone": "America/New_York"})
+        facet = result["facet"]["over_time"]
+        self.assertEqual({"TZ": "America/New_York"}, result["params"])
+        self.assertEqual("2015-01-01T00:00:00Z/MONTH", facet["start"])
+        self.assertEqual("2016-01-01T00:00:00Z/MONTH+1MONTH", facet["end"])
+
+    def test_fixed_interval_in_a_zone_follows_the_offset_change(self):
+        facet = self._convert({"fixed_interval": "60d", "time_zone": "America/New_York"})["facet"]["over_time"]
+        edges = [(r["from"], r["to"]) for r in facet["ranges"]]
+        self.assertEqual(8, len(edges))
+        self.assertEqual(("2014-11-06T05:00:00Z", "2015-01-05T05:00:00Z"), edges[0])
+        # 2015-05-05 is after the clocks change: local midnight is 04:00Z, not 05:00Z
+        self.assertEqual("2015-05-05T04:00:00Z", edges[2][1])
+        self.assertEqual("2015-12-31T05:00:00Z", edges[7][0])
+
+    def test_no_time_zone_adds_no_params(self):
+        self.assertNotIn("params", self._convert({"calendar_interval": "month"}))
+
+    def test_stats_becomes_four_function_facets(self):
+        facet = self._convert({"fixed_interval": "60d"}, {"total_amount": {"stats": {"field": "total_amount"}}}
+                              )["facet"]["over_time"]["facet"]
+        self.assertEqual({"total_amount_min": "min(total_amount)", "total_amount_max": "max(total_amount)",
+                          "total_amount_sum": "sum(total_amount)", "total_amount_avg": "avg(total_amount)"}, facet)
+
+
+class TestDateHistogramReviewCases(unittest.TestCase):
+    """Edges of the bounds / time_zone / stats conversion that a review reproduced."""
+
+    def _range(self, lo, hi, op="lt"):
+        return {"range": {"dropoff_datetime": {"gte": lo, op: hi}}}
+
+    def _convert(self, query, aggs):
+        return translate_to_solr_json_dsl({"query": query, "aggs": aggs})
+
+    def _hist(self, **conf):
+        return {"date_histogram": dict({"field": "dropoff_datetime"}, **conf)}
+
+    def test_two_time_zones_in_one_request_are_refused(self):
+        aggs = {"ny": self._hist(calendar_interval="month", time_zone="America/New_York"),
+                "paris": self._hist(calendar_interval="month", time_zone="Europe/Paris")}
+        with self.assertRaises(ValueError):
+            self._convert(self._range("2015-01-01T00:00:00Z", "2016-01-01T00:00:00Z"), aggs)
+
+    def test_a_zoned_and_an_unzoned_histogram_in_one_request_are_refused(self):
+        aggs = {"utc": self._hist(calendar_interval="month"),
+                "ny": self._hist(calendar_interval="month", time_zone="America/New_York")}
+        with self.assertRaises(ValueError):
+            self._convert(self._range("2015-01-01T00:00:00Z", "2016-01-01T00:00:00Z"), aggs)
+
+    def test_inclusive_upper_bound_on_a_bucket_edge_gets_the_bucket_that_starts_there(self):
+        facet = self._convert(self._range("2015-01-01T00:00:00Z", "2015-01-02T00:00:00Z", "lte"),
+                              {"d": self._hist(fixed_interval="1d")})["facet"]["d"]
+        self.assertEqual("2015-01-02T00:00:00Z+1DAY", facet["end"])
+
+    def test_exclusive_upper_bound_keeps_its_end(self):
+        facet = self._convert(self._range("2015-01-01T00:00:00Z", "2015-01-02T00:00:00Z"),
+                              {"d": self._hist(fixed_interval="1d")})["facet"]["d"]
+        self.assertEqual("2015-01-02T00:00:00Z", facet["end"])
+
+    def test_inclusive_end_on_an_edge_opens_one_more_zoned_range(self):
+        ranges = self._convert(self._range("2015-01-01T00:00:00Z", "2015-01-05T05:00:00Z", "lte"),
+                               {"d": self._hist(fixed_interval="60d", time_zone="America/New_York")})["facet"]["d"]["ranges"]
+        self.assertEqual("2015-01-05T05:00:00Z", ranges[-1]["from"])
+
+    def test_millisecond_fixed_intervals_align_in_integer_milliseconds(self):
+        facet = lambda interval: self._convert(self._range("2015-01-01T00:00:00Z", "2015-01-02T00:00:00Z"),
+                                               {"d": self._hist(fixed_interval=interval)})["facet"]["d"]["start"]
+        self.assertEqual("2015-01-01T00:00:00Z", facet("1ms"))
+        self.assertEqual("2014-12-31T23:51:14.048Z", facet("2699999ms"))
+
+    def test_stats_does_not_overwrite_a_sibling_aggregation(self):
+        for aggs in ({"fare": {"stats": {"field": "fare_amount"}}, "fare_avg": {"avg": {"field": "tip_amount"}}},
+                     {"fare_avg": {"avg": {"field": "tip_amount"}}, "fare": {"stats": {"field": "fare_amount"}}}):
+            with self.assertRaises(ValueError):
+                self._convert({"match_all": {}}, aggs)
+
+    def test_calendar_intervals_start_on_their_unit_in_utc(self):
+        start = lambda lo, interval: self._convert(self._range(lo, "2016-06-01T00:00:00Z"),
+                                                   {"d": self._hist(calendar_interval=interval)})["facet"]["d"]["start"]
+        self.assertEqual("2015-01-01T00:00:00Z", start("2015-01-15T12:00:00Z", "month"))
+        self.assertEqual("2015-01-12T00:00:00Z", start("2015-01-15T12:00:00Z", "week"))     # a Monday
+        self.assertEqual("2015-01-01T00:00:00Z", start("2015-02-10T00:00:00Z", "quarter"))
+        self.assertEqual("2015-01-01T00:00:00Z", start("2015-05-17T08:30:00Z", "year"))
+        self.assertEqual("2015-01-01T00:00:00Z", start("2015-01-01T00:00:00Z", "month"))   # already on the edge
+
+    def test_fractional_second_bounds_are_accepted(self):
+        facet = self._convert(self._range("2015-01-01T00:00:00.000Z", "2016-01-01T00:00:00.000Z"),
+                              {"d": self._hist(calendar_interval="month")})["facet"]["d"]
+        self.assertEqual("2015-01-01T00:00:00Z", facet["start"])
+        self.assertNotIn("REPLACE", facet["end"])
+        ranges = self._convert(self._range("2015-01-01T00:00:00.500Z", "2016-01-01T00:00:00.000Z"),
+                               {"d": self._hist(fixed_interval="60d", time_zone="America/New_York")})["facet"]["d"]["ranges"]
+        self.assertEqual("2014-11-06T05:00:00Z", ranges[0]["from"])
+
+
 class TestSearchBodiesWithoutAQuery(unittest.TestCase):
     def _convert(self, body):
         op = {"name": "country_agg", "operation-type": "search", "body": body}

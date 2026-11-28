@@ -21,8 +21,9 @@ The table below summarizes which OpenSearch Benchmark constructs are automatical
 | `bool` queries (`must` / `filter` / `should` / `must_not`) | Converted to Solr `bool` query parser |
 | Date ranges with `format` parameter | Dates parsed per format and written as ISO 8601 |
 | `terms` aggregations | Converted to Solr `terms` facet |
-| `date_histogram` aggregations | Converted to Solr `range` facet with calendar gap |
+| `date_histogram` aggregations | Converted to Solr `range` facet with calendar gap. `start` and `end` come from the query's range on the same field, a `fixed_interval` starts on the epoch-aligned boundary, and `time_zone` is passed as `TZ` |
 | `avg` / `sum` / `min` / `max` aggregations | Converted to Solr function query stats |
+| `stats` aggregations | Converted to four function facets, `<name>_min`, `<name>_max`, `<name>_sum` and `<name>_avg` |
 | `index-stats` retried until `merges.current` reaches zero | → `wait-for-merges`, with the polling expressed as `retry-wait-period` and `max-wait-seconds` |
 
 ## Requires manual review
@@ -35,6 +36,7 @@ These constructs are flagged in `CONVERTED.md` but not automatically converted:
 | Complex nested aggregations (3+ levels) | Auto-translation may be incomplete; verify output |
 | Custom analyzers in mapping | Configset `schema.xml` must be created manually |
 | `multi_match` queries | Partially converted; review field list for Solr equivalents |
+| `date_histogram` without a date range on its field in the query | `start` and `end` are the placeholders `REPLACE_WITH_START` and `REPLACE_WITH_END`; set them to the data's range |
 
 ## Skipped (with TODO comment)
 
