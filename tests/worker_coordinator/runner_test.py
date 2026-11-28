@@ -1056,3 +1056,75 @@ class RemovePrefixTests(TestCase):
         index_name = "index-20201117"
         suffix = index_name.removeprefix("unrelatedprefix")
         self.assertEqual(suffix, index_name)
+
+class SolrPaginatedSearchTests(TestCase):
+    """A fake pysolr client that pages through a fixed corpus with cursorMark."""
+
+    class FakeResults:
+        def __init__(self, docs, next_cursor_mark):
+            self.docs = docs
+            self.nextCursorMark = next_cursor_mark
+
+    class FakeSolrClient:
+        def __init__(self, total_docs):
+            self.total_docs = total_docs
+            self.calls = []
+
+        def search(self, collection, q, **kwargs):
+            self.calls.append(dict(kwargs, collection=collection, q=q))
+            rows = int(kwargs["rows"])
+            cursor = kwargs["cursorMark"]
+            offset = 0 if cursor == "*" else int(cursor)
+            docs = [{"id": str(i)} for i in range(offset, min(offset + rows, self.total_docs))]
+            next_offset = offset + len(docs)
+            # Solr repeats the cursor once the result set is exhausted
+            next_cursor = cursor if next_offset >= self.total_docs else str(next_offset)
+            return SolrPaginatedSearchTests.FakeResults(docs, next_cursor)
+
+    @run_async
+    async def test_fetches_every_page_when_pages_is_absent(self):
+        sc = self.FakeSolrClient(total_docs=250)
+        r = runner.SolrPaginatedSearch()
+
+        result = await r(sc, {"collection": "test", "rows": 100})
+
+        self.assertEqual(250, result["hits"])
+        self.assertEqual(3, result["pages"])
+
+    @run_async
+    async def test_stops_after_the_requested_number_of_pages(self):
+        sc = self.FakeSolrClient(total_docs=1_000_000)
+        r = runner.SolrPaginatedSearch()
+
+        result = await r(sc, {"collection": "test", "pages": 25, "results-per-page": 1000})
+
+        self.assertEqual(25, result["pages"])
+        self.assertEqual(25_000, result["hits"])
+
+    @run_async
+    async def test_results_per_page_sets_the_page_size(self):
+        sc = self.FakeSolrClient(total_docs=100)
+        r = runner.SolrPaginatedSearch()
+
+        await r(sc, {"collection": "test", "results-per-page": 40})
+
+        self.assertEqual([40, 40, 40], [c["rows"] for c in sc.calls])
+
+    @run_async
+    async def test_results_per_page_takes_precedence_over_rows(self):
+        sc = self.FakeSolrClient(total_docs=10)
+        r = runner.SolrPaginatedSearch()
+
+        await r(sc, {"collection": "test", "rows": 5, "results-per-page": 10})
+
+        self.assertEqual([10], [c["rows"] for c in sc.calls])
+
+    @run_async
+    async def test_stops_early_when_the_result_set_is_smaller_than_pages(self):
+        sc = self.FakeSolrClient(total_docs=30)
+        r = runner.SolrPaginatedSearch()
+
+        result = await r(sc, {"collection": "test", "pages": 25, "results-per-page": 100})
+
+        self.assertEqual(1, result["pages"])
+        self.assertEqual(30, result["hits"])
