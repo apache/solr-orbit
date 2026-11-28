@@ -1247,10 +1247,14 @@ class SolrPaginatedSearch(SolrRunner):
     """
     Execute a cursor-paginated Solr search using cursorMark.
 
-    Fetches all pages from a result set using Solr's deep pagination API.
+    Fetches pages from a result set using Solr's deep pagination API, stopping either when
+    the result set is exhausted or when ``pages`` pages have been fetched.
     Params:
-      - ``collection``, ``q`` (default ``*:*``), ``rows`` (page size, default 100)
-      - ``fl``, ``fq``, ``sort`` (must include a uniqueKey field, defaults to ``id asc``)
+      - ``collection``, ``q`` (default ``*:*``), ``sort`` (must include a uniqueKey field,
+        defaults to ``id asc``)
+      - ``pages`` — maximum number of pages to fetch; unbounded when absent
+      - ``results-per-page`` or ``rows`` — page size, default 100
+      - ``fl``, ``fq``
       - ``request-params`` — additional Solr query params passed through
     Returns weight = total docs fetched across all pages.
     """
@@ -1259,7 +1263,8 @@ class SolrPaginatedSearch(SolrRunner):
         collection = _get_collection(params)
         sc = client
         q = params.get("q", "*:*")
-        rows = params.get("rows", 100)
+        max_pages = params.get("pages")
+        rows = params.get("results-per-page", params.get("rows", 100))
         sort = params.get("sort", "id asc")
         kwargs = {"rows": rows, "sort": sort}
         for key in ("fl", "fq"):
@@ -1278,6 +1283,8 @@ class SolrPaginatedSearch(SolrRunner):
             next_cursor = getattr(results, "nextCursorMark", None)
             total_docs += len(results.docs)
             pages += 1
+            if max_pages is not None and pages >= max_pages:
+                break
             if next_cursor is None or next_cursor == cursor_mark:
                 break
             cursor_mark = next_cursor
